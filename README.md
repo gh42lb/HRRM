@@ -4,11 +4,11 @@ Ham Radio Relay Messenger v1.0.1 early beta test release de WH6GGO. The software
 
 
 #### Features
-* Dynamic Routing: Builds routing information from active relay stations. Relay messages directed to stations with fewest hops.\n\
-* Self Organizing Radio Mesh: HRRM allows active stations to form a Dynamic Self Organizing Radio Mesh for message transfer either directly or via relay.\n\
-* Critical Messages: Enables transfer of fully verified, error-corrected chats/emails/forms/files/messages to ham radio stations in real time.\n\
-* File Transfer: Capable of sending files.\n\
-* Winlink Messages: Capable of sending Winlink message files directly from winlink outbox of sending station to winlink inbox of receiving station.\n\
+* Dynamic Routing: Builds routing information from active relay stations. Relay messages directed to stations with fewest hops.
+* Self Organizing Radio Mesh: HRRM allows active stations to form a Dynamic Self Organizing Radio Mesh for message transfer either directly or via relay.
+* Critical Messages: Enables transfer of fully verified, error-corrected chats/emails/forms/files/messages to ham radio stations in real time.
+* File Transfer: Capable of sending files.
+* Winlink Messages: Capable of sending Winlink message files directly from winlink outbox of sending station to winlink inbox of receiving station.
 * Cross Platfrom.is confirmed to work well on both the raspberry pi and the Windows Beelink mini computing platform, both of which are ideal for off-grid and/or mobile setups.
 * Group Communication: Capable of real time Peer to Peer, Peer to Group mode communications with group mode ARQ.
 * Resilience: Optimized data transfer protocol for increased performance and resilience to adverse band conditions.
@@ -30,9 +30,13 @@ Ham Radio Relay Messenger v1.0.1 early beta test release de WH6GGO. The software
 Download the following:
 
 Fldigi
+
 HRRM v1.0.1: github.com/gh42lb/
+
 ICS templates: github.com/gh42lb/
+
 General templates: github.com/gh42lb/
+
 
 create a folder on the desktop called HRRM and add the binary file and two template files. 
 
