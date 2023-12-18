@@ -1,6 +1,6 @@
 ## Overview
 
-Ham Radio Relay Messenger v1.0.1 early beta test release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v1.0.3 early beta test release de WH6GGO. The software is currently in active development and early release testing phase.
 
 
 #### Features
@@ -31,18 +31,17 @@ Download the following:
 
 Fldigi
 
-HRRM v1.0.1: github.com/gh42lb/
+HRRM v1.0.3: github.com/gh42lb/HRRM
 
-ICS templates: github.com/gh42lb/
+ICS templates: github.com/gh42lb/HRRM
 
-General templates: github.com/gh42lb/
+General templates: github.com/gh42lb/HRRM
 
-
-create a folder on the desktop called HRRM and add the binary file and two template files. 
+run the windows installer or create a folder on the desktop called HRRM and add the binary file and two template files. 
 
 ### Configuration
 
-Fldigi XMLRPC: HRRM requires fldigi xmlrpc. This is usually configured by default in fldigi. If you are having issues connecting, check Fldigi xmlrpc external api is enabled and the ip and port are set to 127.0.0.1 and 7362 respectively. If you wish to use a different fldigi xmlrpc port or ip this can be specified using the fldigi=<IP>:<port> command line optionin HRRM as follows:   .\hrrm.exe --opmode=fldigi fldigi=127.0.0.1:7362
+Fldigi XmlRpc: HRRM requires fldigi XmlRpc. This is usually configured by default in fldigi. If you are having issues connecting, check Fldigi XmlRpc external api is enabled and the ip and port are set to 127.0.0.1 and 7362 respectively. If you wish to use a different fldigi xmlrpc port or ip this can be specified using the fldigi=<IP>:<port> command line optionin HRRM as follows:   .\hrrm.exe fldigi=127.0.0.1:7362
 
 Fldigi Soundcard: In fldigi, Configure / Soundcard / Devices. Check the sound card device settings in fldigi and ensure they are set correctly for your soundcard / radio
 
