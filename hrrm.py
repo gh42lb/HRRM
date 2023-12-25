@@ -73,6 +73,7 @@ class NetGarq(object):
     self.template_files = []
     self.winlink_inbox_files = []	  
     self.winlink_outbox_files = []	  
+    self.winlink_rmsmsg_files = []	  
     self.loaded_template_files = []	  
     self.templates = []
     self.categories = []
@@ -188,10 +189,10 @@ class NetGarq(object):
       if(callsign == station):
         """ test timestamp in here"""
         prev_timestamp_string = prev_ID.split('_',1)[1]
-        prev_inttime = int(prev_timestamp_string,16)
+        prev_inttime = ((int(prev_timestamp_string,36))/100.0)
 
         timestamp_string = ID.split('_',1)[1]
-        inttime = int(timestamp_string,16)
+        inttime = ((int(timestamp_string,36))/100.0)
 
         """ if prev station timestamp is more recent then ignore add...best guess within limitation of encoding!"""
         if(prev_inttime > inttime):
@@ -570,6 +571,23 @@ class NetGarq(object):
 
   def setWinlinkOutboxFiles(self, winlinkfiles):
     self.winlink_outbox_files = winlinkfiles
+    return
+
+
+  """ Winlink RMS message folder Files """
+  def clearWinlinkRMSMsgFiles(self):
+    self.winlink_rmsmsg_files = []	  
+    return
+
+  def addWinlinkRMSMsgFile(self, filename, msgfrom, msgto, subject, timestamp, msgtype, msgid):
+    self.winlink_rmsmsg_files.append([filename, msgfrom, msgto, subject, timestamp, msgtype, msgid])
+    return self.winlink_rmsmsg_files
+ 
+  def getWinlinkRMSMsgFiles(self):
+    return self.winlink_rmsmsg_files
+
+  def setWinlinkRMSMsgFiles(self, winlinkfiles):
+    self.winlink_rmsmsg_files = winlinkfiles
     return
 
 
