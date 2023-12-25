@@ -32,11 +32,11 @@ Download the following:
 * Fldigi
 * HRRM v1.0.4 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
 
-run the windows installer or create a folder on the desktop called HRRM
+run the windows installer or create a folder on the desktop called HRRM and add the binary file
 
 ### Configuration
 
-Fldigi XmlRpc: HRRM requires fldigi XmlRpc. This is usually configured by default in fldigi. If you are having issues connecting, check Fldigi XmlRpc external api is enabled and the ip and port are set to 127.0.0.1 and 7362 respectively. If you wish to use a different fldigi xmlrpc port or ip this can be specified using the fldigi=<IP>:<port> command line optionin HRRM as follows:   .\hrrm.exe fldigi=127.0.0.1:7362
+Fldigi XmlRpc: HRRM requires fldigi XmlRpc. This is usually configured by default in fldigi. If you are having issues connecting, check Fldigi XmlRpc external api is enabled and the ip and port are set to 127.0.0.1 and 7362 respectively. If you wish to use a different fldigi XmlRpc port or ip this can be specified using the fldigi=<IP>:<port> command line optionin HRRM as follows:   .\hrrm.exe fldigi=127.0.0.1:7362
 
 Fldigi Soundcard: In fldigi, Configure / Soundcard / Devices. Check the sound card device settings in fldigi and ensure they are set correctly for your soundcard / radio
 
@@ -67,7 +67,7 @@ Click the 'CQ CQ' button to call CQ.
 
 A station that hears the CQ can click 'Copy' to reply back.
 
-the 'Connect To:' field is the callsign of the station you are connecting to. If blank, enter the callsign for the station you wish to connect to.
+The 'Connect To:' field is the callsign of the station you are connecting to. If blank, enter the callsign for the station you wish to connect to.
 
 The receiving station should also enter your callsign into the same field on their application if it is blank.
 
