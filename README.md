@@ -1,15 +1,15 @@
 ## Overview
 
-Ham Radio Relay Messenger v1.0.3 early beta test release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v1.0.4 beta test release de WH6GGO. The software is currently in active development and early release testing phase.
 
 
 #### Features
 * Dynamic Routing: Builds routing information from active relay stations. Relay messages directed to stations with fewest hops.
 * Self Organizing Radio Mesh: HRRM allows active stations to form a Dynamic Self Organizing Radio Mesh for message transfer either directly or via relay.
 * Critical Messages: Enables transfer of fully verified, error-corrected chats/emails/forms/files/messages to ham radio stations in real time.
-* File Transfer: Capable of sending files.
-* Winlink Messages: Capable of sending Winlink message files directly from winlink outbox of sending station to winlink inbox of receiving station.
-* Cross Platfrom.is confirmed to work well on both the raspberry pi and the Windows Beelink mini computing platform, both of which are ideal for off-grid and/or mobile setups.
+* File Transfer: Capable of sending files and images.
+* Winlink over fldigi: Capable of sending Winlink message files directly from winlink outbox of sending station to winlink inbox of receiving station(s).
+* Cross Platfrom: HRRM is confirmed to work well on both the raspberry pi and the Windows Beelink mini computing platform, both of which are ideal for off-grid and/or mobile setups.
 * Group Communication: Capable of real time Peer to Peer, Peer to Group mode communications with group mode ARQ.
 * Resilience: Optimized data transfer protocol for increased performance and resilience to adverse band conditions.
 * Integration: Integrates with Fldigi, Winlink and Pat Winlink applications.
@@ -19,7 +19,7 @@ Ham Radio Relay Messenger v1.0.3 early beta test release de WH6GGO. The software
 * Notifications: Stub messages provide notification to the group of any pending messages waiting to be sent.
 * Data Compression: Uses a variety of data compression techniques inluding dictionary compression and run length encoding.
 * Customized Interface: Email style interface with inbox, outbox, relay box and sent box, utilizing notebook style and customized GUI controls.
-* 31 Modulation Modes: Supports a wide variety of underlying modulations including OFDM, PSK, QPSK, BPSK, DominoEX, 8PSK and Olivia.
+* 31 Modulation Modes: Supports a wide variety of underlying modulations including OFDM, MT63, THOR, MFSK, PSK, QPSK, BPSK, DominoEX, 8PSK and Olivia.
 * Extendable: Form designer built-in with many pre-built ICS form templates and standard templates included.
 
 
@@ -29,15 +29,10 @@ Ham Radio Relay Messenger v1.0.3 early beta test release de WH6GGO. The software
 
 Download the following:
 
-Fldigi
+* Fldigi
+* HRRM v1.0.4 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
 
-HRRM v1.0.3: github.com/gh42lb/HRRM
-
-ICS templates: github.com/gh42lb/HRRM
-
-General templates: github.com/gh42lb/HRRM
-
-run the windows installer or create a folder on the desktop called HRRM and add the binary file and two template files. 
+run the windows installer or create a folder on the desktop called HRRM
 
 ### Configuration
 
