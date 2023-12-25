@@ -84,7 +84,7 @@ class FLDIGI_Client(object):
     self.current_mode = ''
     """ set the default for startup"""
     self.requested_mode = 'PSK500R'
-    self.current_channel = '1500'
+    self.current_channel = '1000'
     self.requested_channel = '1500'
 
     """ 
@@ -94,9 +94,21 @@ class FLDIGI_Client(object):
     the last number is the relative timing for a test message in seconds.
     """
     self.timing_lookup = {
-                           'OFDM500F'    : '1,300,6,4000,12,16000,2400,MODE 29 - OFDM500F',  
-                           'OFDM750F'    : '1,300,6,4000,12,16000,2400,MODE 30 - OFDM750F',  
-                           'OFDM3500'    : '1,300,6,4000,12,8000,2400,MODE 31 - OFDM3500',  
+                           'OFDM500F'    : '1,300,6,4000,16,12000,500,MODE 29 - OFDM500F',  
+                           'OFDM750F'    : '1,300,6,4000,16,12000,750,MODE 30 - OFDM750F',  
+                           'MT63-500L'   : '1,300,6,4000,16,12000,500,MODE 30 - MT63-500L',  
+                           'MT63-500S'   : '1,300,6,4000,16,12000,500,MODE 30 - MT63-500S',  
+                           'MT63-1KL'    : '1,300,6,4000,16,12000,1000,MODE 30 - MT63-1KL',  
+                           'MT63-1KS'    : '1,300,6,4000,16,12000,1000,MODE 30 - MT63-1KS',  
+                           'MT63-2KL'    : '1,300,6,4000,16,12000,2000,MODE 30 - MT63-2KL',  
+                           'MT63-2KS'    : '1,300,6,4000,16,12000,2000,MODE 30 - MT63-2KS',  
+                           'THOR25x4'    : '1,300,6,4000,16,12000,1800,MODE 30 - THOR25x4',  
+                           'THOR50x2'    : '1,300,6,4000,16,12000,1800,MODE 30 - THOR50x2',  
+                           'THOR100'     : '1,300,6,4000,16,12000,1800,MODE 30 - THOR100',  
+                           'MFSK128L'    : '1,300,6,4000,16,12000,1800,MODE 30 - MFSK128L',  
+                           'PSK800C2'    : '1,300,6,4000,16,12000,2000,MODE 30 - PSK800C2',  
+                           'PSK800RC2'    : '1,300,6,4000,16,12000,2000,MODE 30 - PSK800RC2',  
+#                           'OFDM3500'    : '1,300,6,4000,16,12000,3500,MODE 31 - OFDM3500',  
                            'PSK1000RC2'  : '1,300,6,4000,12,8000,2400,MODE 1 - PSK1000RC2',  #13
                            'PSK500RC4'   : '1,300,6,4000,12,8000,2600,MODE 2 - PSK500RC4',   #13
                            'PSK800RC2'   : '1,300,6,4000,12,8000,1900,MODE 3 - PSK800RC2',   #15
@@ -126,6 +138,42 @@ class FLDIGI_Client(object):
                            'OLIVIA-4/1K' : '1,300,6,4000,12,8000,750,MODE 27 - OLIVIA-4/1K', #89
                            'DOMX16'      : '1,500,6,6000,12,6000,280,MODE 28 - DOMX16',      #101
                           }
+
+  def getSelectionList(self, selected_width):
+
+    self.debug.info_message("getSelectionList " + selected_width)
+
+    new_selection_list = ''
+    mode_count = 1
+    delimeter = ''
+    width = 500
+
+    if(selected_width == 'HF - 500'):
+      width = 500
+    elif(selected_width == 'HF - 1000'):
+      width = 1000
+    elif(selected_width == 'HF - 1500'):
+      width = 1500
+    elif(selected_width == 'HF - 2000'):
+      width = 2000
+    elif(selected_width == 'HF - 2800'):
+      width = 2800
+    elif(selected_width == 'VHF/UHF - 3500'):
+      width = 3500
+
+    for key in self.timing_lookup: 
+      value = self.timing_lookup.get(key)
+      items = value.split(',')
+        
+      if(int(items[6]) <= width):
+        new_selection_list = new_selection_list + delimeter + 'MODE ' + str(mode_count) + ' - ' + str(key) 
+        delimeter = ','
+
+      mode_count = mode_count + 1
+
+    self.debug.info_message("new_selection_list " + new_selection_list)
+
+    return new_selection_list
 
   def setRigName(self, rigname):
     self.rigname = rigname
@@ -451,6 +499,10 @@ class FLDIGI_Client(object):
     try:
       if self.connected:
         if(self.current_mode != self.requested_mode):
+
+          self.debug.info_message("current mode " + str(self.current_mode) )
+          self.debug.info_message("requested mode " + str(self.requested_mode) )
+
           self.server.modem.set_by_name(self.requested_mode)
           data = self.timing_lookup[self.requested_mode]
           width = int(data.split(',')[6])
@@ -458,14 +510,18 @@ class FLDIGI_Client(object):
           """ set the default offset (center)"""
           self.server.modem.set_carrier(int(self.current_channel))
           self.current_mode = self.requested_mode
-          self.pending_change = False
+
+          self.debug.info_message("setting modem to: " + str(self.current_mode) )
 
         if(self.current_channel != self.requested_channel):
-          data = self.timing_lookup[self.current_mode]
-          width = int(data.split(',')[6])
+
+          self.debug.info_message("current channel " + str(self.current_channel) )
+          self.debug.info_message("requested channel " + str(self.requested_channel) )
+
           self.server.modem.set_carrier( int(self.requested_channel) )
           self.current_channel = self.requested_channel
-          self.pending_change = False
+
+        self.pending_change = False
 
     except:
       self.debug.info_message("method: effectChange exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
