@@ -12,6 +12,7 @@ import calendar
 import xmlrpc.client
 
 import base64
+import bz2 as bz2
 
 import debug as db
 import JS8_Client
@@ -24,6 +25,7 @@ import js8_form_events
 import js8_form_dictionary
 import saam_parser
 
+from PIL import Image
 
 from datetime import datetime, timedelta
 
@@ -229,8 +231,8 @@ class SAAMFRAM(object):
 
     from_callsign = self.getMyCall()
     msgid = self.getEncodeUniqueId(from_callsign)
+    grid_square = self.form_gui.window['input_myinfo_gridsquare'].get()
 
-    grid_square = 'bk29lm'
     hop_count = '2'
 
     self.debug.info_message("LOC 1\n")
@@ -250,7 +252,7 @@ class SAAMFRAM(object):
   def createPreMessageInfoGRIDDataFlec(self, msgid, grid_square):
     self.debug.info_message("createPreMessageInfoGRIDDataFlec")
     message = 'INFO(GRID,' + grid_square + ','+ msgid  
-    checksum = self.getChecksum(grid_square + ','+ msgid)
+    checksum = self.getChecksum('GRID,' + grid_square + ','+ msgid)
     return message + ',' + checksum +  ')'
 
   """ This is a directed data fleck"""
@@ -1661,6 +1663,25 @@ class SAAMFRAM(object):
       
     return send_string
 
+  def getImageFileSendString(self, msgid, content, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign):
+
+    self.debug.info_message("getImageFileSendString: " + content )
+
+    content_string = content
+    """ only process the content for escapes"""
+    
+    send_string = '{' + cn.FORMAT_IMAGE + self.delimiter_char + msgid + self.delimiter_char + tolist + self.delimiter_char + priority + self.delimiter_char + \
+                            str(frag_size)+ self.delimiter_char + subject + self.delimiter_char + formname + self.delimiter_char + version + self.delimiter_char 
+                            
+    send_string = send_string + content_string
+    send_string = send_string + '}'
+
+    fragtagmsg = self.buildFragTagMsg(send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+    self.debug.info_message("buildFragTagMsg: " + fragtagmsg )
+    self.deconstructFragTagMsg(fragtagmsg, self.group_arq.getSendModeRig1())
+      
+    return send_string
+
   def getWL2KSendString(self, msgid, content, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign):
 
     self.debug.info_message("getWL2KSendString: " + content )
@@ -1679,6 +1700,35 @@ class SAAMFRAM(object):
     self.deconstructFragTagMsg(fragtagmsg, self.group_arq.getSendModeRig1())
       
     return send_string
+
+  def getHRRMSendString(self, msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign):
+    content = self.form_dictionary.getContentByIdFromOutboxDictionary(msgid)
+
+    content_string = ''
+    for x in range (len(content)):
+      if(x>0):
+        content_string = content_string + self.delimiter_char + str(content[x])
+      else:
+        content_string = content_string + str(content[x])
+    """ only process the content for escapes"""
+    content_string = self.getEncodeEscapes(content_string)
+    
+    send_string = '{' + cn.FORMAT_HRRM + self.delimiter_char + msgid + self.delimiter_char + tolist + self.delimiter_char + priority + self.delimiter_char + \
+                            str(frag_size)+ self.delimiter_char + subject + self.delimiter_char + formname + self.delimiter_char + version + self.delimiter_char 
+                            
+    send_string = send_string + content_string
+
+    send_string = send_string + '}'
+    send_string = self.getRunLengthEncode(send_string)
+
+    fragtagmsg = self.buildFragTagMsg(send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+    self.debug.info_message("buildFragTagMsg: " + fragtagmsg )
+    self.deconstructFragTagMsg(fragtagmsg, self.group_arq.getSendModeRig1())
+      
+    return send_string
+
+
+
 
   def base64Encode(self, binaryData):
     self.debug.info_message("base64Encode: " + str(binaryData))
@@ -1840,10 +1890,16 @@ outbox dictionary items formatted as...
 
   def getBinaryFile(self, filename):
 
-    with open(filename,'rb') as image_file:
-      encoded_string = base64.b64encode(image_file.read())
+    try:
+      compressionlevel=9
 
-    self.debug.info_message("getBinaryFile. encoded string = " + str(encoded_string.decode()) )
+      with open(filename,'rb') as image_file:
+        encoded_string = base64.b64encode(bz2.compress(image_file.read(), compressionlevel))
+
+      self.debug.info_message("getBinaryFile. encoded string = " + str(encoded_string.decode()) )
+
+    except:
+      self.debug.error_message("Exception in getBinaryFile: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
     return str(encoded_string.decode())
 
@@ -1987,6 +2043,77 @@ outbox dictionary items formatted as...
             except:
               self.debug.info_message("method: processIncomingMessageCommon exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
 
+      elif('{' + cn.FORMAT_HRRM in remainder):
+
+        content_processed = True
+        content   = []
+        split_string = remainder.split('{'  + cn.FORMAT_HRRM + self.delimiter_char, 1)
+        data_and_remainder = split_string[1].split('}', 1)
+
+        rleDecodedString = data_and_remainder[0]
+        data = rleDecodedString.split(self.delimiter_char)
+
+        for x in range(len(data)):
+          self.debug.info_message( cn.FORMAT_CONTENT + ": data[x] is: " + data[x] )
+        remainder = data_and_remainder[1]
+
+        ID        = data[0]
+        msgto     = data[1]
+        priority  = data[2]
+        fragsize  = data[3]
+        subject   = data[4]
+        formname  = data[5]
+        version   = data[6]
+
+        timestamp = self.getDecodeTimestampFromUniqueId(ID)
+        msgfrom   = self.getDecodeCallsignFromUniqueId(ID)
+
+        """ must also pass 2nd CRC check"""
+        if(success):
+          verified  = 'Verified'
+        else:
+          verified  = 'CRC'
+
+        """
+        process the incoming file here...
+        """
+        self.debug.info_message("incoming base64 encoded data is : " + data[7] )
+
+        data2 = bz2.decompress(base64.b64decode(data[7]))
+        data = data2.split(self.delimiter_char)
+
+        for x in range(len(data)):
+          content.append(data[x])			
+          self.debug.info_message("CONTENT is: " + data[x] )
+
+        if(which_box == cn.UNKNOWN_BOX):
+          if(self.testAnywhereOnReceiveList(msgto, self.getMyCall()) == True):
+            which_box = cn.IN_BOX
+          else:
+            which_box = cn.RELAY_BOX
+
+        """ priority of none indicates the message is not to be saved anywhere. """
+        if(which_box == cn.IN_BOX):
+          self.debug.info_message("processIncomingMessageCommon adding to INBOX")
+          self.form_dictionary.createInboxDictionaryItem(ID, msgto, msgfrom, subject, priority, timestamp, formname, content, verified)
+
+          try:
+            self.form_gui.window['tab_inbox'].select()
+          except:
+            self.debug.info_message("method: processIncomingMessageCommon exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+
+        elif(which_box == cn.RELAY_BOX):
+          self.debug.info_message("processIncomingMessageCommon adding to RELAYBOX")
+          confrcvd = ''
+          self.form_dictionary.createRelayboxDictionaryItem(ID, msgto, msgfrom, subject, priority, timestamp, formname, confrcvd, fragsize, content, verified)
+
+          try:
+            self.form_gui.window['tab_relaybox'].select()
+          except:
+            self.debug.info_message("method: processIncomingMessageCommon exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+
+        completed = True		
+
       elif('{' + cn.FORMAT_FILE in remainder):
         content_processed = True
 
@@ -2026,7 +2153,7 @@ outbox dictionary items formatted as...
         self.debug.info_message("incoming base64 encoded data is : " + data[7] )
 
         with open('./sent_data.dat', 'wb') as f:
-          f.write(base64.b64decode(data[7]))
+          f.write(bz2.decompress(base64.b64decode(data[7])))
 
         content.append(data[7])			
         self.debug.info_message("CONTENT is: " + data[7] )
@@ -2034,7 +2161,65 @@ outbox dictionary items formatted as...
         completed = True		
 
         self.form_gui.form_events.changeFlashButtonState('in_mainpanel_saveasfilename', True)
+
+        self.form_gui.window['tab_filexfer'].select()
+
           
+      elif('{' + cn.FORMAT_IMAGE in remainder):
+        content_processed = True
+
+        content   = []
+        split_string = remainder.split('{'  + cn.FORMAT_IMAGE + self.delimiter_char, 1)
+        data_and_remainder = split_string[1].split('}', 1)
+
+        rleDecodedString = data_and_remainder[0]
+
+        """ only process the content for escapes"""
+        data = rleDecodedString.split(self.delimiter_char)
+
+        for x in range(len(data)):
+          self.debug.info_message( cn.FORMAT_CONTENT + ": data[x] is: " + data[x] )
+        remainder = data_and_remainder[1]
+
+        ID        = data[0]
+        msgto     = data[1]
+        priority  = data[2]
+        fragsize  = data[3]
+        subject   = data[4]
+        formname  = data[5]
+        version   = data[6]
+
+        timestamp = self.getDecodeTimestampFromUniqueId(ID)
+        msgfrom   = self.getDecodeCallsignFromUniqueId(ID)
+
+        """ must also pass 2nd CRC check"""
+        if(success):
+          verified  = 'Verified'
+        else:
+          verified  = 'CRC'
+
+        """
+        process the incoming file here...
+        """
+        self.debug.info_message("incoming base64 encoded data is : " + data[7] )
+
+        with open('./received_image.jpg', 'wb') as f:
+          f.write(bz2.decompress(base64.b64decode(data[7])))
+
+        im = Image.open('received_image.jpg')
+        im.save('preview.png')
+        filename =  'preview.png'
+        self.form_gui.window['filexfer_image'].update(filename)
+
+
+        content.append(data[7])			
+        self.debug.info_message("CONTENT is: " + data[7] )
+
+        completed = True		
+
+        self.form_gui.form_events.changeFlashButtonState('in_mainpanel_saveasimagefilename', True)
+
+        self.form_gui.window['tab_filexfer'].select()
 
       elif('{' + cn.FORMAT_WL2K in remainder):
 
@@ -2079,7 +2264,7 @@ outbox dictionary items formatted as...
           inbox_folder = self.form_gui.window['in_winlink_inboxfolder'].get()
 
           with open(inbox_folder + formname, 'wb') as f:
-            f.write(base64.b64decode(data[7]))
+            f.write(bz2.decompress(base64.b64decode(data[7])))
 
           content.append(data[7])			
           self.debug.info_message("CONTENT is: " + data[7] )
@@ -2087,6 +2272,9 @@ outbox dictionary items formatted as...
           completed = True		  
         except:
           self.debug.info_message("method: processIncomingMessageCommon WL2K exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+
+        self.form_gui.window['tab_winlink'].select()
+
 
       else:
         completed = True		  
@@ -2649,12 +2837,15 @@ outbox dictionary items formatted as...
 
     self.fldigiclient.setMode(random_mode)
 
-
     message = ''
 
     ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
+    self.pre_message = self.createPreMessageDataFlecBeac(ID, grid, hop)
 
-    self.pre_message = self.createPreMessageDataFlecBeac(ID, grid, hop) + ',' + self.createPreMessagePend() + ',' + self.createPreMessageConf() + ',' + self.createPreMessageReqm()
+    pending = self.createPreMessagePend() 
+    if(pending != ''):
+      self.pre_message = self.pre_message + ',' + pending
+
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_TESTPROP + from_callsign + ' '
 
@@ -2738,6 +2929,11 @@ outbox dictionary items formatted as...
 
 
   def sendCQCQCQ(self, from_callsign, group_name):
+
+    selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+    self.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected main mode is: " + selected_mode)
+
     message = ''
     self.pre_message = self.buildPreMessageForCQCOPYRR73_TYPE1(from_callsign, group_name)
     self.debug.info_message("sendstring is " + self.pre_message)
@@ -2831,8 +3027,17 @@ outbox dictionary items formatted as...
 
   def sendStandby(self, from_callsign, group_name):
 
+    selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+    self.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected main mode is: " + selected_mode)
+
     message = ''
-    self.pre_message = self.createPreMessageBeac() + ',' + self.createPreMessagePend() + ',' + self.createPreMessageConf() + ',' + self.createPreMessageReqm()
+    self.pre_message = self.createPreMessageBeac()
+
+    pending = self.createPreMessagePend() 
+    if(pending != ''):
+      self.pre_message = self.pre_message + ',' + pending
+
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_STANDBY + from_callsign + ' '
 
@@ -2843,10 +3048,14 @@ outbox dictionary items formatted as...
 
   def sendQrt(self, from_callsign, group_name):
 
+    selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+    self.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected main mode is: " + selected_mode)
+
     message = ''
-    self.pre_message = self.createPreMessageBeac() + ',' + self.createPreMessagePend() + ',' + self.createPreMessageConf() + ',' + self.createPreMessageReqm()
+    self.pre_message = ''
     pre_message = self.getPreMessage()
-    message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_QRT + from_callsign + ' '
+    message = ' ' + from_callsign + ': ' + group_name + cn.COMM_QRT + from_callsign + ' '
 
     self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
     self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
@@ -2874,6 +3083,10 @@ outbox dictionary items formatted as...
   def sendAbort(self, from_callsign, group_name):
 
     self.setInSession(self.tx_rig, self.tx_channel, False)
+    self.setInSession(self.active_rig, self.active_channel, False)
+
+    #self.group_arq.fldigiclient.setReceiveString('')
+    #self.group_arq.fldigiclient.resetLastTwenty()
 
     self.debug.info_message("ABORT BUTTON PRESSED\n")
     if(self.group_arq.operating_mode == cn.FLDIGI):
@@ -2885,6 +3098,9 @@ outbox dictionary items formatted as...
     self.setCommStatus(self.active_rig, self.active_channel, cn.COMM_LISTEN)
 
     self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+
+    #self.form_gui.form_events.changeFlashButtonState('text_mainarea_insession', False)
+
     return
 
 
@@ -3695,7 +3911,7 @@ outbox dictionary items formatted as...
             self.group_arq.sendItNowRig1(from_callsign + ': ' + to_callsign + ' EOS ' + from_callsign + ' ')
             return
 
-      self.debug.info_message("advanceToNextRecipient LOC 8: " + str(current_recipient)  )
+      self.debug.info_message("advanceToNextRecipient: " + str(current_recipient)  )
 
       if(current_recipient+1 == num_recipients):
         self.debug.info_message("advanceToNextRecipient LOC7")
@@ -3982,7 +4198,8 @@ outbox dictionary items formatted as...
 
           newID = self.getEncodeUniqueId(from_call)
           newMode = self.fldigiclient.current_mode
-          self.group_arq.addSelectedStation(from_call, '', '', '', 'YAESU', newMode, snr, newID)
+          rigname = ''
+          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
 
           index = self.group_arq.getSelectedStationIndex(from_call)
           if(index != -1):
@@ -4004,7 +4221,8 @@ outbox dictionary items formatted as...
 
           newID = self.getEncodeUniqueId(from_call)
           newMode = self.fldigiclient.current_mode
-          self.group_arq.addSelectedStation(from_call, '', '', '', 'YAESU', newMode, snr, newID)
+          rigname = ''
+          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
           self.form_gui.refreshSelectedTables()
           self.form_gui.window['in_inbox_listentostation'].update(from_call)
 
@@ -4213,6 +4431,9 @@ outbox dictionary items formatted as...
 
 
   def gotStartFrame(self, start_frame_tag):
+
+    self.debug.info_message("in gotStartFrame" )
+
     success = True
     self.setInSession(self.active_rig, self.active_channel, True)
 
@@ -4368,7 +4589,7 @@ outbox dictionary items formatted as...
           self.sendAck(from_callsign, to_callsign)
 
         except:
-          self.debug.error_message("Exception in messageEnded LOC 2: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+          self.debug.error_message("Exception in messageEnded: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
 
       else:  
