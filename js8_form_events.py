@@ -19,6 +19,9 @@ import glob
 import webbrowser
 import shutil
 
+import base64
+import bz2 as bz2
+
 import hrrm
 import js8_form_gui
 import js8_form_dictionary
@@ -26,6 +29,8 @@ import winlink_import
 
 from datetime import datetime, timedelta
 from datetime import time
+
+from PIL import Image
 
 from uuid import uuid4
 
@@ -108,7 +113,10 @@ class ReceiveControlsProc(object):
                                   'in_inbox_listentostation' : ['False', 'red,green1', 'green1,red', cn.STYLE_INPUT, 'white,gray'],
                                   'text_mainarea_insession'  : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
 
-                                  'in_mainpanel_saveasfilename'  : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
+                                  'in_mainpanel_saveasfilename'       : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
+                                  'in_mainpanel_saveasimagefilename'  : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
+
+
 
                                 }
     
@@ -176,6 +184,33 @@ class ReceiveControlsProc(object):
     if(self.window_initialized == False and self.form_gui.window != None):
       self.event_btnmainareareset(values)
       self.window_initialized = True		
+
+      winlink_folder_in  = self.form_gui.window['in_winlink_inboxfolder'].get().strip()
+      winlink_folder_out = self.form_gui.window['in_winlink_outboxfolder'].get().strip()
+      winlink_folder_rms = self.form_gui.window['in_winlink_rmsmsgfolder'].get().strip()
+      callsign = self.form_gui.window['input_myinfo_callsign'].get().strip()
+
+
+      if (platform.system() == 'Windows'):
+        username = os.getenv('USERNAME')
+        if(winlink_folder_rms =='' and os.path.exists('C:\\RMS Express\\' + callsign + '\\Messages\\')):
+          self.form_gui.window['in_winlink_rmsmsgfolder'].update('C:\\RMS Express\\' + callsign + '\\Messages\\')
+        if(os.path.exists('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign )):
+          if(winlink_folder_in ==''):
+            self.form_gui.window['in_winlink_inboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\in\\')
+          if(winlink_folder_out ==''):
+            self.form_gui.window['in_winlink_outboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\out\\')
+      else:
+        username = 'pi'
+        username = os.getenv('USER')
+        if(winlink_folder_rms =='' and os.path.exists('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')):
+          self.form_gui.window['in_winlink_rmsmsgfolder'].update('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')
+        if(os.path.exists('/home/' + username + '/.wl2k/mailbox/' + callsign + '/')):
+          if(winlink_folder_in ==''):
+            self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'in/')
+          if(winlink_folder_out ==''):
+            self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'out/')
+
 
       if(self.group_arq.formdesigner_mode == False):
 
@@ -482,6 +517,7 @@ class ReceiveControlsProc(object):
     filename = templatefiles[line_index][0]
 
     self.form_dictionary.readTemplateDictFromFile(filename)
+
     self.form_gui.window['tbl_tmplt_categories'].update(self.group_arq.getCategories())
     self.form_gui.window['tbl_tmplt_files'].update(self.group_arq.getLoadedTemplateFiles())
 
@@ -838,6 +874,11 @@ class ReceiveControlsProc(object):
     self.debug.info_message("BTN CHAT POST AND SEND\n")
 
     try:
+
+      selected_mode = values['option_chat_fldigimode'].split(' - ')[1]
+      self.group_arq.fldigiclient.setMode(selected_mode)
+      self.debug.info_message("selected chat mode is: " + selected_mode)
+
       """ loop thru the dictionary to populate outbox display """
 
       from_call = self.saamfram.getMyCall()
@@ -871,46 +912,33 @@ class ReceiveControlsProc(object):
       content.append(the_message)
 
       dictionary = self.form_dictionary.createOutboxDictionaryItem(ID, msgto, msgfrom, subject, priority, timestamp, formname, content)
-      message_dictionary = dictionary.get(ID)		  
 
-      content   = message_dictionary.get('content')		  
-      msgto     = message_dictionary.get('to')		  
-      msgfrom   = message_dictionary.get('from')		  
-      subject   = message_dictionary.get('subject')		  
-      timestamp = message_dictionary.get('timestamp')		  
-      priority  = message_dictionary.get('priority')		  
-      msgtype   = message_dictionary.get('formname')		  
-      self.group_arq.addMessageToOutbox(msgfrom, msgto, subject, timestamp, priority, msgtype, ID)
-      self.form_gui.window['table_outbox_messages'].update(values=self.group_arq.getMessageOutbox() )
+      msgid = ID 
+      tolist   = msgto 
+      frag_size = 20
+      
+      sender_callsign = self.group_arq.saamfram.getMyCall()
+      tagfile = 'ICS'
+      version  = '1.3'
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
 
-      self.form_dictionary.writeOutboxDictToFile('outbox.msg')
+      self.form_dictionary.removeOutboxDictionaryItem(ID)
+    
+      sender_callsign = self.group_arq.saamfram.getMyCall()
+      fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+
+      """ put the relay stations on the front end of the list. """
+      revised_tolist = (self.group_arq.getRelayListFromSendList(tolist) + ';' + tolist).strip(';')
+
+      self.debug.info_message("event_prevchatpostandsend. revised to list: " + revised_tolist)
+  
+      self.group_arq.sendFormRig1(fragtagmsg, revised_tolist.replace(';;',';'), msgid)
+
+      self.group_arq.addChatData(sender_callsign, the_message, ID)
+      self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
+
     except:
       self.debug.error_message("Exception in event_prevchatpostandsend: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
-
-    msgid = ID 
-    tolist   = msgto 
-    frag_size = 20
-      
-    sender_callsign = self.group_arq.saamfram.getMyCall()
-    tagfile = 'ICS'
-    version  = '1.3'
-    complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
-
-    self.form_dictionary.transferOutboxMsgToSentbox(msgid)
-    self.form_dictionary.transferOutboxMsgToRelaybox(msgid)
-    
-    sender_callsign = self.group_arq.saamfram.getMyCall()
-    fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
-
-    """ put the relay stations on the front end of the list. """
-    revised_tolist = (self.group_arq.getRelayListFromSendList(tolist) + ';' + tolist).strip(';')
-
-    self.debug.info_message("event_prevchatpostandsend. revised to list: " + revised_tolist)
-
-    self.group_arq.sendFormRig1(fragtagmsg, revised_tolist.replace(';;',';'), msgid)
-
-    self.group_arq.addChatData(sender_callsign, the_message, ID)
-    self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
 
     return()
 
@@ -1062,10 +1090,66 @@ class ReceiveControlsProc(object):
 
     self.form_gui.form_events.changeFlashButtonState('in_mainpanel_saveasfilename', False)
 
+  def event_mainpanelsaveasimagefile(self, values):
+
+    save_file_name = self.form_gui.window['in_mainpanel_saveasimagefilename'].get()
+
+    shutil.copyfile('./received_image.jpg', save_file_name)
+
+    self.debug.info_message("event_mainpanelsaveasimagefile\n")
+
+    self.form_gui.form_events.changeFlashButtonState('in_mainpanel_saveasimagefilename', False)
+
+
+  def event_mainpanelsendimagefile(self, values):
+    self.debug.info_message("event_mainpanelsendimagefile")
+
+    selected_mode = values['option_filexfer_fldigimode'].split(' - ')[1]
+    self.group_arq.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected file xfer mode is: " + selected_mode)
+
+
+    sender_callsign = self.group_arq.saamfram.getMyCall()
+    msgid = self.group_arq.saamfram.getEncodeUniqueId(sender_callsign)
+    formname = ''
+    priority = ''
+    subject  = ''
+    tolist   = self.form_gui.window['in_inbox_listentostation'].get()
+
+    frag_size = 200
+    tagfile = 'ICS'
+    version  = '1.0'
+
+    complete_send_string = ''
+
+    filename =  'compressed.jpg' #self.form_gui.window['in_mainpanel_sendfilename'].get()
+
+    self.debug.info_message("selected filename is : " + filename )
+
+    content = self.saamfram.getBinaryFile(filename)
+    
+    self.debug.info_message("OK got the data: " + str(content) )
+
+    complete_send_string = self.group_arq.saamfram.getImageFileSendString(msgid, content, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+
+    self.debug.info_message("EVENT SEND FILE 3\n")
+    fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+
+    self.debug.info_message("SEND STRING IS: " + fragtagmsg )
+    self.debug.info_message("ACTUAL MSG SENT TO FLDIGI: " + str(fragtagmsg) )
+    
+    self.group_arq.sendFormRig1(fragtagmsg, tolist, msgid)
+
+    return
+
 
 
   def event_mainpanelsendfile(self, values):
     self.debug.info_message("event_mainpanelsendfile\n")
+
+    selected_mode = values['option_filexfer_fldigimode'].split(' - ')[1]
+    self.group_arq.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected file xfer mode is: " + selected_mode)
 
     sender_callsign = self.group_arq.saamfram.getMyCall()
     msgid = self.group_arq.saamfram.getEncodeUniqueId(sender_callsign)
@@ -1100,8 +1184,81 @@ class ReceiveControlsProc(object):
 
     return
 
+  def event_outboxsendselectedasfile(self, values):
+    self.debug.info_message("event_outboxsendselectedasfile\n")
+    line_index = int(values['table_outbox_messages'][0])
+    msgid = (self.group_arq.getMessageOutbox()[line_index])[6]
+    formname = (self.group_arq.getMessageOutbox()[line_index])[5]
+    priority = (self.group_arq.getMessageOutbox()[line_index])[4]
+    subject  = (self.group_arq.getMessageOutbox()[line_index])[2]
+    tolist   = (self.group_arq.getMessageOutbox()[line_index])[1]
+
+    self.debug.info_message("event_outboxsendselectedasfile 2\n")
+    
+    frag_size = 50
+    #frag_string = values['option_framesize'].strip()
+    #if(frag_string != ''):
+    #  frag_size = int(values['option_framesize'])
+      
+    include_template = values['cb_outbox_includetmpl']
+
+    self.debug.info_message("event_outboxsendselectedasfile 2b\n")
+
+    sender_callsign = self.group_arq.saamfram.getMyCall()
+    tagfile = 'ICS'
+    version  = '1.0'
+    complete_send_string = ''
+
+    complete_send_string = self.group_arq.saamfram.getHRRMSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+
+    self.debug.info_message("event_outboxsendselectedasfile 3\n")
+
+    try:
+      self.debug.info_message("event_outboxsendselectedasfile complete send string = " + complete_send_string)
+
+      compressionlevel=9
+      self.debug.info_message("event_outboxsendselectedasfile 4\n")
+      encoded_send_string = base64.b64encode(bz2.compress(bytes(complete_send_string, 'utf-8'), compressionlevel))
+
+      self.debug.info_message("event_outboxsendselectedasfile encoded send string = " + str(encoded_send_string))
+
+      self.debug.info_message("event_outboxsendselectedasfile 5\n")
+      complete_send_string = str(encoded_send_string.decode())
+
+      self.debug.info_message("event_outboxsendselectedasfile decoded send string = " + complete_send_string)
+
+      self.debug.info_message("event_outboxsendselectedasfile 6\n")
+
+
+    except:
+      self.debug.error_message("Exception in event_outboxsendselectedasfile: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    self.debug.info_message("event_outboxsendselectedasfile 7\n")
+
+
+    fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+    self.group_arq.sendFormRig1(fragtagmsg, tolist, msgid)
+
+    self.form_dictionary.transferOutboxMsgToSentbox(msgid)
+    #self.form_dictionary.transferOutboxMsgToRelaybox(msgid)
+
+    self.form_gui.window['table_relay_messages'].update(values=self.group_arq.getMessageRelaybox() )
+    self.form_gui.window['table_sent_messages'].update(values=self.group_arq.getMessageSentbox() )
+    self.form_gui.window['table_outbox_messages'].update(values=self.group_arq.getMessageOutbox() )
+    self.form_gui.window['table_inbox_messages'].update(values=self.group_arq.getMessageInbox() )
+
+    return
+
+
+
+
   def event_outboxsendselected(self, values):
     self.debug.info_message("EVENT OUTBOX SEND SELECTED\n")
+
+    selected_mode = values['option_outbox_fldigimode'].split(' - ')[1]
+    self.group_arq.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected outbox mode is: " + selected_mode)
+
     line_index = int(values['table_outbox_messages'][0])
     msgid = (self.group_arq.getMessageOutbox()[line_index])[6]
     formname = (self.group_arq.getMessageOutbox()[line_index])[5]
@@ -1959,6 +2116,20 @@ class ReceiveControlsProc(object):
     return
 
 
+  def event_btnmyinfosave(self, values):
+    self.debug.info_message("event_btnmyinfosave\n")
+
+    if(values != None):
+      self.form_dictionary.writeMainDictionaryToFile("saamcom_save_data.txt", values)
+    """ write the inbox dictionary to file """
+    self.form_dictionary.writeInboxDictToFile('inbox.msg')
+    self.form_dictionary.writeOutboxDictToFile('outbox.msg')
+    self.form_dictionary.writeSentDictToFile('sentbox.msg')
+    self.form_dictionary.writeRelayboxDictToFile('relaybox.msg')
+    self.form_dictionary.writePeerstnDictToFile('peerstn.sav')
+    self.form_dictionary.writeRelaystnDictToFile('relaystn.sav')
+
+
   def event_btnmainpanelclearstations(self, values):
     self.debug.info_message("event_btnmainpanelclearstations\n")
     self.group_arq.clearSelectedStations()
@@ -2312,44 +2483,83 @@ class ReceiveControlsProc(object):
       self.group_arq.fldigiclient.setChannel(channel.split('Hz')[0])
 
 
+  def event_btnmainpanelpreviewimagefile(self, values):
+    self.debug.info_message("event_btnmainpanelpreviewimagefile")
+
+    jpg_filename = values['in_mainpanel_sendimagefilename'].strip()
+
+    try:
+
+      if(jpg_filename != ''):
+        grayscale = values['cb_filexfer_grayscale']
+
+        im = Image.open(jpg_filename)
+
+        original_size_x, original_size_y = im.size
+
+        slider_size_factor = values['filexfer_slider_size']
+        slider_quality_factor = values['filexfer_slider_quality']
+        self.debug.info_message("size factor : " + str(slider_size_factor))
+        self.debug.info_message("quality factor : " + str(slider_quality_factor))
+
+        resized_im = im.resize((int(original_size_x*(slider_size_factor)), int(original_size_y*(slider_size_factor))), Image.ANTIALIAS)
+        if(grayscale):
+          grayscale_im = resized_im.convert('L')     
+          grayscale_im.save('compressed.jpg', optimize = True, quality=int(slider_quality_factor))
+        else:
+          resized_im.save('compressed.jpg', optimize = True, quality=int(slider_quality_factor))
+
+        compressed_size = os.path.getsize('compressed.jpg')
+        self.debug.info_message("compressed size is: " + str(compressed_size))
+
+        self.form_gui.window['text_image_size'].update(str(compressed_size)+ ' Bytes')
+        if(compressed_size<=3000):
+          self.form_gui.window['text_image_size'].update(text_color='green1')
+        elif(compressed_size<=5000):
+          self.form_gui.window['text_image_size'].update(text_color='yellow')
+        elif(compressed_size<=10000):
+          self.form_gui.window['text_image_size'].update(text_color='orange')
+        else:
+          self.form_gui.window['text_image_size'].update(text_color='red')
+
+        im = Image.open('compressed.jpg')
+        im.save('preview.png')
+
+        filename =  'preview.png'
+        self.form_gui.window['filexfer_image'].update(filename)
+
+    except:
+      self.debug.info_message("method: event_btnmainpanelpreviewimagefile exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+
+
+    return
+
+
   def event_combomainsignalwidth(self, values):
     self.debug.info_message("event_combomainsignalwidth\n")
 
     selected_width = values['combo_main_signalwidth']
-    if(selected_width == 'HF - 500'):
-      new_selection_list = 'MODE 5 - QPSK500,MODE 8 - BPSK500,MODE 13 - 8PSK125,MODE 14 - 8PSK250F,MODE 15 - 8PSK250FL,MODE 16 - PSK500R,\
-MODE 18 - QPSK250,MODE 19 - BPSK250,MODE 22 - 8PSK125FL,MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,\
-MODE 28 - DOMX16,MODE 29 - OFDM500F'.split(',')
-      self.form_gui.window['option_outbox_fldigimode'].update(values=new_selection_list )
-      self.form_gui.window['option_outbox_fldigimode'].update(new_selection_list[0] )
-      self.group_arq.saamfram.fldigiclient.setMode('QPSK500')
-      self.group_arq.saamfram.fldigiclient.setModeSelectionList(new_selection_list)
-    elif(selected_width == 'VHF/UHF - 1000'):
-      new_selection_list = 'MODE 5 - QPSK500,MODE 8 - BPSK500,MODE 9 - PSK1000R,MODE 12 - PSK250RC3,MODE 13 - 8PSK125,MODE 14 - 8PSK250F,\
-MODE 15 - 8PSK250FL,MODE 16 - PSK500R,MODE 17 - PSK250RC2,MODE 18 - QPSK250,MODE 19 - BPSK250,MODE 20 - PSK125RC4,MODE 22 - 8PSK125FL,\
-MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27 - OLIVIA-4/1K,MODE 28 - DOMX16,MODE 29 - OFDM500F,MODE 30 - OFDM750F'.split(',')
-      self.form_gui.window['option_outbox_fldigimode'].update(values=new_selection_list )
-      self.form_gui.window['option_outbox_fldigimode'].update(new_selection_list[0] )
-      self.group_arq.saamfram.fldigiclient.setMode('QPSK500')
-      self.group_arq.saamfram.fldigiclient.setModeSelectionList(new_selection_list)
-    elif(selected_width == 'VHF/UHF - 2000'):
-      new_selection_list = 'MODE 3 - PSK800RC2,MODE 4 - PSK250RC6,MODE 5 - QPSK500,MODE 6 - PSK500RC3,MODE 7 - PSK250RC5,MODE 8 - BPSK500,\
-MODE 9 - PSK1000R,MODE 10 - PSK500RC2,MODE 11 - DOMX88,MODE 12 - PSK250RC3,MODE 13 - 8PSK125,MODE 14 - 8PSK250F,MODE 15 - 8PSK250FL,\
-MODE 16 - PSK500R,MODE 17 - PSK250RC2,MODE 18 - QPSK250,MODE 19 - BPSK250,MODE 20 - PSK125RC4,MODE 21 - DOMX44,MODE 22 - 8PSK125FL,\
-MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27 - OLIVIA-4/1K,MODE 28 - DOMX16,MODE 29 - OFDM500F,MODE 30 - OFDM750F'.split(',')
-      self.form_gui.window['option_outbox_fldigimode'].update(values=new_selection_list )
-      self.form_gui.window['option_outbox_fldigimode'].update(new_selection_list[0] )
-      self.group_arq.saamfram.fldigiclient.setMode('PSK800RC2')
-      self.group_arq.saamfram.fldigiclient.setModeSelectionList(new_selection_list)
-    elif(selected_width == 'VHF/UHF - 3500'):
-      new_selection_list = 'MODE 1 - PSK1000RC2,MODE 2 - PSK500RC4,MODE 3 - PSK800RC2,MODE 4 - PSK250RC6,MODE 5 - QPSK500,MODE 6 - PSK500RC3,\
-MODE 7 - PSK250RC5,MODE 8 - BPSK500,MODE 9 - PSK1000R,MODE 10 - PSK500RC2,MODE 11 - DOMX88,MODE 12 - PSK250RC3,MODE 13 - 8PSK125,MODE 14 - 8PSK250F,\
-MODE 15 - 8PSK250FL,MODE 16 - PSK500R,MODE 17 - PSK250RC2,MODE 18 - QPSK250,MODE 19 - BPSK250,MODE 20 - PSK125RC4,MODE 21 - DOMX44,MODE 22 - 8PSK125FL,\
-MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27 - OLIVIA-4/1K,MODE 28 - DOMX16,MODE 29 - OFDM500F,MODE 30 - OFDM750F'.split(',')
-      self.form_gui.window['option_outbox_fldigimode'].update(values=new_selection_list )
-      self.form_gui.window['option_outbox_fldigimode'].update(new_selection_list[0] )
-      self.group_arq.saamfram.fldigiclient.setMode('PSK1000RC2')
-      self.group_arq.saamfram.fldigiclient.setModeSelectionList(new_selection_list)
+
+    new_selection_list = self.group_arq.fldigiclient.getSelectionList(selected_width).split(',')
+
+    self.form_gui.window['option_chat_fldigimode'].update(values=new_selection_list )
+    self.form_gui.window['option_chat_fldigimode'].update(new_selection_list[0] )
+
+    self.form_gui.window['option_filexfer_fldigimode'].update(values=new_selection_list )
+    self.form_gui.window['option_filexfer_fldigimode'].update(new_selection_list[0] )
+
+    self.form_gui.window['option_outbox_fldigimode'].update(values=new_selection_list )
+    self.form_gui.window['option_outbox_fldigimode'].update(new_selection_list[0] )
+
+    self.form_gui.window['option_winlink_fldigimode'].update(values=new_selection_list )
+    self.form_gui.window['option_winlink_fldigimode'].update(new_selection_list[0] )
+
+    self.form_gui.window['option_main_fldigimode'].update(values=new_selection_list )
+    self.form_gui.window['option_main_fldigimode'].update(new_selection_list[0] )
+
+    first_mode = new_selection_list[0].split(' - ')[1]
+    self.group_arq.saamfram.fldigiclient.setMode(first_mode)
+    self.group_arq.saamfram.fldigiclient.setModeSelectionList(new_selection_list)
 
 
   def event_btnoutboxviewform(self, values):
@@ -2658,7 +2868,7 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
     return
 
   def hasWindowMovedDuringEdit(self, window):
-    self.debug.info_message("hasWindowMovedDuringEdit")
+    #self.debug.info_message("hasWindowMovedDuringEdit")
     if(self.editing_table == True):
       table = window['popup_main_tab1'].Widget  
       widget_x1, widget_y1 = table.winfo_rootx(),table.winfo_rooty()
@@ -2769,6 +2979,7 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
     """
 
     if(folder != ''):
+      extension = "*.b2f"
       self.group_arq.clearWinlinkInboxFiles()
       dir_list = glob.glob(folder + extension)
       dir_list.sort(key=os.path.getmtime)
@@ -2782,6 +2993,7 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
     folder = values['in_winlink_outboxfolder']
 
     if(folder != ''):
+      extension = "*.b2f"
       self.group_arq.clearWinlinkOutboxFiles()
       dir_list = glob.glob(folder + extension)
       dir_list.sort(key=os.path.getmtime)
@@ -2792,6 +3004,21 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
         filename, msg_from, msg_to, subject, date, formname, message_id = self.processFileData(folder, filename)
         self.group_arq.addWinlinkOutboxFile(filename, msg_from, msg_to, subject, date, formname, message_id)
       self.form_gui.window['winlink_outbox_table'].update(values=self.group_arq.getWinlinkOutboxFiles())
+
+    folder = values['in_winlink_rmsmsgfolder']
+
+    if(folder != ''):
+      extension = "*.mime"
+      self.group_arq.clearWinlinkRMSMsgFiles()
+      dir_list = glob.glob(folder + extension)
+      dir_list.sort(key=os.path.getmtime)
+      for full_filename in reversed(dir_list):
+        filename = full_filename.split(folder)[1]
+        self.debug.info_message("event_winlinklist. filename: " + filename )
+        self.debug.info_message("pat winlink email located: " + str(filename) )
+        filename, msg_from, msg_to, subject, date, formname, message_id = self.processFileData(folder, filename)
+        self.group_arq.addWinlinkRMSMsgFile(filename, msg_from, msg_to, subject, date, formname, message_id)
+      self.form_gui.window['winlink_rmsmsg_table'].update(values=self.group_arq.getWinlinkRMSMsgFiles())
 
     return
 
@@ -2842,6 +3069,7 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
     self.form_gui.window['table_winlink_inbox_preview'].update(values=tabledata)
     
     self.form_gui.window['winlink_outbox_table'].update(values=self.group_arq.getWinlinkOutboxFiles())
+    self.form_gui.window['winlink_rmsmsg_table'].update(values=self.group_arq.getWinlinkRMSMsgFiles())
 
     return
 
@@ -2890,6 +3118,58 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
     self.form_gui.window['table_winlink_inbox_preview'].update(values=tabledata)
 
     self.form_gui.window['winlink_inbox_table'].update(values=self.group_arq.getWinlinkInboxFiles())
+    self.form_gui.window['winlink_rmsmsg_table'].update(values=self.group_arq.getWinlinkRMSMsgFiles())
+
+    return
+
+
+
+  def event_winlinkrmsmsgtable(self, values):
+    self.debug.info_message("event_winlinkrmsmsgtable")
+
+    line_index = int(values['winlink_rmsmsg_table'][0])
+    filename = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[0]
+
+    formname = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[5]
+    if(formname == ""):
+      self.form_gui.window['btn_winlink_edit_selected'].update(disabled = False)
+    elif(formname == 'ICS 213'):
+      self.form_gui.window['btn_winlink_edit_selected'].update(disabled = False)
+    else:
+      self.form_gui.window['btn_winlink_edit_selected'].update(disabled = True)
+
+    folder = values['in_winlink_rmsmsgfolder']
+
+    tabledata = []
+
+    body_length = 5000
+
+    with open(folder+filename) as f:
+      data = f.read()
+      string_data = str(data)
+      data = string_data.split('\n')
+      running_count = 0
+      for x in range(len(data)):
+        running_count = running_count + int(len(data[x]))
+        if('Body: ' in data[x]):
+          body_length = int(data[x].split('Body: ')[1])
+          self.debug.info_message("body length: " + str(body_length))
+          running_count = 0
+        elif('X-Filepath: ' in data[x]):
+          running_count = 0
+        elif('X-P2ponly: ' in data[x]):
+          running_count = 0
+        elif('Type: ' in data[x]):
+          running_count = 0
+
+        if(running_count <= body_length):
+          data_item = [str(data[x])]
+          tabledata.append(data_item)
+
+    self.form_gui.window['table_winlink_inbox_preview'].update(values=tabledata)
+
+    self.form_gui.window['winlink_inbox_table'].update(values=self.group_arq.getWinlinkInboxFiles())
+    self.form_gui.window['winlink_outbox_table'].update(values=self.group_arq.getWinlinkOutboxFiles())
 
     return
 
@@ -2897,6 +3177,10 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
   def event_btnwinlinksendselected(self, values):
 
     self.debug.info_message("event_btnwinlinksendselected")
+
+    selected_mode = values['option_winlink_fldigimode'].split(' - ')[1]
+    self.group_arq.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected file winlink mode is: " + selected_mode)
 
     if(values['winlink_outbox_table'] != []):
       line_index = int(values['winlink_outbox_table'][0])
@@ -2908,6 +3192,11 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
       filename = (self.group_arq.getWinlinkInboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkInboxFiles()[line_index])[5]
       folder = values['in_winlink_inboxfolder']
+    elif(values['winlink_rmsmsg_table'] != []):
+      line_index = int(values['winlink_rmsmsg_table'][0])
+      filename = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[0]
+      formname = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[5]
+      folder = values['in_winlink_rmsmsgfolder']
 
 
     self.debug.info_message("selected id: " + str(filename))
@@ -2966,6 +3255,11 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
       filename = (self.group_arq.getWinlinkInboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkInboxFiles()[line_index])[5]
       folder = values['in_winlink_inboxfolder']
+    elif(values['winlink_rmsmsg_table'] != []):
+      line_index = int(values['winlink_rmsmsg_table'][0])
+      filename = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[0]
+      formname = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[5]
+      folder = values['in_winlink_rmsmsgfolder']
 
 
     self.debug.info_message("selected id: " + str(filename))
@@ -3257,6 +3551,7 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
       'btn_settings_list'         : event_settingslist,
       'tbl_compose_categories'    : event_compose_categories,
       'btn_outbox_sendselected'   : event_outboxsendselected,
+      'btn_outbox_sendselectedasfile'   : event_outboxsendselectedasfile,
       'btn_outbox_deletemsg'      : event_outboxdeletemsg,
       'btn_outbox_deleteallmsg'   : event_outboxdeleteallmsg,
       'btn_sentbox_deletemsg'      : event_sentboxdeletemsg,
@@ -3309,6 +3604,13 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
       'option_outbox_js8callmode' : event_optionoutboxjs8callmode,
       'combo_main_signalwidth'    : event_combomainsignalwidth,
 
+      'btn_mainpanel_previewimagefile' : event_btnmainpanelpreviewimagefile,
+      'filexfer_slider_size'          :     event_btnmainpanelpreviewimagefile,
+      'filexfer_slider_quality'       :     event_btnmainpanelpreviewimagefile,
+      'cb_filexfer_grayscale'         :     event_btnmainpanelpreviewimagefile,
+      'cb_filexfer_blackandwhite'     :     event_btnmainpanelpreviewimagefile,
+      'in_mainpanel_sendimagefilename' :    event_btnmainpanelpreviewimagefile,
+
       'btn_mainpanel_relay'       : event_btnmainpanelrelay,
 
       'btn_mainarea_reset'        : event_btnmainareareset,
@@ -3319,10 +3621,13 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
 
       'btn_mainpanel_clearstations' : event_btnmainpanelclearstations,
 
+       'btn_myinfo_save'         : event_btnmyinfosave,
 
       'btn_winlink_list_emails'  : event_winlinklist,
       'winlink_inbox_table'      : event_winlinkinboxtable,
       'winlink_outbox_table'      : event_winlinkoutboxtable,
+
+      'winlink_rmsmsg_table'      : event_winlinkrmsmsgtable,
 
       'btn_mainpanel_testprop'      : event_btnmainpaneltestprop,
 
@@ -3341,8 +3646,11 @@ MODE 23 - 8PSK125F,MODE 24 - PSK250R,MODE 25 - PSK63RC4,MODE 26 - DOMX22,MODE 27
       'btn_substation_disconnect_1'  : event_btnsubstationdisconnect1,
       'btn_mainpanel_sendgfile'   : event_mainpanelsendfile,
 
+      'btn_mainpanel_sendimagefile'   : event_mainpanelsendimagefile,
+
       #'btn_mainpanel_saveasfile'  : event_mainpanelsaveasfile,
       'in_mainpanel_saveasfilename'  : event_mainpanelsaveasfile,
+      'in_mainpanel_saveasimagefilename'  : event_mainpanelsaveasimagefile,
 
       'combo_element1'            : event_comboelement1,
       'combo_element2'            : event_comboelement2,
