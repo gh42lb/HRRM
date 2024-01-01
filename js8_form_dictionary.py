@@ -360,6 +360,94 @@ class FormDictionary(object):
    
     return(js)
 
+
+  """ fail safe. code standard form templates in memory"""
+  def readTemplateDictFromMemory(self, filename):
+
+    self.debug.info_message("readTemplateDictFromMemory: " + filename )
+
+    data= {}
+
+    if(filename == 'standard_templates.tpl'):
+      data = {"version": 1.0, "description": "my test forms", "GENERAL": {"EMAIL": ["v1.0", "EMAIL FORM", "0B,E4", "02", "@C,@C", "M1", "47", "01"],
+                                                                          "BULLETIN": ["v1.0", "BULLETIN FORM", "0B,B9", "02", "@C", "FC,@1,23", "FB,@1,23", "S1,@3,23", "00", "@C", "B8,@2,24", "D3,@1,24", "@Q,IP", "01", "02", "@C,@D", "B9", "47", "01"],
+                                                                          "QUICKMSG": ["v1.0", "QUICK MESSAGE FORM", "0B,Q2", "02", "@C", "AJ,@4,23", "FB,@1,23", "S1,@3,23", "00", "@C", "SJ,@1,23", "D3,@1,23", "01", "02", "@C,@D", "47", "01"]}}
+    elif(filename == 'ICS_Form_Templates.tpl'):
+      data = {"version": 1.0, "description": "my test forms", "ICS FORMS": {"ICS 213": ["v1.0", "ICS 213 Form", "0B,G5", "03", "0C,I1,@3,#8,42", "0C,T1,@2,42", "0C,F4,@1,42",\
+                       "0C,S1,@4,26,@1,0C,D1,#9,10,@1,0C,T2,#A,42", "03", "0C,09,M1", "47", "03", "0C,A1,24,@1,P1,42"],
+                                                                            "ICS 214": ["v1.0", "ICS 214 Form", "0B,AI", "02", "06,05", "0C,I1,@5,P2", "#8,24,10", "00", "06", "0C,O2",\
+                       "DH,20,@1,T6,20", "01", "02", "06,05", "0C,N5,42", "0D,H5,42", "00", "06,05", "0E,IO,42", "01", "05", "0C,09,R4", "#2,N5,IO,H5", "05", "0C,09,AH", "#3,D3,NB", "0C,P9,22"],
+                                                                            "ICS 206": ["v1.0", "ICS 206 Form", "0B,M8", "02", "06", "0C,I1", "#8,42", "06", "00", "06", "0C,O2", "D4,13,@1,D5,13",\
+                       "T7,13,@1,T8,13", "01", "06", "0C,09,M6", "#1,N5,L3,CB,PE", "03", "0C,09,TE", "#1,AA,AB,CB,L9", "03", "0C,09,H1", "#1,H2,AD,CB,TF,TN,TM,BA,H6", "@C", "0C,09,M7", "44",\
+                       "0C,P9,22", "0C,AF,20,D3,13,I2,5"],
+                                                                            "ICS 204": ["v1.0", "ICS 204 Form", "0B,A4", "02", "0C,I1,@1,0C,O2", "#8,20,D4,13,D5,13", "0U,0K,T7,13,T8,13", "05",\
+                       "0D,O3,@3,N1", "O4,@2,42", "B3,@4,42", "D7,@1,42", "00", "0E,B2", "20", "D6", "20", "G1", "20", "SA", "20", "01", "0C,09,R4", "#1,R4,L1,N2,C5,R5", "0C,09,W1", "44", "0C,09,S6",\
+                       "44", "0C,09,C6", "#1,N5,F3,P3", "0C,P4,N5,#6,20,P1,#7,20,D3,#B,20", "I8,@4,I2,5"],
+                                                                            "ICS 205": ["v1.0", "ICS 205 Form", "0B,I3", "02", "06,05", "0C,I1,0X,@5,0C,D2", "#8,24,@1,#B,21", "00", "06", "0C,O2",\
+                       "D4,13,@1,D5,13", "T7,13,@1,T8,13", "01", "03", "0C,09,B1", "#2,Z1,C2,F3,CF,A2,R1,RH,T9,TK,M2,R3", "03", "0C,09,S6", "45", "03", "0C,A3,N5,22,D3,13,I2,5"],
+                                                                            "ICS 309": ["v1.0", "ICS 309 Form", "0B,C4", "02", "07", "B4", "B4", "F2,@1,42", "O1,@3,#6,42", "00", "07",\
+                       "TB,10,@1,D2,@1,#B,42", "B4", "T4,28", "S2,20,E1,#5,42", "01", "P2,2,@1,T5", "#4,D3,SK,SL,S1"], 
+                                                                            "ICS 205A": ["v1.0", "ICS 205A Form", "02", "06", "0C,I1", "#8,42", "06", "00", "06", "0C,O2", "D4,13,@1,D5,13",\
+                       "T7,13,@1,T8,13", "01,0F", "0C,B1,P2,5", "#3,A2,N5,MB", "0C,A3,22,D3,17"], 
+                                                                            "ICS 202": ["v1.0", "ICS 202 Form", "0B,I5", "02", "06", "0C,I1", "#8,42", "06", "00", "06", "0C,O2", "D4,13,@1,D5,13",\
+                       "T7,13,@1,T8,13", "01,0F", "03", "0C,09,O5", "44", "03", "0C,09,O6", "44", "03", "09,G2", "44", "0C,S7,@Q,Y2", "S8,42", "0C,I6", "02", "0T,I7", "0T,I8", "0T,I9", "0T,IB",\
+                       "0T,IC", "00", "0T,ID", "0T,IE", "0T,M3", "0T,W2", "00", "O7", "A5,42", "A5,42", "A5,42", "A5,42", "01", "0C,P4,N5,20,P1,20,S9,20", "0C,A6,N5,20,S9,20", "D3,22", "IF,05,I2,10"], 
+                                                                            "ICS 208": ["v1.0", "ICS 208 Form", "0B,SE", "02", "06", "0C,I1", "#8,42", "06", "00", "06", "0C,O2", "D4,13,@1,D5,13",\
+                       "T7,13,@1,T8,13", "01", "03", "0C,09,SF", "45", "0C,S7,0S,Y1,0S,N6", "S8,42", "03", "0C,P4,N5,20,P1,20,S9,20", "D3,@1,#B,20", "03", "IE,I2,5"], 
+                                                                            "ICS 210": ["v1.0", "ICS 210 Form", "0B,R7", "02", "06", "0C,I1", "#8,42", "06", "00", "06", "0C,O2", "D4,13,@1,D5,13",\
+                       "T7,13,@1,T8,13", "01,0F", "#3,R8,N7,F1,T6,TH", "0C,CG", "43", "0C,P4,22,D3,#B,20"], 
+                                                                            "ICS 213 RR": ["v1.0", "ICS 213 RR Form", "0B,R9", "02", "06,05", "0C,I1,#8,42", "0D,RA,42", "00", "06", "0E,D3,#B,20",\
+                        "01", "03", "09,RB", "0C,OA", "DD", "#2,Q1,K1,TI,II,RC,E2,CC", "0C,DE,42", "0C,SG,43", "0C,RD,22,0C,PA,0S,L6,0S,RE,0S,U1", "0C,SH,42", "09,L7", "0C,L8,42", "0C,SI,42",\
+                        "0C,N9,22,PB,42", "0C,N3,42", "0C,NA,22,0C,D3,20", "0C,OB,24", "09,F8", "0C,RF", "44", "0C,F9,22,0C,D3,20"], 
+                                                                             "ICS 214A": ["v1.0", "ICS 214A Form", "0B,IM", "02", "06,05", "0C,I1,0X,@5,P2", "#8,24,@1,10", "00", "06", "0C,O2",\
+                        "DH,13,@1,T6,13", "01", "03", "0C,IQ,15,0C,IN,20", "0C,AG,42", "0C,09,AH", "#3,T2,MA", "0C,P4,24"], 
+                                                                             "ICS 215A": ["v1.0", "ICS 215A Form", "0B,IJ", "02", "06,05", "0C,09,I1", "#8,42", "06", "0D,09,D2", "D1,#9,13,T2,#A,13",\
+                        "00", "06,05", "0E,09,IK", "42", "06", "0C,09,O2", "D4,13,D5,13", "T7,13,T8,13", "01,0F", "#2,IL,H4,M9", "02", "0C,PC", "PD", "D3,20", "00", "N5,20,S9,20", "N5,20,S9,20", "01"], 
+                                                                             "ICS 217A": ["v1.0", "ICS 217A Form", "0B,CD", "02", "06", "B4", "W3,20", "00", "06,03", "FA,@R,Q4", "DG,#B,42", "00",\
+                        "05", "DF,20", "01", "03", "#3,CE,CF,E3,RG,RI,RH,TJ,TO,TK,M2,R3"]}}
+
+    else:
+      return
+
+    self.debug.info_message("readTemplateDictFromMemory got the data: " + str(data))
+
+    """  
+    reconstructing the data as a dictionary
+    """
+
+    try:
+
+      js = data 
+
+      """ now add the edited data object """	  
+      self.template_file_dictionary_data[filename] = js
+
+      self.debug.info_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
+
+      description = ''
+      version = 0
+      for key in js:
+        if(key == 'description'):
+          description = js.get("description")		  
+          self.debug.info_message("description: " + description )
+        elif(key == 'version'):
+          version = js.get("version")		  
+          self.debug.info_message("version: " + str(version) )
+        else:
+          self.group_arq.addCategory(key)
+          self.debug.info_message("category: " + key )
+
+      """ add the loaded template to the list """
+      self.group_arq.addLoadedTemplateFile(filename, description, version)
+   
+      return(js)
+
+    except:
+      self.debug.error_message("Exception in readTemplateDictFromMemory: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return None
+
+
     """
     This is the format of data in the oubox dictionary
     
@@ -1306,11 +1394,92 @@ class FormDictionary(object):
     return
 
 
+  def retrieveSequence(self, js, seqName):
+    params  = js.get("params")
+    sequences = params.get('Sequences')
+    return sequences.get(seqName)
+
+  def retrieveSequenceByName(self, js, seqName):
+    params  = js.get("params")
+    sequences = params.get('Sequences')
+
+    for key in sequences: 
+      value = sequences.get(key)
+      if(value.get('name') == seqName):
+        return value
+
+    return None
+
+  def createSequenceDefaults(self):
+
+    self.debug.info_message("createSequenceDefaults")
+
+    sequenceDefaults = { 'Sequence1'  :  {'name'                    : 'Test1',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'BPSK500',
+                                          'frag_modes'              : 'PSK1000RC2,PSK125RC16,PSK63RC32,PSK250RC6,BPSK500'},
+                         'Sequence2'  :  {'name'                    : 'Test2',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'BPSK500',
+                                          'frag_modes'              : 'PSK250RC6,PSK500RC3,PSK125RC12,PSK1000R,BPSK500'},
+                         'Sequence3'  :  {'name'                    : 'Test3',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'PSK250RC3',
+                                          'frag_modes'              : 'OFDM750F,PSK250RC7,PSK500RC2,8PSK125,PSK250RC3'},
+                         'Sequence4'  :  {'name'                    : 'Test4',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'PSK500R',
+                                          'frag_modes'              : 'BPSK500,PSK250RC3,8PSK250FL,8PSK250F,PSK500R'},
+                         'Sequence5'  :  {'name'                    : 'Test5',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : '8PSK125FL',
+                                          'frag_modes'              : 'OFDM500F,QPSK250,BPSK250,THOR100,8PSK125FL'},
+                         'Sequence6'  :  {'name'                    : 'Test6',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'PSK250RC3',
+                                          'frag_modes'              : 'OFDM750F,PSK250RC7,PSK125RC10,PSK63RC20,PSK250RC3'},
+                         'Sequence7'  :  {'name'                    : 'Test7',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'DOMX44',
+                                          'frag_modes'              : 'PSK1000RC2,BPSK500,PSK250RC3,8PSK250FL,DOMX44'},
+                         'Sequence8'  :  {'name'                    : 'Test8',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'PSK250RC3',
+                                          'frag_modes'              : 'PSK63RC32,PSK500RC3,BPSK500,PSK800RC2,PSK250RC3'},
+                         'Sequence9'  :  {'name'                    : 'Test9',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'PSK250RC3',
+                                          'frag_modes'              : 'PSK500RC3,PSK1000R,PSK125RC16,BPSK500,PSK250RC3'},
+                         'Sequence10' :  {'name'                    : 'Test10',
+                                          'acknack_retransmits'     : 4,
+                                          'fragment_retransmits'    : 5,
+                                          'control_mode'            : 'PSK250R',
+                                          'frag_modes'              : 'THOR100,8PSK125FL,8PSK125F,MT63-2KL,MT63-2KS'},
+
+                       }
+
+    self.debug.info_message("end createSequenceDefaults")
+
+    return sequenceDefaults
 
   def createMainDictionaryDefaults(self):
     js = { 'params': {
-                           'WinlinkInboxFolder'      : '/',
-                           'WinlinkOutboxFolder'     : '/',
+                           'ConnectTo'               : '',
+                           'WinlinkInboxFolder'      : '',
+                           'WinlinkOutboxFolder'     : '',
+                           'WinlinkRMSMsgFolder'     : '',
+                           'DisplayTheme'            : 'DarkRed1',
+
+                           'Sequences'               : self.createSequenceDefaults(),
 
                            'Templates'           : ['ICS_Form_Templates.tpl'],
                            'UseAttachedGps'      : 'Rig1',
@@ -1439,6 +1608,8 @@ class FormDictionary(object):
           self.debug.info_message("LOADING TEMPLATE: " + templates[x][0] )
         except:
           self.debug.info_message("UNABLE TO LOAD TEMPLATE: " + templates[x][0] )
+          """ fail safe..."""
+          self.readTemplateDictFromMemory(templates[x][0])
 
     return(js)
 
@@ -1452,8 +1623,14 @@ class FormDictionary(object):
 
     """ individual fields first """	  
     details = { 'params': {
+                           'ConnectTo'               : values['in_inbox_listentostation'],
                            'WinlinkInboxFolder'      : values['in_winlink_inboxfolder'],
                            'WinlinkOutboxFolder'     : values['in_winlink_outboxfolder'],
+                           'WinlinkRMSMsgFolder'     : values['in_winlink_rmsmsgfolder'],
+
+                           'DisplayTheme'            : values['listbox_theme_select'],
+
+                           'Sequences'               : self.group_arq.saamfram.main_params.get('params').get('Sequences'),
 
                            'Templates'           : self.group_arq.getLoadedTemplateFiles(), #['ICS_Form_Templates.tpl'],
                            'UseAttachedGps'      : 'Rig1',
