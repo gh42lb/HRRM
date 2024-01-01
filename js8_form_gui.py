@@ -2560,11 +2560,15 @@ inbox dictionary items formatted as...
     combo_premsg    = 'Message IDs,Message Callsigns,Grid Square,GPS LATLONG,QTH'.split(',')
     combo_mode1     = 'SLOW,NORMAL,FAST,TURBO'.split(',')
 
-    combo_mode2    = self.group_arq.fldigiclient.getSelectionList('HF - 500').split(',')
+    ret1,ret2 = self.group_arq.fldigiclient.getSelectionList('HF - 500')
+    combo_mode2 = ret1.split(',')
+
+    ret1,ret2 = self.group_arq.fldigiclient.getSelectionList('HF - 2800')
+    combo_mode_all = ret1.split(',')
+    combo_mode_all_mode_only = ret2.split(',')
 
     combo_mode2_default_1 = 8
     combo_mode2_default_2 = 0
-
 
     self.group_arq.saamfram.fldigiclient.setModeSelectionList(combo_mode2)
 
@@ -2590,9 +2594,11 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
     combo_server_or_client = 'Server Listen,Client Connect'.split(',')
 
+    combo_mode_seq    = 'Sequence1,Sequence2,Sequence3,Sequence4,Sequence5,Sequence6,Sequence7,Sequence8,Sequence9,Sequence10'.split(',')
+
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v1.0.4 Beta \n\
+                                                Ham Radio Relay Messenger de WH6GGO v1.0.5 Beta \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2023 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2644,8 +2650,27 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n\
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n\
 SOFTWARE.\n'
 
-    """ Choose a Christmas color theme """
-    sg.theme('DarkRed1')
+    sg.theme(js.get("params").get('DisplayTheme') )
+
+    combo_sequences = 'one,two,three'.split(',')
+
+    params = js.get('params')
+    sequences = params.get('Sequences')
+    if(sequences != None):
+      seq_names = ''
+      delimeter = ''
+      for key in sequences: 
+        self.debug.info_message("key is " + str(key)  )
+        value = sequences.get(key)
+        seq_names = seq_names + delimeter + value.get('name')
+        delimeter = ','
+      combo_sequences = seq_names.split(',')
+
+    seq1 = sequences.get('Sequence1')
+    acknack_retransmits = seq1.get('acknack_retransmits')
+    frag_retransmits    = seq1.get('fragment_retransmits')
+    control_mode        = seq1.get('control_mode')
+    frag_modes          = seq1.get('frag_modes').split(',')
 
     self.layout_substation = [
                           [sg.Text('Station Name: ', size=(11, 1) ) ,
@@ -2698,11 +2723,11 @@ SOFTWARE.\n'
                           [sg.MLine('', size=(64, 3), font=("Courier New", 9), key='ml_chat_sendtext', text_color='black', background_color='white', expand_x = True, expand_y=False, disabled = False)], 
                           [
                            sg.Text('Mode:', size=(5, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], key='option_chat_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
+                           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_chat_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
                            sg.Button('Send', size=(7, 1), key='btn_prev_chat_post_and_send' ) ,
                            sg.Text('To: ', size=(3, 1), background_color=js.get("params").get('ChatTabClr'), text_color='black' ) ,
-                           sg.InputText('', key='in_chat_msgto', size=(50, 1)),
+                           sg.InputText('', key='in_chat_msgto', size=(40, 1)),
                            sg.CBox('Use \'Connect To:\'', default = js.get("params").get('UseConnectTo'), key='cb_chat_useconnecto', background_color=js.get("params").get('ChatTabClr'), text_color='black'),
                            sg.Button('Launch Net', size=(11, 1), disabled = True )],
 
@@ -2800,10 +2825,37 @@ SOFTWARE.\n'
 
     ]
 
+
+    self.layout_sequence = [
+                       [sg.Combo(combo_mode_seq, combo_mode_seq[0], key='option_real_sequence', size=(20, 1), enable_events = True)],
+
+                       [sg.Combo(combo_sequences, combo_sequences[0], key='option_sequence_number', size=(20, 1), enable_events = True)],
+
+                       [sg.Text('Fragment Retransmits:', size=(20, 1) ), 
+                        sg.InputText(str(frag_retransmits), key='in_sequence_fragretransmits', size=(10, 1))],
+                       [sg.Text('AckNack Retransmits:', size=(20, 1) ), 
+                        sg.InputText(str(acknack_retransmits), key='in_sequence_acknackretransmits', size=(10, 1))],
+                       [sg.Text('AckNack Mode:', size=(20, 1) ), 
+                        sg.Combo(combo_mode_all_mode_only, default_value=control_mode, key='option_sequence_acknackmode', size=(20, 1))],
+
+                       [sg.Text('Resend Modes 1-5:', size=(20, 1) ), 
+
+                        sg.Combo(combo_mode_all_mode_only, default_value=frag_modes[0], key='option_sequence_one', size=(20, 1)),
+                        sg.Combo(combo_mode_all_mode_only, default_value=frag_modes[1], key='option_sequence_two', size=(20, 1)),
+                        sg.Combo(combo_mode_all_mode_only, default_value=frag_modes[3], key='option_sequence_three', size=(20, 1)),
+                        sg.Combo(combo_mode_all_mode_only, default_value=frag_modes[3], key='option_sequence_four', size=(20, 1)),
+                        sg.Combo(combo_mode_all_mode_only, default_value=frag_modes[4], key='option_sequence_five', size=(20, 1))],
+
+                        [sg.Button('Save',   key='btn_sequence_save', size=(6, 1) )], 
+
+    ]
+
     self.layout_filexfer = [
 
                        [sg.Text('Mode:', size=(10, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], key='option_filexfer_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
+                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], key='option_filexfer_fldigimode', size=(22, 1), enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
+                        sg.CBox('Use Seq.', key='cb_filexfer_useseq', enable_events=True ),
+                        sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_filexfer_selectedseq', size=(22, 1), enable_events = True, disabled = True),
                         sg.Text('', size=(20, 1), key='text_image_size' )], 
 
                        [sg.Text('Send File:', size=(10, 1) ), 
@@ -2873,7 +2925,10 @@ SOFTWARE.\n'
           sg.OptionMenu(combo_fragtypes, default_value=combo_fragtypes[2], key='option_framesize'),
 
           sg.Text('Mode:', size=(5, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-          sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], key='option_outbox_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False)],
+          sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], key='option_outbox_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
+
+          sg.CBox('Use Seq.', key='cb_outbox_useseq', enable_events=True ),
+          sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_outbox_selectedseq', size=(22, 1), enable_events = True, disabled = True)],
 
 
           [
@@ -2922,7 +2977,95 @@ SOFTWARE.\n'
 
     self.layout_template = self.createFormDesignerPage()
     
-    self.layout_settings = [
+
+    self.layout_myinfo = [
+                        [sg.Text('Callsign', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('CallSign'), key='input_myinfo_callsign', size=(20, 1))],
+                        [sg.Text('Group Name', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('GroupName'), key='input_myinfo_group_name', size=(20, 1))],
+                        [sg.Text('Operator Name', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('OperatorName'), key='input_myinfo_operator_name', size=(20, 1))],
+                        [sg.Text('Operator Title', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('OperatorTitle'), key='input_myinfo_operator_title', size=(20, 1))],
+                        [sg.Text('Incident Name', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('IncidentName'), key='input_myinfo_incident_name', size=(20, 1))],
+                        [sg.Text('First Name', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('FirstName'), key='input_myinfo_firstname', size=(20, 1))],
+                        [sg.Text('Last Name', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('LastName'), key='input_myinfo_lastname', size=(20, 1))],
+                        [sg.Text('Title', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('Title'), key='input_myinfo_title', size=(20, 1))],
+                        [sg.Text('GPS Lat', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('GPSLat'), key='input_myinfo_gpslat', size=(20, 1))],
+                        [sg.Text('GPS Long', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('GPSLong'), key='input_myinfo_gpslong', size=(20, 1))],
+                        [sg.Text('Grid Square', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('GridSquare'), key='input_myinfo_gridsquare', size=(20, 1))],
+                        [sg.Text('Location', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('Location'), key='input_myinfo_location', size=(20, 1))],
+                        [sg.Button('Save',   key='btn_myinfo_save', size=(6, 1) )], 
+                      ] 
+
+    self.layout_colors = [
+                        [sg.Text('Theme (requires restart)' ), 
+                         sg.OptionMenu(values = sg.theme_list(), size = (20,5), key='listbox_theme_select', default_value=js.get("params").get('DisplayTheme'))],
+                        [sg.Text('TX Buttons', size=(20, 1), visible = False ), 
+                         sg.OptionMenu(option_colors, key='option_colors_tx_btns', default_value=js.get("params").get('TxButtonClr'), visible = False),
+                         sg.Text('Message Management Buttons', size=(20, 1), visible = False ), 
+                         sg.OptionMenu(option_colors, key='option_colors_msgmgmt_btns', default_value=js.get("params").get('MessagesBtnClr'), visible = False),
+                         sg.Text('Clipboard Buttons', size=(20, 1), visible = False ), 
+                         sg.OptionMenu(option_colors, key='option_colors_clipboard_btns', default_value=js.get("params").get('ClipboardBtnClr'), visible = False)],
+                        [sg.Text('Compose Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_compose_tab', default_value=js.get("params").get('ComposeTabClr')),
+                         sg.Text('In Box Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_inbox_tab', default_value=js.get("params").get('InboxTabClr')),
+                         sg.Text('Out Box Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_outbox_tab', default_value=js.get("params").get('OutboxTabClr'))],
+                        [sg.Text('Relay Box Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_relay_tab', default_value=js.get("params").get('RelayboxTabClr')),
+                         sg.Text('Sent Box Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_sentbox_tab', default_value=js.get("params").get('SentboxTabClr')),
+                         sg.Text('Info Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_info_tab', default_value=js.get("params").get('InfoTabClr'))],
+                        [sg.Text('Colors Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_colors_tab', default_value=js.get("params").get('ColorsTabClr')),
+                         sg.Text('Settings Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_settings_tab', default_value=js.get("params").get('SettingsTabClr')),
+                         sg.Text('Chat Tab', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_colors_chat_tab', default_value=js.get("params").get('ChatTabClr'))],
+
+                        [sg.Text('Compose Message Form Colors...' )], 
+
+                        [sg.Text('Main Heading Background', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_main_heading_background_clr', default_value=js.get("params").get('FormHeadingClr')),
+                         sg.Text('Main Heading Text', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_main_heading_text_clr', default_value=js.get("params").get('FormHeadingTextClr'))],
+                        [sg.Text('Sub Heading Background', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_sub_heading_background_clr', default_value=js.get("params").get('FormSubHeadingClr')),
+                         sg.Text('Sub Heading Text', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_sub_heading_text_clr', default_value=js.get("params").get('FormSubHeadingTextClr'))],
+                        [sg.Text('Numbered Section Background', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_numbered_section_background_clr', default_value=js.get("params").get('NumberedSectionClr')),
+                         sg.Text('Numbered Section Text', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_numbered_section_text_clr', default_value=js.get("params").get('NumberedSectionTextClr'))],
+                        [sg.Text('Table Header Background', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_table_header_background_clr', default_value=js.get("params").get('TableHeaderClr')),
+                         sg.Text('Table Header Text', size=(20, 1) ), 
+                         sg.OptionMenu(option_colors, key='option_table_header_text_clr', default_value=js.get("params").get('TableHeaderTextClr'))],
+
+
+                        [sg.Button('Update',   key='btn_colors_update', size=(6, 1) )], 
+                      ] 
+
+
+    self.layout_about = [
+                          [sg.Button('Repository', key='btn_mainarea_visitgithub')],
+                          [sg.MLine(about_text, size=(64, 20), font=("Courier New", 9),expand_x = True, expand_y=True, disabled = True)], 
+                        ] 
+
+
+    self.layout_templates = [
+
                         [sg.Text('Loaded Templates:', size=(17, 1) ), 
                          sg.Text('', size=(20, 1) ), 
                          sg.Text('All Available Templates:', size=(22, 1) )], 
@@ -2993,90 +3136,27 @@ SOFTWARE.\n'
                          sg.InputText(key='input_settings_fldigiport2', size=(10, 1), default_text = js.get("params").get('Rig2FldigiPort'), visible = False),
                          sg.Text('Fldigi mode: ', size=(15, 1) , visible = False), 
                          sg.Combo(combo_fldigi_modes, key='combo_settings_fldigimoode2', enable_events=True, visible = False)],
+                        ] 
+
+
+    self.layout_settings = [
+
+                            [sg.TabGroup([[
+                               sg.Tab('My Info', self.layout_myinfo, title_color='Black', background_color=js.get("params").get('InfoTabClr'), key='tab_myinfo'),
+                               sg.Tab('Colors', self.layout_colors, title_color='Black', background_color=js.get("params").get('ColorsTabClr')),
+                               sg.Tab('Templates', self.layout_templates, title_color='Black', background_color=js.get("params").get('SettingsTabClr')) ,
+                               sg.Tab('Sequence', self.layout_sequence, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_sequence'),
+                               sg.Tab('About', self.layout_about, title_color='Black', background_color=js.get("params").get('SettingsTabClr'))]] ,
+
+                             tab_location='centertop',
+                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink' )],
+
+
                          
                       ] 
 
 
-    self.layout_myinfo = [
-                        [sg.Text('Callsign', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('CallSign'), key='input_myinfo_callsign', size=(10, 1))],
-                        [sg.Text('Group Name', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('GroupName'), key='input_myinfo_group_name', size=(10, 1))],
-                        [sg.Text('Operator Name', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('OperatorName'), key='input_myinfo_operator_name', size=(10, 1))],
-                        [sg.Text('Operator Title', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('OperatorTitle'), key='input_myinfo_operator_title', size=(10, 1))],
-                        [sg.Text('Incident Name', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('IncidentName'), key='input_myinfo_incident_name', size=(10, 1))],
-                        [sg.Text('First Name', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('FirstName'), key='input_myinfo_firstname', size=(10, 1)),
-                         sg.Text('Last Name', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('LastName'), key='input_myinfo_lastname', size=(10, 1))],
-                        [sg.Text('Title', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('Title'), key='input_myinfo_title', size=(10, 1))],
-                        [sg.Text('GPS Lat', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('GPSLat'), key='input_myinfo_gpslat', size=(10, 1)),
-                         sg.Text('GPS Long', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('GPSLong'), key='input_myinfo_gpslong', size=(10, 1))],
-                        [sg.Text('Grid Square', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('GridSquare'), key='input_myinfo_gridsquare', size=(10, 1))],
-                        [sg.Text('Location', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('Location'), key='input_myinfo_location', size=(10, 1))],
-                        [sg.Button('Save',   key='btn_myinfo_save', size=(6, 1) )], 
-                      ] 
 
-    self.layout_colors = [
-                        [sg.Text('TX Buttons', size=(20, 1), visible = False ), 
-                         sg.OptionMenu(option_colors, key='option_colors_tx_btns', default_value=js.get("params").get('TxButtonClr'), visible = False),
-                         sg.Text('Message Management Buttons', size=(20, 1), visible = False ), 
-                         sg.OptionMenu(option_colors, key='option_colors_msgmgmt_btns', default_value=js.get("params").get('MessagesBtnClr'), visible = False),
-                         sg.Text('Clipboard Buttons', size=(20, 1), visible = False ), 
-                         sg.OptionMenu(option_colors, key='option_colors_clipboard_btns', default_value=js.get("params").get('ClipboardBtnClr'), visible = False)],
-                        [sg.Text('Compose Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_compose_tab', default_value=js.get("params").get('ComposeTabClr')),
-                         sg.Text('In Box Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_inbox_tab', default_value=js.get("params").get('InboxTabClr')),
-                         sg.Text('Out Box Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_outbox_tab', default_value=js.get("params").get('OutboxTabClr'))],
-                        [sg.Text('Relay Box Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_relay_tab', default_value=js.get("params").get('RelayboxTabClr')),
-                         sg.Text('Sent Box Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_sentbox_tab', default_value=js.get("params").get('SentboxTabClr')),
-                         sg.Text('Info Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_info_tab', default_value=js.get("params").get('InfoTabClr'))],
-                        [sg.Text('Colors Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_colors_tab', default_value=js.get("params").get('ColorsTabClr')),
-                         sg.Text('Settings Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_settings_tab', default_value=js.get("params").get('SettingsTabClr')),
-                         sg.Text('Chat Tab', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_colors_chat_tab', default_value=js.get("params").get('ChatTabClr'))],
-
-                        [sg.Text('Main Heading Background', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_main_heading_background_clr', default_value=js.get("params").get('FormHeadingClr')),
-                         sg.Text('Main Heading Text', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_main_heading_text_clr', default_value=js.get("params").get('FormHeadingTextClr'))],
-                        [sg.Text('Sub Heading Background', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_sub_heading_background_clr', default_value=js.get("params").get('FormSubHeadingClr')),
-                         sg.Text('Sub Heading Text', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_sub_heading_text_clr', default_value=js.get("params").get('FormSubHeadingTextClr'))],
-                        [sg.Text('Numbered Section Background', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_numbered_section_background_clr', default_value=js.get("params").get('NumberedSectionClr')),
-                         sg.Text('Numbered Section Text', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_numbered_section_text_clr', default_value=js.get("params").get('NumberedSectionTextClr'))],
-                        [sg.Text('Table Header Background', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_table_header_background_clr', default_value=js.get("params").get('TableHeaderClr')),
-                         sg.Text('Table Header Text', size=(20, 1) ), 
-                         sg.OptionMenu(option_colors, key='option_table_header_text_clr', default_value=js.get("params").get('TableHeaderTextClr'))],
-
-
-                        [sg.Button('Update',   key='btn_colors_update', size=(6, 1) )], 
-                      ] 
-
-
-    self.layout_about = [
-                          [sg.Button('Repository', key='btn_mainarea_visitgithub')],
-                          [sg.MLine(about_text, size=(64, 20), font=("Courier New", 9),expand_x = True, expand_y=True, disabled = True)], 
-                        ] 
 
 
     self.layout_winlink_pat_inbox = [
@@ -3117,7 +3197,7 @@ SOFTWARE.\n'
 
     self.layout_winlink_rms_folder = [
                             [sg.Text('RMS Messages Folder:', size=(20,1), justification='left'),
-                            sg.InputText(js.get("params").get('WinlinkOutboxFolder'), size=(44, 1), key='in_winlink_rmsmsgfolder', expand_x=True )], 
+                            sg.InputText(js.get("params").get('WinlinkRMSMsgFolder'), size=(44, 1), key='in_winlink_rmsmsgfolder', expand_x=True )], 
                             [sg.Table(values=self.group_arq.getWinlinkRMSMsgFiles(), headings=['Filename', 'From', 'To', 'Subject', 'Timestamp', 'form', 'ID'],
                             max_col_width=116,
                             col_widths=[17, 15, 15, 20, 17, 15, 15],
@@ -3132,6 +3212,23 @@ SOFTWARE.\n'
                         ] 
 
 
+    self.layout_HRRM = [
+
+                            [sg.TabGroup([[
+                               sg.Tab('In Box', self.layout_inbox, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_inbox' ),
+                               sg.Tab('Out Box', self.layout_outbox, title_color='Blue', background_color=js.get("params").get('OutboxTabClr'), key='tab_outbox'),
+                               sg.Tab('Relay Box', self.layout_relay, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_relaybox'),
+                               sg.Tab('Sent', self.layout_sent, title_color='Blue', background_color=js.get("params").get('SentboxTabClr')),
+                               sg.Tab('Compose Msg', self.layout_compose, title_color='Green', background_color=js.get("params").get('ComposeTabClr'), key='tab_compose')]],
+
+                             tab_location='centertop',
+                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink' )],
+
+                       [sg.Text('Sequence 1:', size=(10, 1) )], 
+   ]
+
+
+
     self.layout_winlink = [
 
                             [sg.TabGroup([[
@@ -3142,9 +3239,12 @@ SOFTWARE.\n'
                              title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink' )],
 
                             [sg.Text('Mode:', size=(5, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                             sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], key='option_winlink_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
+                             sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], size=(25, 1), key='option_winlink_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
-                             sg.CBox('ICS Form Messages Only', key='cb_winlink_icsonly', disabled=True),
+                             sg.CBox('Use Seq.', key='cb_winlink_useseq', enable_events=True ),
+                             sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_winlink_selectedseq', size=(22, 1), enable_events = True, disabled = True),
+
+                             sg.CBox('ICS Form Messages Only', key='cb_winlink_icsonly', disabled=True, visible = False),
                              sg.Button('Edit', size=(11, 1), key='btn_winlink_edit_selected', disabled = True),
                              sg.Button('Send', size=(11, 1), key='btn_winlink_send_selected', disabled = False),
                              sg.Button('Refresh', size=(11, 1), key='btn_winlink_list_emails')],
@@ -3219,7 +3319,7 @@ SOFTWARE.\n'
                         sg.InputText('', size=(30, 1), key='in_mainwindow_activetxchannel', visible = False ), 
 
                         sg.Text('Connect To:', key='text_mainarea_connect_to'),
-                        sg.InputText('', key='in_inbox_listentostation', size=(20, 1), disabled=False),
+                        sg.InputText(js.get("params").get('ConnectTo'), key='in_inbox_listentostation', size=(20, 1), disabled=False),
 
                         sg.Text('Channel:', size=(7, 1) ), 
                         sg.Combo(combo_channels, key='combo_settings_channels', size=(18, 1), default_value=combo_channels[8], enable_events=True),
@@ -3247,8 +3347,7 @@ SOFTWARE.\n'
                         sg.Button('Clipboard Import',   key='btn_outbox_importfromclipboard', size=(12, 1), visible = False ), 
 
                         sg.Text('Main Mode:', size=(10, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], key='option_main_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
-                        sg.CBox('Split', key='cb_mainwindow_splitmode'),
+                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_main_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
                         sg.Text('--In Session--', size=(10, 1), key='text_mainarea_insession', font=("Helvetica", 20), expand_x=True, justification = 'right', text_color='gray' )], 
 
@@ -3263,22 +3362,15 @@ SOFTWARE.\n'
 
                           [sg.TabGroup([[
                              sg.Tab('Chat', self.layout_chat, title_color='Blue',border_width =10, background_color=js.get("params").get('ChatTabClr'), key='tab_chat' ),
-                             sg.Tab('In Box', self.layout_inbox, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_inbox' ),
-                             sg.Tab('Out Box', self.layout_outbox, title_color='Blue', background_color=js.get("params").get('OutboxTabClr'), key='tab_outbox'),
-                             sg.Tab('Sent Box', self.layout_sent, title_color='Blue', background_color=js.get("params").get('SentboxTabClr')),
-                             sg.Tab('Relay Box', self.layout_relay, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_relaybox'),
+                             sg.Tab('HRRM Messages', self.layout_HRRM, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_inbox' ),
+                             sg.Tab('Winlink Messages', self.layout_winlink, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_winlink' ),
                              sg.Tab('Files & Images', self.layout_filexfer, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_filexfer'),
-                             sg.Tab('Compose Msg', self.layout_compose, title_color='Green', background_color=js.get("params").get('ComposeTabClr'), key='tab_compose'),
                              #sg.Tab('Sub-Station', self.layout_substation, title_color='Blue',border_width =10, background_color=js.get("params").get('ChatTabClr') ),
-                             sg.Tab('Winlink', self.layout_winlink, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_winlink' ),
-                             sg.Tab('My Info', self.layout_myinfo, title_color='Black', background_color=js.get("params").get('InfoTabClr')),
-                             sg.Tab('Colors', self.layout_colors, title_color='Black', background_color=js.get("params").get('ColorsTabClr')),
-                             sg.Tab('Settings', self.layout_settings, title_color='Black', background_color=js.get("params").get('SettingsTabClr')),
-                             sg.Tab('About', self.layout_about, title_color='Black', background_color=js.get("params").get('SettingsTabClr')) ]],
+                             sg.Tab('Settings', self.layout_settings, title_color='Black', background_color=js.get("params").get('SettingsTabClr'))]],
                        tab_location='centertop',
                        title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main' )] ]  
 
-    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.4 Beta - Merry Christmas!", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
+    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.5 Beta - Happy New Year!", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
 
     return (self.window)
 
