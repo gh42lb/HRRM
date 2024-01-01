@@ -392,7 +392,8 @@ class SAAMFRAM(object):
 
   def calcCRC(self, width, poly, string):
 
-    self.debug.info_message('calcCRC for string: ' + string)
+    #self.debug.info_message('calcCRC for string: ' + string)
+    self.debug.info_message('calcCRC')
 
     data = bytes(string,"ascii")
 
@@ -1214,6 +1215,16 @@ class SAAMFRAM(object):
     channeldictionaryitem = rigdictionaryitem.get('channels')[channel_name]
     return channeldictionaryitem.get('best_snr')
 
+
+  def setTxMsgType(self, rigname, channel_name, msg_type):
+    rigdictionaryitem = self.rig_channel_dictionary[rigname]
+    channeldictionaryitem = rigdictionaryitem.get('channels')[channel_name]
+    channeldictionaryitem['tx_msg_type'] = msg_type
+
+  def getTxMsgType(self, rigname, channel_name):
+    rigdictionaryitem = self.rig_channel_dictionary[rigname]
+    channeldictionaryitem = rigdictionaryitem.get('channels')[channel_name]
+    return channeldictionaryitem.get('tx_msg_type')
 
 
   """ this method fragments the text into a list"""
@@ -2422,7 +2433,8 @@ outbox dictionary items formatted as...
             self.debug.info_message("YES WE HAVE A FRAME TAG: " + str(frame_number) + ' ' + str(num_frames) )
             return '[F' + str(frame_number) + ',' + str(num_frames) + ']'
         except:
-          self.debug.info_message("Exception in testForStartFrame: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+          #self.debug.info_message("Exception in testForStartFrame: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+          #self.debug.info_message("Exception in testForStartFrame")
           if('[F' in receive_string):
             split_string = receive_string.split('[F', 1)
             if(']' in split_string[1]):
@@ -2467,14 +2479,16 @@ outbox dictionary items formatted as...
         """ test to make sure this is not another start frame tag"""
         if(',' in split_string2[0]):
           self.debug.info_message("FAIL CONTAINED , so is a start frame\n")
+          self.discardErroneousText('[' + split_string[1])
           return ''
           
         checksum = split_string2[0]
 
+        self.debug.info_message("YES WE HAVE AN END FRAME TAG" )
         #self.debug.info_message("YES WE HAVE AN END FRAME TAG: " + str(checksum) )
         return '[' + str(checksum) + ']'
     
-    self.debug.info_message("FAIL")
+    #self.debug.info_message("FAIL")
     return ''
 
   def testForNextFrameJS8(self, start_frame_tag, receive_string):
@@ -2606,6 +2620,7 @@ outbox dictionary items formatted as...
 
   """ this method validates the full received string """  
   def validateFrame(self, text, checksum):
+    self.debug.info_message("validateFrame")
     return (self.getChecksum(text) == checksum)
 
 
@@ -2675,6 +2690,58 @@ outbox dictionary items formatted as...
 
     return
 
+
+  def setTransmitType(self, msg_type):
+    self.setTxMsgType(self.tx_rig, self.tx_channel, msg_type)
+
+  def getTransmitType(self):
+    return self.getTxMsgType(self.tx_rig, self.tx_channel)
+
+
+  def ifSeqSetMode(self, modetype):
+
+    transmitType = self.getTransmitType()
+
+    self.debug.info_message("resendFrames. transmit type: " + str(transmitType) )
+
+    checked = False
+    selected_mode = ''
+    if( transmitType == cn.FORMAT_FILE or transmitType == cn.FORMAT_IMAGE):
+      checked = self.form_gui.window['cb_filexfer_useseq'].get()
+      if(checked):
+        selected_mode = self.form_gui.window['option_filexfer_selectedseq'].get()
+    elif( transmitType == cn.FORMAT_HRRM):
+      checked = self.form_gui.window['cb_outbox_useseq'].get()
+      if(checked):
+        selected_mode = self.form_gui.window['option_outbox_selectedseq'].get()
+    elif( transmitType == cn.FORMAT_WL2K):
+      checked = self.form_gui.window['cb_winlink_useseq'].get()
+      if(checked):
+        selected_mode = self.form_gui.window['option_winlink_selectedseq'].get()
+    if(checked):
+      self.debug.info_message("resendFrames. Sequence: " + str(selected_mode) )
+      self.setTxidState(self.tx_rig, self.tx_channel, True)
+      seq = self.form_dictionary.retrieveSequenceByName(self.main_params, selected_mode)
+
+      if(modetype == cn.TYPE_FRAG):
+        modes = seq.get('frag_modes').split(',')
+        self.max_frag_retransmits = seq.get('fragment_retransmits')
+        self.max_qry_acknack_retransmits = seq.get('acknack_retransmits')
+        retransmit_count = self.getRetransmitCount(self.tx_rig, self.tx_channel)
+        self.debug.info_message("resendFrames. Retransmit count: " + str(retransmit_count) )
+        self.fldigiclient.setMode(modes[retransmit_count])
+        self.debug.info_message("resendFrames. Mode: " + str(modes[retransmit_count]) )
+      elif(modetype == cn.TYPE_CONTROL):
+        mode = seq.get('control_mode')
+        self.fldigiclient.setMode(mode)
+        self.debug.info_message("requestConfirm. Mode: " + str(mode) )
+
+    else:
+      self.max_frag_retransmits = 10
+      self.max_qry_acknack_retransmits = 2
+
+    return
+
   def sendFormFldigi(self, message, tolist, msgid):
     self.debug.info_message("send form fldigi sending form: " + message )
 
@@ -2710,6 +2777,8 @@ outbox dictionary items formatted as...
 
     self.setTxidState(self.tx_rig, self.tx_channel, True)
     """ send the full message to the group first """
+
+    self.ifSeqSetMode(cn.TYPE_FRAG)
 
     #FIXME NOT NEEDED NOW!
     self.setSendToGroupIndividual(self.tx_rig, self.tx_channel, cn.SENDTO_GROUP)
@@ -3289,6 +3358,8 @@ outbox dictionary items formatted as...
 
     self.setTxidState(self.tx_rig, self.tx_channel, False)
 
+    self.ifSeqSetMode(cn.TYPE_CONTROL)
+
     self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
     self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_AWAIT_ACKNACK)
     """ add an extra space on the end making a total of two spaces following the ?"""
@@ -3300,6 +3371,8 @@ outbox dictionary items formatted as...
 
   def resendFrames(self, frames, from_callsign, to_callsign):
     self.debug.info_message("resendFrames. frames: " + str(frames) )
+
+    self.ifSeqSetMode(cn.TYPE_FRAG)
 
     frames_list = frames.split(',')
     received_strings = self.getReceivedStrings(self.tx_rig, self.tx_channel)
@@ -3421,6 +3494,7 @@ outbox dictionary items formatted as...
     return
 
   def processNack(self, from_callsign, to_callsign, rig, channel):
+
     receive_string = self.group_arq.getReceiveStringRig1()  
     tx_strings = self.getReceivedStrings(self.tx_rig, self.tx_channel)
 
@@ -4338,7 +4412,7 @@ outbox dictionary items formatted as...
       if(self.getCommStatus(self.tx_rig, self.tx_channel) ==  cn.COMM_LISTEN):
         fldigi_instance.setTimings()
 
-        self.debug.info_message("LAST TWWENTY IS: " + fldigi_instance.last_twenty_chars )
+        #self.debug.info_message("LAST TWWENTY IS: " + fldigi_instance.last_twenty_chars )
 
         if( fldigi_instance.testLastTwenty(self.getSentToGroup()) ):
           self.debug.info_message("ADDRESSED TO GROUP")
@@ -4438,15 +4512,19 @@ outbox dictionary items formatted as...
     self.setInSession(self.active_rig, self.active_channel, True)
 
     while(success and start_frame_tag != ''):
+      self.debug.info_message("gotStartFrame - test for end frame" )
       end_frame_tag = self.testForEndFrame(start_frame_tag, self.fldigiclient.getReceiveString())
 
       rcv_string = self.fldigiclient.getReceiveString()
         
       if(end_frame_tag != '' ):
+        self.debug.info_message("gotStartFrame - processing end frame" )
         extracted_frame_contents = self.extractFrameContents(start_frame_tag, end_frame_tag, self.fldigiclient.getReceiveString())
 
         rcv_string = self.fldigiclient.getReceiveString()
-        self.debug.info_message("processing end frame: " + rcv_string )
+
+        self.debug.info_message("processing end frame")
+        #self.debug.info_message("processing end frame: " + rcv_string )
 
         if(self.validateFrame(extracted_frame_contents, end_frame_tag.split('[', 1)[1].split(']', 1)[0]) == True):
 
@@ -4478,15 +4556,19 @@ outbox dictionary items formatted as...
 
         else:
           success = False	
+
+        self.debug.info_message("gotStartFrame - test for start frame" )
           		    
         start_frame_tag = self.testForStartFrame(self.fldigiclient.getReceiveString())
 
         rcv_string = self.fldigiclient.getReceiveString()
 
-        self.debug.info_message("testing frame: " + rcv_string )
+        #self.debug.info_message("testing frame: " + rcv_string )
+        self.debug.info_message("testing frame")
 
       else:
         success = False			    
+        self.debug.info_message("gotStartFrame - success = false" )
         if(self.fldigiclient.testRcvSignalStopped() == True):
           self.messageEnded()
 
@@ -4516,7 +4598,9 @@ outbox dictionary items formatted as...
         self.debug.info_message("extracted frame contents: " + extracted_frame_contents )
 
         rcv_string = self.getRcvString(self.active_rig, self.active_channel)
-        self.debug.info_message("processing end frame: " + rcv_string )
+
+        self.debug.info_message("processing end frame")
+        #self.debug.info_message("processing end frame: " + rcv_string )
 
         self.addReceivedString(start_frame_tag, start_frame_tag + extracted_frame_contents, self.active_rig, self.active_channel)
 
@@ -4545,7 +4629,9 @@ outbox dictionary items formatted as...
           		    
         start_frame_tag = self.testForStartFrameJS8(self.getReceivedStrings(self.active_rig, self.active_channel))
         rcv_string = self.getReceivedStrings(self.active_rig, self.active_channel)
-        self.debug.info_message("testing frame: " + str(rcv_string) )
+
+        #self.debug.info_message("testing frame: " + str(rcv_string) )
+        self.debug.info_message("testing frame")
 
       else:
         success = False			    
