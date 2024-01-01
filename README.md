@@ -1,6 +1,6 @@
 ## Overview
 
-Ham Radio Relay Messenger v1.0.4 beta test release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v1.0.5 beta test release de WH6GGO. The software is currently in active development and early release testing phase.
 
 
 #### Features
@@ -19,7 +19,7 @@ Ham Radio Relay Messenger v1.0.4 beta test release de WH6GGO. The software is cu
 * Notifications: Stub messages provide notification to the group of any pending messages waiting to be sent.
 * Data Compression: Uses a variety of data compression techniques inluding dictionary compression and run length encoding.
 * Customized Interface: Email style interface with inbox, outbox, relay box and sent box, utilizing notebook style and customized GUI controls.
-* 31 Modulation Modes: Supports a wide variety of underlying modulations including OFDM, MT63, THOR, MFSK, PSK, QPSK, BPSK, DominoEX, 8PSK and Olivia.
+* 44 Modulation Modes: Supports a wide variety of underlying modulations including OFDM, MT63, THOR, MFSK, PSK, QPSK, BPSK, DominoEX, 8PSK and Olivia.
 * Extendable: Form designer built-in with many pre-built ICS form templates and standard templates included.
 
 
@@ -30,7 +30,7 @@ Ham Radio Relay Messenger v1.0.4 beta test release de WH6GGO. The software is cu
 Download the following:
 
 * Fldigi
-* HRRM v1.0.4 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
+* HRRM v1.0.5 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
 
 run the windows installer or create a folder on the desktop called HRRM and add the binary file
 
