@@ -1001,6 +1001,31 @@ def main():
 
     debug = db.Debug(cn.DEBUG_INFO)
 
+    if (platform.system() == 'Windows'):
+      appdata_folder = os.getenv('LOCALAPPDATA') 
+      hrrm_appdata_folder = appdata_folder + '\HRRM'
+      if(not os.path.exists(hrrm_appdata_folder)):
+        os.chdir(appdata_folder)
+        os.mkdir('HRRM')
+        os.chdir(hrrm_appdata_folder)
+        os.mkdir('received_images')
+        os.mkdir('received_files')
+        os.mkdir('hrrm_files')
+      else:
+        os.chdir(hrrm_appdata_folder)
+    else:
+      appdata_folder = os.getenv('HOME') 
+      hrrm_appdata_folder = appdata_folder + '/.HRRM'
+      if(not os.path.exists(hrrm_appdata_folder)):
+        os.chdir(appdata_folder)
+        os.mkdir('.HRRM')
+        os.chdir(hrrm_appdata_folder)
+        os.mkdir('received_images')
+        os.mkdir('received_files')
+        os.mkdir('hrrm_files')
+      else:
+        os.chdir(hrrm_appdata_folder)
+
     group_arq = NetGarq(debug)
     group_arq.form_gui = js8_form_gui.FormGui(group_arq, debug)
     group_arq.form_dictionary = js8_form_dictionary.FormDictionary(debug)
