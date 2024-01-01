@@ -182,6 +182,9 @@ class ReceiveControlsProc(object):
       return
 
     if(self.window_initialized == False and self.form_gui.window != None):
+
+      self.debug.info_message("event_catchall Window Not Initialized")
+
       self.event_btnmainareareset(values)
       self.window_initialized = True		
 
@@ -189,7 +192,6 @@ class ReceiveControlsProc(object):
       winlink_folder_out = self.form_gui.window['in_winlink_outboxfolder'].get().strip()
       winlink_folder_rms = self.form_gui.window['in_winlink_rmsmsgfolder'].get().strip()
       callsign = self.form_gui.window['input_myinfo_callsign'].get().strip()
-
 
       if (platform.system() == 'Windows'):
         username = os.getenv('USERNAME')
@@ -873,6 +875,8 @@ class ReceiveControlsProc(object):
   def event_prevchatpostandsend(self, values):
     self.debug.info_message("BTN CHAT POST AND SEND\n")
 
+    self.group_arq.saamfram.setTransmitType(cn.FORMAT_CONTENT)
+
     try:
 
       selected_mode = values['option_chat_fldigimode'].split(' - ')[1]
@@ -1101,8 +1105,103 @@ class ReceiveControlsProc(object):
     self.form_gui.form_events.changeFlashButtonState('in_mainpanel_saveasimagefilename', False)
 
 
+  def event_optionrealsequence(self, values):
+
+    self.debug.info_message("event_optionrealsequence")
+
+    selected_sequence = values['option_real_sequence']
+
+    self.debug.info_message("selected_sequence: " + selected_sequence)
+
+    params = self.group_arq.saamfram.main_params.get('params')
+    sequences = params.get('Sequences')
+
+    try:
+      if(sequences != None):
+        self.debug.info_message("sequences: " + str(sequences)  )
+        value = sequences.get(selected_sequence)
+        self.debug.info_message("value is " + str(value)  )
+
+        seq_name            = value.get('name')
+        acknack_retransmits = value.get('acknack_retransmits')
+        frag_retransmits    = value.get('fragment_retransmits')
+        control_mode        = value.get('control_mode')
+        frag_modes          = value.get('frag_modes').split(',')
+
+        self.form_gui.window['option_sequence_number'].update(seq_name)
+
+        self.form_gui.window['option_sequence_acknackmode'].update(control_mode)
+
+        self.form_gui.window['option_sequence_one'].update(frag_modes[0] )
+        self.form_gui.window['option_sequence_two'].update(frag_modes[1] )
+        self.form_gui.window['option_sequence_three'].update(frag_modes[2] )
+        self.form_gui.window['option_sequence_four'].update(frag_modes[3] )
+        self.form_gui.window['option_sequence_five'].update(frag_modes[4] )
+ 
+        self.form_gui.window['in_sequence_fragretransmits'].update(frag_retransmits )
+        self.form_gui.window['in_sequence_acknackretransmits'].update(acknack_retransmits)
+
+    except:
+      self.debug.error_message("Exception in event_optionsequencenumber: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return
+
+  def event_optionsequencenumber(self, values):
+
+    self.debug.info_message("event_optionsequencenumber")
+
+    selected_sequence_name = values['option_sequence_number']
+
+    self.debug.info_message("selected_sequence_name: " + selected_sequence_name)
+
+    params = self.group_arq.saamfram.main_params.get('params')
+    sequences = params.get('Sequences')
+
+    try:
+      if(sequences != None):
+        self.debug.info_message("sequences: " + str(sequences)  )
+        for key in sequences: 
+          self.debug.info_message("key is " + str(key)  )
+          value = sequences.get(key)
+          self.debug.info_message("value is " + str(value)  )
+          if(value.get('name') == selected_sequence_name):
+            self.debug.info_message("found name: " + selected_sequence_name)
+            acknack_retransmits = value.get('acknack_retransmits')
+            frag_retransmits    = value.get('fragment_retransmits')
+            control_mode        = value.get('control_mode')
+            frag_modes          = value.get('frag_modes').split(',')
+
+            self.form_gui.window['option_real_sequence'].update(key)
+
+            self.form_gui.window['option_sequence_acknackmode'].update(control_mode)
+
+            self.form_gui.window['option_sequence_one'].update(frag_modes[0] )
+            self.form_gui.window['option_sequence_two'].update(frag_modes[1] )
+            self.form_gui.window['option_sequence_three'].update(frag_modes[2] )
+            self.form_gui.window['option_sequence_four'].update(frag_modes[3] )
+            self.form_gui.window['option_sequence_five'].update(frag_modes[4] )
+ 
+            self.form_gui.window['in_sequence_fragretransmits'].update(frag_retransmits )
+            self.form_gui.window['in_sequence_acknackretransmits'].update(acknack_retransmits)
+
+    except:
+      self.debug.error_message("Exception in event_optionsequencenumber: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+
+
+  def event_listboxthemeselect(self, values):
+
+    self.debug.info_message("event_listboxthemeselect: \n" + str(values['listbox_theme_select'][0]))
+
+    sg.theme(values['listbox_theme_select'][0])
+
+    self.debug.info_message("end event_listboxthemeselect\n")
+
+
   def event_mainpanelsendimagefile(self, values):
     self.debug.info_message("event_mainpanelsendimagefile")
+
+    self.group_arq.saamfram.setTransmitType(cn.FORMAT_IMAGE)
 
     selected_mode = values['option_filexfer_fldigimode'].split(' - ')[1]
     self.group_arq.fldigiclient.setMode(selected_mode)
@@ -1147,6 +1246,8 @@ class ReceiveControlsProc(object):
   def event_mainpanelsendfile(self, values):
     self.debug.info_message("event_mainpanelsendfile\n")
 
+    self.group_arq.saamfram.setTransmitType(cn.FORMAT_FILE)
+
     selected_mode = values['option_filexfer_fldigimode'].split(' - ')[1]
     self.group_arq.fldigiclient.setMode(selected_mode)
     self.debug.info_message("selected file xfer mode is: " + selected_mode)
@@ -1186,6 +1287,9 @@ class ReceiveControlsProc(object):
 
   def event_outboxsendselectedasfile(self, values):
     self.debug.info_message("event_outboxsendselectedasfile\n")
+
+    self.group_arq.saamfram.setTransmitType(cn.FORMAT_HRRM)
+
     line_index = int(values['table_outbox_messages'][0])
     msgid = (self.group_arq.getMessageOutbox()[line_index])[6]
     formname = (self.group_arq.getMessageOutbox()[line_index])[5]
@@ -1254,6 +1358,9 @@ class ReceiveControlsProc(object):
 
   def event_outboxsendselected(self, values):
     self.debug.info_message("EVENT OUTBOX SEND SELECTED\n")
+
+    self.group_arq.saamfram.setTransmitType(cn.FORMAT_CONTENT)
+
 
     selected_mode = values['option_outbox_fldigimode'].split(' - ')[1]
     self.group_arq.fldigiclient.setMode(selected_mode)
@@ -2115,6 +2222,92 @@ class ReceiveControlsProc(object):
 
     return
 
+  def event_cbfilexferuseseq(self, values):
+    self.debug.info_message("event_cbfilexferuseseq")
+    checked = self.form_gui.window['cb_filexfer_useseq'].get()
+    if(checked):
+      self.form_gui.window['option_filexfer_fldigimode'].update(disabled=True )
+      self.form_gui.window['option_filexfer_selectedseq'].update(disabled=False )
+    else:
+      self.form_gui.window['option_filexfer_fldigimode'].update(disabled=False )
+      self.form_gui.window['option_filexfer_selectedseq'].update(disabled=True )
+
+    return
+
+  def event_cboutboxuseseq(self, values):
+    self.debug.info_message("event_cboutboxuseseq")
+    checked = self.form_gui.window['cb_outbox_useseq'].get()
+    if(checked):
+      self.form_gui.window['option_outbox_fldigimode'].update(disabled=True )
+      self.form_gui.window['option_outbox_selectedseq'].update(disabled=False )
+    else:
+      self.form_gui.window['option_outbox_fldigimode'].update(disabled=False )
+      self.form_gui.window['option_outbox_selectedseq'].update(disabled=True )
+
+    return
+
+  def event_cbwinlinkuseseq(self, values):
+    self.debug.info_message("event_cbwinlinkuseseq")
+    checked = self.form_gui.window['cb_winlink_useseq'].get()
+    if(checked):
+      self.form_gui.window['option_winlink_fldigimode'].update(disabled=True )
+      self.form_gui.window['option_winlink_selectedseq'].update(disabled=False )
+    else:
+      self.form_gui.window['option_winlink_fldigimode'].update(disabled=False )
+      self.form_gui.window['option_winlink_selectedseq'].update(disabled=True )
+
+    return
+
+  def event_btnsequencesave(self, values):
+    self.debug.info_message("event_btnsequencesave\n")
+
+    selected_sequence = values['option_real_sequence']
+
+    self.debug.info_message("selected_sequence: " + selected_sequence)
+
+    params = self.group_arq.saamfram.main_params.get('params')
+    sequences = params.get('Sequences')
+
+    try:
+      if(sequences != None):
+        self.debug.info_message("sequences: " + str(sequences)  )
+        value = sequences.get(selected_sequence)
+        self.debug.info_message("value is " + str(value)  )
+
+        name = values['option_sequence_number']
+        value['name'] = values['option_sequence_number']
+        value['acknack_retransmits'] = values['in_sequence_acknackretransmits']
+        value['fragment_retransmits'] = values['in_sequence_fragretransmits']
+        value['control_mode'] = values['option_sequence_acknackmode']
+        value['frag_modes'] = values['option_sequence_one'] + ',' + values['option_sequence_two'] + ',' + values['option_sequence_three'] + ',' + values['option_sequence_four'] + ',' + values['option_sequence_five']
+
+        seq_names = ''
+        delimeter = ''
+        for key in sequences: 
+          value = sequences.get(key)
+          seq_names = seq_names + delimeter + value.get('name')
+          delimeter = ','
+        combo_sequences = seq_names.split(',')
+
+        self.form_gui.window['option_sequence_number'].update(values=combo_sequences )
+        self.form_gui.window['option_sequence_number'].update(name)
+
+        self.form_gui.window['option_filexfer_selectedseq'].update(values=combo_sequences )
+        self.form_gui.window['option_filexfer_selectedseq'].update(combo_sequences[0])
+
+        self.form_gui.window['option_outbox_selectedseq'].update(values=combo_sequences )
+        self.form_gui.window['option_outbox_selectedseq'].update(combo_sequences[0])
+
+        self.form_gui.window['option_winlink_selectedseq'].update(values=combo_sequences )
+        self.form_gui.window['option_winlink_selectedseq'].update(combo_sequences[0])
+
+        self.form_dictionary.writeMainDictionaryToFile("saamcom_save_data.txt", values)
+
+    except:
+      self.debug.error_message("Exception in event_optionsequencenumber: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+
+
 
   def event_btnmyinfosave(self, values):
     self.debug.info_message("event_btnmyinfosave\n")
@@ -2240,13 +2433,6 @@ class ReceiveControlsProc(object):
 
     try:
       wording_color = 'black'
-      self.form_gui.window['btn_mainpanel_cqcqcq'].update(button_color=(wording_color, txbtn_color))
-      self.form_gui.window['btn_mainpanel_copycopy'].update(button_color=(wording_color, txbtn_color))
-      self.form_gui.window['btn_mainpanel_rr73'].update(button_color=(wording_color, txbtn_color))
-      self.form_gui.window['btn_mainpanel_73'].update(button_color=(wording_color, txbtn_color))
-      self.form_gui.window['btn_inbox_replytomsg'].update(button_color=(wording_color, txbtn_color))
-      self.form_gui.window['btn_inbox_sendacknack'].update(button_color=(wording_color, txbtn_color))
-      self.form_gui.window['btn_outbox_sendselected'].update(button_color=(wording_color, txbtn_color))
 
       self.form_gui.main_heading_background_clr     = values['option_main_heading_background_clr']
       self.form_gui.sub_heading_background_clr      = values['option_sub_heading_background_clr']
@@ -2387,7 +2573,11 @@ class ReceiveControlsProc(object):
     self.group_arq.fldigiclient.setChannel(channel.split('Hz')[0])
 
     selected_callsigns = self.group_arq.getConnectToString()
-    self.form_gui.window['in_inbox_listentostation'].update(selected_callsigns)
+
+    if(selected_callsigns != ''):
+      self.form_gui.window['in_inbox_listentostation'].update(selected_callsigns)
+
+    self.group_arq.saamfram.setTransmitType(cn.FORMAT_NONE)
 
 
   def event_btnmainpanelupdaterecent(self, values):
@@ -2502,7 +2692,12 @@ class ReceiveControlsProc(object):
         self.debug.info_message("size factor : " + str(slider_size_factor))
         self.debug.info_message("quality factor : " + str(slider_quality_factor))
 
-        resized_im = im.resize((int(original_size_x*(slider_size_factor)), int(original_size_y*(slider_size_factor))), Image.ANTIALIAS)
+        resized_im = None
+        if (platform.system() == 'Windows'):
+          resized_im = im.resize((int(original_size_x*(slider_size_factor)), int(original_size_y*(slider_size_factor))))
+        else:
+          resized_im = im.resize((int(original_size_x*(slider_size_factor)), int(original_size_y*(slider_size_factor))), Image.ANTIALIAS)
+
         if(grayscale):
           grayscale_im = resized_im.convert('L')     
           grayscale_im.save('compressed.jpg', optimize = True, quality=int(slider_quality_factor))
@@ -2540,7 +2735,8 @@ class ReceiveControlsProc(object):
 
     selected_width = values['combo_main_signalwidth']
 
-    new_selection_list = self.group_arq.fldigiclient.getSelectionList(selected_width).split(',')
+    ret1,ret2 = self.group_arq.fldigiclient.getSelectionList(selected_width)
+    new_selection_list = ret1.split(',')
 
     self.form_gui.window['option_chat_fldigimode'].update(values=new_selection_list )
     self.form_gui.window['option_chat_fldigimode'].update(new_selection_list[0] )
@@ -3178,6 +3374,8 @@ class ReceiveControlsProc(object):
 
     self.debug.info_message("event_btnwinlinksendselected")
 
+    self.group_arq.saamfram.setTransmitType(cn.FORMAT_WL2K)
+
     selected_mode = values['option_winlink_fldigimode'].split(' - ')[1]
     self.group_arq.fldigiclient.setMode(selected_mode)
     self.debug.info_message("selected file winlink mode is: " + selected_mode)
@@ -3621,7 +3819,8 @@ class ReceiveControlsProc(object):
 
       'btn_mainpanel_clearstations' : event_btnmainpanelclearstations,
 
-       'btn_myinfo_save'         : event_btnmyinfosave,
+      'btn_myinfo_save'         : event_btnmyinfosave,
+      'btn_sequence_save'         : event_btnsequencesave,
 
       'btn_winlink_list_emails'  : event_winlinklist,
       'winlink_inbox_table'      : event_winlinkinboxtable,
@@ -3651,6 +3850,15 @@ class ReceiveControlsProc(object):
       #'btn_mainpanel_saveasfile'  : event_mainpanelsaveasfile,
       'in_mainpanel_saveasfilename'  : event_mainpanelsaveasfile,
       'in_mainpanel_saveasimagefilename'  : event_mainpanelsaveasimagefile,
+
+      'listbox_theme_select'      : event_listboxthemeselect,
+
+      'option_sequence_number'    : event_optionsequencenumber,
+      'option_real_sequence'      : event_optionrealsequence,
+
+      'cb_filexfer_useseq'        : event_cbfilexferuseseq,
+      'cb_outbox_useseq'          : event_cboutboxuseseq,
+      'cb_winlink_useseq'         : event_cbwinlinkuseseq,
 
       'combo_element1'            : event_comboelement1,
       'combo_element2'            : event_comboelement2,
