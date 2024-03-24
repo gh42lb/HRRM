@@ -472,7 +472,8 @@ class WinlinkImport(object):
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 4")
 
       with open(new_item, 'w') as new_file:
-        line_to_write = 'Mid: ' + new_item_name.strip('.b2f') + '\n'
+        #line_to_write = 'Mid: ' + new_item_name.strip('.b2f') + '\n'
+        line_to_write = 'Mid: ' + new_item_name[:-4] + '\n'
         new_file.write(line_to_write)
         line_to_write = 'Body: ' + str(len(complete_message)+ newline_count) + '\n'
         new_file.write(line_to_write)
