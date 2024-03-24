@@ -113,20 +113,29 @@ class SAAMFRAM(object):
     self.command_strings = 'COMMAND_NONE,COMMAND_SAAM,COMMAND_QRY_SAAM,COMMAND_QRY_RELAY,COMMAND_RELAY,COMMAND_CONF,COMMAND_RDY,COMMAND_QRY_RDY,COMMAND_SMT,COMMAND_EMT,COMMAND_CHKSUM'.split(',')
     self.comm_strings = 'COMM_NONE,COMM_LISTEN,COMM_RECEIVING,COMM_QUEUED_TXMSG,COMM_SENDING,COMM_AWAIT_REPLY,COMM_AWAIT_ACKNACK,COMM_AWAIT_RESEND'.split(',')
 
+    #TEST CODE REMOVE
+    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F101 : " + self.getRunLengthEncodeNackFldigi("F5,F101"))
+    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F6,F7,F8,F101 : " + self.getRunLengthEncodeNackFldigi("F5,F6,F7,F8,F101"))
+    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F101,F102,F103 : " + self.getRunLengthEncodeNackFldigi("F5,F101,F102,F103"))
+    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F6,F7 : " + self.getRunLengthEncodeNackFldigi("F5,F6,F7"))
+    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F7,F15,F20,F21 : " + self.getRunLengthEncodeNackFldigi("F5,F7,F15,F20,F21"))
+
+
+
   def getSenderCall(self):
-    if(self.form_gui.window != None and self.form_gui.form_events.window_initialized == True and self.group_arq.formdesigner_mode == False):
+    if(self.form_gui.window != None and self.form_gui.form_events != None and self.form_gui.form_events.window_initialized == True and self.group_arq.formdesigner_mode == False):
       return self.form_gui.window['in_inbox_listentostation'].get().strip().upper()
     else:
       return '' 
 
   def getMyCall(self):
-    if(self.form_gui.window != None and self.form_gui.form_events.window_initialized == True):
+    if(self.form_gui.window != None and self.form_gui.form_events != None and self.form_gui.form_events.window_initialized == True):
       return self.form_gui.window['input_myinfo_callsign'].get().strip().upper()
     else:
       return '' 
 
   def getMyGroup(self):
-    if(self.form_gui.window != None and self.form_gui.form_events.window_initialized == True):
+    if(self.form_gui.window != None and self.form_gui.form_events != None and self.form_gui.form_events.window_initialized == True):
       return self.form_gui.window['input_myinfo_group_name'].get().strip().upper()
     else:
       return '' 
@@ -205,7 +214,6 @@ class SAAMFRAM(object):
     msgid = self.getEncodeUniqueId(from_callsign)
 
     message = 'REQM(' + msgid   
-    self.debug.info_message("LOC 2\n")
     checksum = self.getChecksum(msgid)
     self.debug.info_message("FINISH CREATE PRE MSG REQM\n")
     return message + ',' + checksum +  ')'
@@ -220,7 +228,6 @@ class SAAMFRAM(object):
     msgid = self.getEncodeUniqueId(from_callsign)
 
     message = 'CONF(' + msgid   
-    self.debug.info_message("LOC 2\n")
     checksum = self.getChecksum(msgid)
     self.debug.info_message("FINISH CREATE PRE MSG conf\n")
     return message + ',' + checksum +  ')'
@@ -235,9 +242,7 @@ class SAAMFRAM(object):
 
     hop_count = '2'
 
-    self.debug.info_message("LOC 1\n")
     message = 'BEAC(' + msgid + ',' + grid_square + ',' + hop_count 
-    self.debug.info_message("LOC 2\n")
     checksum = self.getChecksum(msgid + ',' + grid_square + ',' + hop_count)
     self.debug.info_message("FINISH CREATE PRE MSG BEAC\n")
     return message + ',' + checksum +  ')'
@@ -263,6 +268,11 @@ class SAAMFRAM(object):
     return message + ',' + checksum +  ')'
 
   def createPreMessagePend(self):
+
+    self.debug.info_message("createPreMessagePend")
+    return self.form_dictionary.dataFlecCache_selectRandomMsgPendPeer(3)
+
+  def createPreMessagePendNOTUSED(self):
 
     self.debug.info_message("CREATE PRE MSG PEND\n")
 
@@ -308,6 +318,11 @@ class SAAMFRAM(object):
 
   def createPreMessageRelay(self):
 
+    self.debug.info_message("createPreMessageRelay")
+    return self.form_dictionary.dataFlecCache_selectRandomMsgPendRelay(3)
+
+  def createPreMessageRelayNOTUSED(self):
+
     items = self.group_arq.getMessageRelaybox()
 
     selected_item = random.choice(items)
@@ -337,9 +352,23 @@ class SAAMFRAM(object):
       else:
         stop = True
 
-    message = 'relay(' + msgid + ',' + to_list + ',' + priority + ')'
+    #FIXME HARDCODED
+    dest_call = 'WH6TEST'
+    total_hops = 0
+    hops_from_source = 0
+    conf_required = 0
 
-    return message
+    message_part = msgid + ',' + dest_call + ',' + str(total_hops) + ',' + str(hops_from_source) + ',' + str(conf_required) 
+    message = 'PNDR(' + message_part
+    checksum = self.getChecksum(message_part)
+
+    self.debug.info_message("FINISH CREATE PRE MSG RELAY\n")
+
+    return message + ',' + checksum +  ')'
+
+    #message = 'relay(' + msgid + ',' + to_list + ',' + priority + ')'
+    #return message
+
 
 
   """
@@ -1757,7 +1786,7 @@ class SAAMFRAM(object):
 
 
   def getContentAndTemplateSendString(self, msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign):
-      send_string_content = self.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+      send_string_content = self.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
       send_string_template = self.getTemplateSendString(formname, sender_callsign, frag_size)
       complete_send_string = send_string_content + send_string_template
       return complete_send_string
@@ -1767,9 +1796,13 @@ outbox dictionary items formatted as...
 [u'ICS-213', u'v1.0', u'750cc9d8_2fc1d3d0', u'High', u'WH6ABC,WH6DEF,WH6GHI', u'I AM THE SUBJECT', 'Test', 'Lawrence', 'something important', 'Peter', 'nobody', 'Hello from rainy hawaii', '', '', u'This is a short message to show how the formatting works', '', '']
 <FORMNAME> <Version> <ID> <PRIORITY> <TO list> <Subject> <contents.....>
   """
-  def getContentSendString(self, msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign):
-    content = self.form_dictionary.getContentByIdFromOutboxDictionary(msgid)
+  def getContentSendString(self, msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, whichbox):
 
+    content = ''
+    if(whichbox == cn.OUTBOX):
+      content = self.form_dictionary.getContentByIdFromOutboxDictionary(msgid)
+    elif(whichbox == cn.RELAYBOX):
+      content = self.form_dictionary.getContentByIdFromRelayboxDictionary(msgid)
 
     content_string = ''
     for x in range (len(content)):
@@ -1780,7 +1813,9 @@ outbox dictionary items formatted as...
     """ only process the content for escapes"""
     content_string = self.getEncodeEscapes(content_string)
     
-    
+    if(formname == 'EMAIL'):
+      tolist = tolist.replace('@', '+')
+        
     send_string = '{' + cn.FORMAT_CONTENT + self.delimiter_char + msgid + self.delimiter_char + tolist + self.delimiter_char + priority + self.delimiter_char + \
                             str(frag_size)+ self.delimiter_char + subject + self.delimiter_char + formname + self.delimiter_char + version + self.delimiter_char 
                             
@@ -2025,6 +2060,54 @@ outbox dictionary items formatted as...
 
           self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
           self.form_gui.window['table_chat_received_messages'].set_vscroll_position(1.0)
+
+        else: #if(data[5] == 'EMAIL'):
+
+          try:
+            header_info = []
+            for count in range(0, 8):
+              header_info.append(data[count])
+            self.debug.info_message("header info is:" + str(header_info))
+
+            actual_data = []
+            for count in range(8, len(data)):
+              actual_data.append(data[count])
+            self.debug.info_message("complete send string is:" + str(actual_data))
+
+            msgto     = data[1].replace('+', '@')
+
+            autoForward = self.form_gui.window['cb_general_autoforward'].get()
+            autoForwardForms = self.form_gui.window['cb_general_autoforward_forms'].get()
+            if(autoForward and data[5] == 'EMAIL'):
+              forwardType = self.form_gui.window['option_general_forwardemailtype'].get()
+              pat_binary = self.group_arq.form_events.winlink_import.getWinlinkBinary()
+              mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(data[5])
+              text_render, table_render, actual_render = self.form_gui.renderPage(mytemplate, False, actual_data)
+              if(forwardType == 'Internet'):
+                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                self.group_arq.form_events.winlink_import.winlinkConnect('', pat_binary, 'telnet')
+              elif(forwardType == 'Winlink'):
+                callsign = self.form_gui.window['input_general_patstation'].get()
+                connect_mode = self.form_gui.window['option_general_patmode'].get()
+                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                self.group_arq.form_events.winlink_import.winlinkConnect(callsign, pat_binary, connect_mode)
+            elif(autoForwardForms and data[5] != 'EMAIL'):
+              forwardType = self.form_gui.window['option_general_forwardformtype'].get()
+              pat_binary = self.group_arq.form_events.winlink_import.getWinlinkBinary()
+              mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(data[5])
+              text_render, table_render, actual_render = self.form_gui.renderPage(mytemplate, False, actual_data)
+              if(forwardType == 'Internet'):
+                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                self.group_arq.form_events.winlink_import.winlinkConnect('', pat_binary, 'telnet')
+              elif(forwardType == 'Winlink'):
+                callsign = self.form_gui.window['input_general_patstation'].get()
+                connect_mode = self.form_gui.window['option_general_patmode'].get()
+                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                self.group_arq.form_events.winlink_import.winlinkConnect(callsign, pat_binary, connect_mode)
+
+          except:
+            self.debug.info_message("processing incoming EMAIL")
+            self.debug.info_message("method: processIncomingMessageCommon exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
 
 
         """ priority of none indicates the message is not to be saved anywhere. """
@@ -2272,7 +2355,8 @@ outbox dictionary items formatted as...
           """
           self.debug.info_message("incoming base64 encoded data is : " + data[7] )
 
-          inbox_folder = self.form_gui.window['in_winlink_inboxfolder'].get()
+          inbox_folder = self.form_gui.getWinlinkInboxFolder()
+          #inbox_folder = self.form_gui.window['in_winlink_inboxfolder'].get()
 
           with open(inbox_folder + formname, 'wb') as f:
             f.write(bz2.decompress(base64.b64decode(data[7])))
@@ -2742,6 +2826,17 @@ outbox dictionary items formatted as...
 
     return
 
+
+  def addressMessage(self, tolist):
+
+    """ send the full message to the group first """
+    mycall = self.getMyCall()
+    mygroup = self.getMyGroup()
+    connect_to_list = self.group_arq.getRelayListFromSendList(tolist)
+    msg_addressed_to = ' ' + mycall + ': ' + connect_to_list + mygroup + ' '
+
+    return msg_addressed_to
+
   def sendFormFldigi(self, message, tolist, msgid):
     self.debug.info_message("send form fldigi sending form: " + message )
 
@@ -2767,22 +2862,23 @@ outbox dictionary items formatted as...
     """ send the full message to the group first """
     mycall = self.getMyCall()
     mygroup = self.getMyGroup()
-
     connect_to_list = self.group_arq.getRelayListFromSendList(tolist)
-
     msg_addressed_to = ' ' + mycall + ': ' + connect_to_list + mygroup + ' '
+    #msg_addressed_to = self.addressMessage(tolist)
+
 
     self.setMessage(self.tx_rig, self.tx_channel, msg_addressed_to + ' BOS ' + message)
     self.setCurrentRecipient(self.tx_rig, self.tx_channel, 0)
 
+    #self.group_arq.sendTheMessage(message, True)
+    #checked = self.form_gui.window['cb_mainwindow_txenable'].get()
+    #if(checked):
+
     self.setTxidState(self.tx_rig, self.tx_channel, True)
     """ send the full message to the group first """
-
     self.ifSeqSetMode(cn.TYPE_FRAG)
-
     #FIXME NOT NEEDED NOW!
     self.setSendToGroupIndividual(self.tx_rig, self.tx_channel, cn.SENDTO_GROUP)
-
     self.sendFormFldigi2(message, msg_addressed_to)
 
   def sendFormFldigi2(self, message, msg_addressed_to):
@@ -2826,19 +2922,16 @@ outbox dictionary items formatted as...
       next_number = int(frames[frame_count][1:])
       self.debug.info_message("next_number: " + str(next_number) )
       if(next_number == last_number + 1 and in_sequence == False):
-        self.debug.info_message("LOC 1\n")
         in_sequence = True
         rle_frames = rle_frames + 'F' + str(last_number) + '-'
         last_number = next_number
         if(frame_count == num_frames-1):
           rle_frames = rle_frames + str(next_number)
       elif(next_number == last_number + 1 and in_sequence == True):
-        self.debug.info_message("LOC 2\n")
         last_number = next_number
         if(frame_count == num_frames-1):
           rle_frames = rle_frames + str(next_number)
       elif(next_number != last_number + 1 and in_sequence == True):
-        self.debug.info_message("LOC 3\n")
         in_sequence = False
         rle_frames = rle_frames + str(last_number) + ','
         if(frame_count == num_frames-1):
@@ -2846,11 +2939,13 @@ outbox dictionary items formatted as...
 
         last_number = next_number
       else:
-        self.debug.info_message("LOC 4\n")
         if(last_number != -1):
           rle_frames = rle_frames + 'F' + str(last_number)
           if(frame_count < num_frames-1):
             rle_frames = rle_frames + ','
+          else:
+            rle_frames = rle_frames + ',F' + str(next_number)
+
         else:
           if(frame_count == num_frames-1):
             rle_frames = rle_frames + 'F' + str(next_number)
@@ -2921,11 +3016,12 @@ outbox dictionary items formatted as...
     """
     set the Txid on for CQ messages
     """
-    self.setTxidState(self.tx_rig, self.tx_channel, True)
 
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, True)
+    #self.setTxidState(self.tx_rig, self.tx_channel, True)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
     return
 
 
@@ -3011,10 +3107,11 @@ outbox dictionary items formatted as...
     """
     set the Txid on for CQ messages
     """
-    self.setTxidState(self.tx_rig, self.tx_channel, True)
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, True)
+    #self.setTxidState(self.tx_rig, self.tx_channel, True)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
     return
 
   """
@@ -3032,10 +3129,11 @@ outbox dictionary items formatted as...
     """
     set the Txid on for CQ messages
     """
-    self.setTxidState(self.tx_rig, self.tx_channel, True)
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, True)
+    #self.setTxidState(self.tx_rig, self.tx_channel, True)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
     return
 
   def sendRR73(self, from_callsign, group_name):
@@ -3052,11 +3150,11 @@ outbox dictionary items formatted as...
     """
     set the Txid on for CQ messages
     """
-    self.setTxidState(self.tx_rig, self.tx_channel, True)
-
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, True)
+    #self.setTxidState(self.tx_rig, self.tx_channel, True)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
     return
 
   def send73(self, from_callsign, group_name):
@@ -3075,11 +3173,11 @@ outbox dictionary items formatted as...
     """
     set the Txid on for CQ messages
     """
-    self.setTxidState(self.tx_rig, self.tx_channel, True)
-
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, True)
+    #self.setTxidState(self.tx_rig, self.tx_channel, True)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
     return
 
   def sendCheckin(self, from_callsign, group_name):
@@ -3110,9 +3208,10 @@ outbox dictionary items formatted as...
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_STANDBY + from_callsign + ' '
 
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, False)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
     return
 
   def sendQrt(self, from_callsign, group_name):
@@ -3126,9 +3225,10 @@ outbox dictionary items formatted as...
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + group_name + cn.COMM_QRT + from_callsign + ' '
 
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, False)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
     return
 
   def sendSAAM(self, from_callsign, group_name):
@@ -3174,10 +3274,52 @@ outbox dictionary items formatted as...
 
 
   def sendREQM(self, from_callsign, to_callsign, msgid):
-    message = ' ' + from_callsign + ': ' + to_callsign + cn.COMM_REQM_MSG + ' ' + msgid + ' ' + from_callsign + ' '
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
+
+    self.debug.info_message("sendREQM")
+
+    try:
+      selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+      self.fldigiclient.setMode(selected_mode)
+      self.debug.info_message("selected main mode is: " + selected_mode)
+
+      message = ' ' + from_callsign + ': ' + to_callsign + cn.COMM_REQM_MSG + ' ' + msgid + ' ' + from_callsign + ' '
+
+      self.setTxidState(self.tx_rig, self.tx_channel, True)
+
+      self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+      self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+      self.group_arq.sendItNowRig1(message)
+
+    except:
+      self.debug.error_message("Exception in sendREQM: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return
+
+  """ RMSG is the data flec used to convery the details of the requested message"""
+  """ format:  WH6GGO: WH6TEST REQR RMSG(msgid,src_call,dst_call,total_hops,hop_count) WH6GGO """
+  def sendREQMRelay(self, from_callsign, to_callsign, msgid):
+
+    self.debug.info_message("sendREQMRelay")
+
+    try:
+      selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+      self.fldigiclient.setMode(selected_mode)
+      self.debug.info_message("selected main mode is: " + selected_mode)
+
+      #hop_count  = 0
+      #total_hops = 0
+
+      message = ' ' + from_callsign + ': ' + to_callsign + cn.COMM_REQMRLY_MSG + ' ' + msgid + ' ' + from_callsign + ' '
+
+      self.setTxidState(self.tx_rig, self.tx_channel, True)
+
+      self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+      self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+      self.group_arq.sendItNowRig1(message)
+
+    except:
+      self.debug.error_message("Exception in sendREQMRelay: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
     return
 
 
@@ -3204,6 +3346,76 @@ outbox dictionary items formatted as...
 
   def sendQryReady(self):
     self.sendCommon(cn.COMM_QRYRDY_MSG, None)
+
+
+  def sendRTSPeer(self, from_callsign, group_name):
+    self.debug.info_message("sendRTSPeer" )
+
+    selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+    self.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected main mode is: " + selected_mode)
+
+    message = ''
+    self.pre_message = ''
+
+    pend=[]
+
+    pend.append(self.createPreMessagePend() )
+    pend.append(self.createPreMessagePend() )
+    pend.append(self.createPreMessagePend() )
+
+    for x in range(0,3):
+      if(pend[x] != '' and pend[x] not in self.pre_message):
+        self.pre_message = self.pre_message + ',' + pend[x]
+
+    self.debug.info_message("pre_message :" + self.pre_message )
+
+    pre_message = self.getPreMessage().strip(',')
+    message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_RTS_MSG + from_callsign + ' '
+
+    self.group_arq.sendTheMessage(message, True)
+    #self.setTxidState(self.tx_rig, self.tx_channel, True)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
+    return
+
+
+  def sendRTSRelay(self, from_callsign, group_name):
+    self.debug.info_message("sendRTSRelay" )
+
+    selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+    self.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected main mode is: " + selected_mode)
+
+
+    message = ''
+    self.pre_message = ''
+
+    pend=[]
+
+    pend.append(self.createPreMessageRelay() )
+    pend.append(self.createPreMessageRelay() )
+    pend.append(self.createPreMessageRelay() )
+
+    for x in range(0,3):
+      if(pend[x] != '' and pend[x] not in self.pre_message):
+        self.pre_message = self.pre_message + ',' + pend[x]
+
+    self.debug.info_message("pre_message :" + self.pre_message )
+
+    pre_message = self.getPreMessage().strip(',')
+    message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_RTSRLY_MSG + from_callsign + ' '
+
+    self.group_arq.sendTheMessage(message, True)
+    #self.setTxidState(self.tx_rig, self.tx_channel, True)
+    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+    #self.group_arq.sendItNowRig1(message)
+    return
+
+
+
 
   def sendReadyToReceive(self):
     self.sendCommon(cn.COMM_RR_MSG, None)
@@ -3256,10 +3468,12 @@ outbox dictionary items formatted as...
       if(sendit == False):
         self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
       else:
-        ack_message = to_callsign + cn.COMM_ACK_MSG + from_callsign + ' '
-        self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-        self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_NONE)
-        self.group_arq.sendItNowRig1(ack_message)
+        checked = self.form_gui.window['cb_mainwindow_txenable'].get()
+        if(checked):
+          ack_message = to_callsign + cn.COMM_ACK_MSG + from_callsign + ' '
+          self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+          self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_NONE)
+          self.group_arq.sendItNowRig1(ack_message)
     except:
       self.debug.error_message("Exception in sendAck: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
@@ -3272,12 +3486,14 @@ outbox dictionary items formatted as...
     if(sendit == False):
       self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
     else:
-      self.debug.info_message("sendNack frames:" + str(frames))
-      frames = self.getRunLengthEncodeNackFldigi(frames)
-      nack_message = to_callsign + cn.COMM_NACK_MSG + '(' + frames + ') ' + from_callsign + ' '
-      self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-      self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_AWAIT_RESEND)
-      self.group_arq.sendItNowRig1(nack_message)
+      checked = self.form_gui.window['cb_mainwindow_txenable'].get()
+      if(checked):
+        self.debug.info_message("sendNack frames:" + str(frames))
+        frames = self.getRunLengthEncodeNackFldigi(frames)
+        nack_message = to_callsign + cn.COMM_NACK_MSG + '(' + frames + ') ' + from_callsign + ' '
+        self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+        self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_AWAIT_RESEND)
+        self.group_arq.sendItNowRig1(nack_message)
     return
 
   def sendAckJS8(self, from_callsign, to_callsign):
@@ -3621,6 +3837,24 @@ outbox dictionary items formatted as...
     return timestamp
 
 
+  def getDecodeTimestampAltFromUniqueId(self, ID):
+    """ use the following to reverse the callsign from the ID string to show who created the email"""
+    chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+    charsLen = len(chars)
+
+    timestamp_string = ID.split('_',1)[1]
+
+    inttime = ((int(timestamp_string,36))/100.0)
+    #self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp(inttime) ) )
+    timestamp = datetime.utcfromtimestamp(inttime).strftime('%Y/%m/%d %H:%M')
+
+    self.debug.info_message("reverse encoded timestamp is: " + timestamp )
+                                                                                        
+    return timestamp
+
+
+
+
   """ This method decodes the callsign from the ID string"""
   def getDecodeIntTimeFromUniqueId(self, ID):
     """ use the following to reverse the callsign from the ID string to show who created the email"""
@@ -3786,13 +4020,10 @@ outbox dictionary items formatted as...
           """ blank out the rcv string as nothing guaranteed if frame is dropped """
           self.setRcvString(rigname, channel, '')
         else:
-          self.debug.info_message("LOC GHI")
-
           self.appendRcvString(rigname, channel, text)
           self.debug.info_message("total rcvd string: " + self.getRcvString(rigname, channel))
           frame_rcv_time = datetime.now()
           self.setFrameRcvTime(rigname, channel, frame_rcv_time)
-          self.debug.info_message("LOC JKL")
 
         comm_status = self.getCommStatus(self.tx_rig, self.tx_channel)
         if(comm_status == cn.COMM_AWAIT_ACKNACK ):
@@ -3965,18 +4196,14 @@ outbox dictionary items formatted as...
       self.debug.info_message("advancing to next station: " + str(current_recipient+1) )
 
       while(current_recipient+1 < num_recipients):
-        self.debug.info_message("advanceToNextRecipient LOC3")
         current_recipient = current_recipient + 1
         self.setCurrentRecipient(self.tx_rig, self.tx_channel, current_recipient)
         if( self.group_arq.isRecipientPresent(recipient_stations[self.getCurrentRecipient(self.tx_rig, self.tx_channel)]) == True):
-          self.debug.info_message("advanceToNextRecipient LOC4")
           if(current_recipient < num_recipients):
-            self.debug.info_message("advanceToNextRecipient LOC5")
             self.setPreMessage(recipient_stations[current_recipient], self.groupname)
             self.requestConfirm(self.getMyCall(), self.getSenderCall())
             return
           else:
-            self.debug.info_message("advanceToNextRecipient LOC6")
             self.setInSession(self.tx_rig, self.tx_channel, False)
             from_callsign = self.getMyCall()
             to_callsign = self.getMyGroup()
@@ -3988,7 +4215,6 @@ outbox dictionary items formatted as...
       self.debug.info_message("advanceToNextRecipient: " + str(current_recipient)  )
 
       if(current_recipient+1 == num_recipients):
-        self.debug.info_message("advanceToNextRecipient LOC7")
         self.setInSession(self.tx_rig, self.tx_channel, False)
         from_callsign = self.getMyCall()
         to_callsign = self.getMyGroup()
@@ -4230,7 +4456,78 @@ outbox dictionary items formatted as...
       self.debug.error_message("Exception in acquireSNR: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
     return self.getBestSNR(self.active_rig, self.active_channel)
- 
+
+
+  def pullStubMessage(self, from_call, sender_call):
+    self.debug.info_message("pullStubMessage")
+
+    rts_data = self.form_dictionary.dataFlecCache_getRtsPeer(sender_call)
+
+    #if(self.saam_parser.rts_calsign == sender_call and len(self.saam_parser.rts_data) >=1):
+    if(len(rts_data) >=1):
+      self.debug.info_message("pullStubMessage: " + str(rts_data))
+      #rts_msgid = self.saam_parser.rts_data[0]
+      rts_msgid = rts_data[0]
+      self.debug.info_message("pullStubMessage msgid: " + str(rts_msgid))
+
+      verified = ''
+
+      if(self.form_dictionary.doesInboxDictionaryItemExist(rts_msgid) == True ):
+        verified = self.form_dictionary.getVerifiedFromInboxDictionary(rts_msgid)
+      elif(self.form_dictionary.doesRelayboxDictionaryItemExist(rts_msgid) == True ):
+        verified = self.form_dictionary.getVerifiedFromRelayboxDictionary(rts_msgid)
+
+      if(verified == 'Stub'):
+        self.sendREQM(from_call, sender_call, rts_msgid)
+        #self.saam_parser.rts_data.remove(rts_msgid)
+        self.form_dictionary.dataFlecCache_removeItemRtsPeer(sender_call, rts_msgid)
+
+
+    return
+
+
+  def sendCONFRelay(self, from_call, sender_call):
+    self.debug.info_message("sendCONFRelay")
+    return
+
+  def forwardCONFRelay(self, from_call, sender_call):
+    self.debug.info_message("forwardCONFRelay")
+    #msg_addressed_to = self.addressMessage(tolist)
+    return
+
+
+  def forwardRTSRelay(self, from_call, sender_call):
+    self.debug.info_message("forwardRTSRelay")
+
+    #self.sendRTSRelay(from_callsign, group_name)
+    #msg_addressed_to = self.addressMessage(tolist)
+
+    return
+
+
+  def forwardREQMRelay(self, from_call, sender_call):
+    self.debug.info_message("forwardREQMRelay")
+
+    #self.sendREQMRelay(from_callsign, to_callsign, msgid)
+    #msg_addressed_to = self.addressMessage(tolist)
+
+    return
+
+  def pullStubMessageRly(self, from_call, sender_call):
+    self.debug.info_message("pullStubMessageRly")
+
+    rtsrly_data = self.form_dictionary.dataFlecCache_getRtsRelay(sender_call)
+
+    #if(self.saam_parser.rtsrly_calsign == sender_call and len(self.saam_parser.rtsrly_data) >=1):
+    if( len(rtsrly_data) >=1):
+      rtsrly_msgid = rtsrly_data[0]
+      verified = self.form_dictionary.getVerifiedFromRelayboxDictionary(rtsrly_msgid)
+      if(verified == 'Stub'):
+        self.sendREQM(from_call, sender_call, rtsrly_msgid)
+        #self.saam_parser.rtsrly_data.remove(rtsrly_msgid)
+        self.form_dictionary.dataFlecCache_removeItemRtsRelay(sender_call, rtsrly_msgid)
+
+    return
 
   """
   callback function used by JS8_Client processing thread
@@ -4259,6 +4556,24 @@ outbox dictionary items formatted as...
           group_name = param_1
           self.form_gui.form_events.changeFlashButtonState('btn_compose_saam', True)
 
+        if(command == cn.COMMAND_TESTPROP):
+          self.debug.info_message("heard TESTPROP\n")
+          snr = self.acquireSNR(fldigi_instance)
+          newID = self.getEncodeUniqueId(from_call)
+          newMode = self.fldigiclient.current_mode
+          rigname = ''
+          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
+          self.form_gui.refreshSelectedTables()
+
+        if(command == cn.COMMAND_STBY):
+          self.debug.info_message("heard STANDBY\n")
+          snr = self.acquireSNR(fldigi_instance)
+          newID = self.getEncodeUniqueId(from_call)
+          newMode = self.fldigiclient.current_mode
+          rigname = ''
+          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
+          self.form_gui.refreshSelectedTables()
+
         if(command == cn.COMMAND_CQCQCQ):
           snr = self.acquireSNR(fldigi_instance)
           """ Do not send an automatic reply as all stations potentially use the same channel in fldigi"""
@@ -4281,6 +4596,59 @@ outbox dictionary items formatted as...
 
           self.form_gui.refreshSelectedTables()
           self.form_gui.window['in_inbox_listentostation'].update(from_call)
+
+        if(command == cn.COMMAND_RTS):
+
+          self.debug.info_message("heard RTS from: " + str(from_call))
+          self.debug.info_message("group name is: " + str(param_1))
+
+          snr = self.acquireSNR(fldigi_instance)
+          newID = self.getEncodeUniqueId(from_call)
+          newMode = self.fldigiclient.current_mode
+          rigname = ''
+          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
+          self.form_gui.refreshSelectedTables()
+
+          """ test for auto relay receive and send REQM for msgids in PEND state...outbox or relay box"""
+
+          checked = self.form_gui.window['cb_general_auto_receive_stub_from_rts'].get()
+          rts_data = self.form_dictionary.dataFlecCache_getRtsPeer(from_call)
+          if(checked and len(rts_data) >=1):
+            self.debug.info_message("my call is: " + self.getMyCall())
+            self.pullStubMessage(self.getMyCall(), from_call)
+
+        if(command == cn.COMMAND_RTSRLY):
+          self.debug.info_message("heard RTSRLY from: " + str(from_call))
+          self.debug.info_message("group name is: " + str(param_1))
+
+          snr = self.acquireSNR(fldigi_instance)
+          newID = self.getEncodeUniqueId(from_call)
+          newMode = self.fldigiclient.current_mode
+          rigname = ''
+          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
+          self.form_gui.refreshSelectedTables()
+
+          """ test for auto relay receive and send REQM for msgids in PEND state...outbox or relay box"""
+
+          checked = self.form_gui.window['cb_general_auto_receive_stub_from_rts'].get()
+          rtsrly_data = self.form_dictionary.dataFlecCache_getRtsRelay(from_call)
+          if(checked and len(rtsrly_data) >=1):
+            self.pullStubMessageRly(self.getMyCall(), from_call)
+
+          """ if I am not the destination station and CONFRelay has not yet been received"""
+          #self.forwardRTSRelay(self.getMyCall(), from_call)
+          #msg_addressed_to = self.addressMessage(tolist)
+
+          """if I am the destination station and I already have a copy of the message"""
+          #self.sendCONFRelay(self.getMyCall(), from_call)
+
+        #if(command == cn.COMMAND_CONFRLY):
+          """ transfer message from the relay box to sent and update confirmed"""
+
+          """ if I am not the destination station and CONFRelay has not yet been received"""
+          #self.forwardCONFRelay(self.getMyCall(), from_call)
+          #msg_addressed_to = self.addressMessage(tolist)
+
 
         if(command == cn.COMMAND_COPY):
           snr = self.acquireSNR(fldigi_instance)
@@ -4351,12 +4719,16 @@ outbox dictionary items formatted as...
           if(self.group_arq.formdesigner_mode == False ):
             self.form_gui.window['in_inbox_listentostation'].update(from_call)
 
-        elif(command == cn.COMMAND_REQM):
+        elif(command == cn.COMMAND_REQM or command == cn.COMMAND_REQMRLY):
           self.debug.info_message("Received REQM\n")
           msgid = param_1
 
+          #self.forwardREQMRelay(self.getMyCall(), from_call)
+
+
           #THIS IS FOR TESTING ONLY!!!!
           #"""
+          self.debug.info_message("testing in outbox")
           if(self.form_dictionary.doesOutboxDictionaryItemExist(msgid) == True):
             self.debug.info_message("outbox dictionary item exists\n")
             if(self.form_dictionary.getVerifiedFromOutboxDictionary(msgid) == 'yes'):
@@ -4372,14 +4744,18 @@ outbox dictionary items formatted as...
               version = '1.0'
               sender_callsign = self.getMyCall()
               content = self.form_dictionary.getContentFromOutboxDictionary(msgid)
-              complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tag_file, version, sender_callsign)
+              complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tag_file, version, sender_callsign, cn.OUTBOX)
               message = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
               self.sendFormFldigi(message, from_call, msgid)
           #"""
           """ Only check the relay box for any REQM requests """
+          self.debug.info_message("testing in relaybox")
           if(self.form_dictionary.doesRelayboxDictionaryItemExist(msgid) == True):
-            if(self.form_dictionary.getVerifiedFromRelayboxDictionary(msgid) == 'yes'):
+            self.debug.info_message("relaybox dictionary item exists\n")
+            if(self.form_dictionary.getVerifiedFromRelayboxDictionary2(msgid) == 'yes'):
+              self.debug.info_message("relaybox dictionary item verified")
               dict_item = self.form_dictionary.getRelayboxDictionaryItem(msgid)
+              self.debug.info_message("dictionary item is: " + str(dict_item))
               content  = dict_item.get('content')	
               formname = dict_item.get('formname')	
               priority = dict_item.get('priority')	
@@ -4390,12 +4766,12 @@ outbox dictionary items formatted as...
               version = '1.0'
               sender_callsign = self.getMyCall()
               content = self.form_dictionary.getContentFromRelayboxDictionary(msgid)
-              complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tag_file, version, sender_callsign)
+              complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tag_file, version, sender_callsign, cn.RELAYBOX)
               message = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
               self.sendFormFldigi(message, from_call, msgid)
 
       except:
-        self.debug.error_message("Exception in fldigi_callback2: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+        self.debug.error_message("Exception in fldigi_callback2 processing REQM: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
       """ this was a command so we are done"""
       return
@@ -4447,10 +4823,20 @@ outbox dictionary items formatted as...
       self.debug.info_message("session ended 1")
       self.resetReceivedStrings(self.active_rig, self.active_channel)
       self.fldigiclient.resetReceiveString()
+
+      #checked = self.form_gui.window['cb_general_auto_receive_stub_from_rts'].get()
+      #if(checked and len(self.saam_parser.rts_data) >=1):
+      #  self.pullStubMessage(self.getSenderCall(), self.saam_parser.rts_calsign)
+
     elif(fldigi_instance.testReceiveString(' ' + self.getEosMarker() + ' ' + self.getSenderCall() ) == True and self.fldigiclient.testRcvSignalStopped() == True):
       self.debug.info_message("session ended 2")
       self.resetReceivedStrings(self.active_rig, self.active_channel)
       self.fldigiclient.resetReceiveString()
+
+      #checked = self.form_gui.window['cb_general_auto_receive_stub_from_rts'].get()
+      #if(checked and len(self.saam_parser.rts_data) >=1):
+      #  self.pullStubMessage(self.getSenderCall(), self.saam_parser.rts_calsign)
+
 
     elif(fldigi_instance.testReceiveString(cn.COMM_QRYACK_MSG) == True and self.fldigiclient.testRcvSignalStopped() == True):
       self.debug.info_message("proc for ack?\n")
