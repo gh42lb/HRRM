@@ -51,6 +51,17 @@ class SaamParser(object):
     self.form_gui = form_gui
     self.saamfram = saamfram
 
+    """ used in RTS_MSG and RTSRLY_MSG messages with the PEND data flec"""
+    self.recent_data_flecs_pend = []
+    self.recent_data_flecs_pend_timestamp = 0
+    #self.rts_calsign = ''
+    #self.rts_data = []
+    #self.rtsrly_calsign = ''
+    #self.rtsrly_data = []
+
+    """ Used in PNDR data flec """
+    self.dict_pend_rly_data = {}
+    self.dict_reqm_rly_data = {}
 
   def compareStrings(self, text1, text2, modetype):
     if(modetype == cn.JS8CALL):
@@ -151,6 +162,15 @@ class SaamParser(object):
 
           return command, remainder, from_call_pre, groupname
         else:
+          if(len(from_call_pre) <= len(from_call_post)):
+            text = post_text[1]
+            self.debug.error_message("DISCARDING DATA LOC 3")
+            self.fldigiclient.setReceiveString(post_text[1])
+          elif(groupname != self.saamfram.getMyGroup()):
+            text = post_text[1]
+            self.debug.error_message("DISCARDING DATA LOC 4")
+            self.fldigiclient.setReceiveString(post_text[1])
+
           return cn.COMMAND_NONE, text, '', ''
 
       elif(msg_format == cn.MSG_FORMAT_TYPE_2):
@@ -192,6 +212,7 @@ class SaamParser(object):
       self.debug.error_message("method: newParser. " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
 
+  """ This method is the top level method to decode commands"""
   def testAndDecodeCommands(self, text, modetype):
 
     try:
@@ -202,6 +223,61 @@ class SaamParser(object):
 
       elif( self.compareStrings(cn.COMM_CQCQCQ, text, modetype) ):
         command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_CQCQCQ, cn.COMMAND_CQCQCQ, cn.MSG_FORMAT_TYPE_1, modetype)
+        return command, remainder, from_call_pre, groupname
+
+      elif( self.compareStrings(cn.COMM_TESTPROP, text, modetype) ):
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_TESTPROP, cn.COMMAND_TESTPROP, cn.MSG_FORMAT_TYPE_1, modetype)
+        return command, remainder, from_call_pre, groupname
+
+      elif( self.compareStrings(cn.COMM_STANDBY, text, modetype) ):
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_STANDBY, cn.COMMAND_STBY, cn.MSG_FORMAT_TYPE_1, modetype)
+        return command, remainder, from_call_pre, groupname
+
+      elif( self.compareStrings(cn.COMM_RTS_MSG, text, modetype) ):
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_RTS_MSG, cn.COMMAND_RTS, cn.MSG_FORMAT_TYPE_1, modetype)
+
+        self.debug.info_message("RTS_MSG LOC1" )
+        timestamp = int(round(datetime.utcnow().timestamp()))
+
+        if(self.recent_data_flecs_pend_timestamp + 60 > timestamp):
+          self.form_dictionary.dataFlecCache_addRtsPeer(from_call_pre, self.recent_data_flecs_pend)
+          self.debug.info_message("RTS_MSG LOC2" )
+          #self.rts_calsign = from_call_pre
+          #self.rts_data = self.recent_data_flecs_pend
+        else:
+          self.debug.info_message("RTS_MSG LOC3" )
+          #self.rts_calsign = ''
+          #self.rts_data = []
+          self.form_dictionary.dataFlecCache_addRtsPeer(from_call_pre, [])
+
+        self.debug.info_message("RTS_MSG LOC4" )
+
+        return command, remainder, from_call_pre, groupname
+
+      elif( self.compareStrings(cn.COMM_RTSRLY_MSG, text, modetype) ):
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_RTSRLY_MSG, cn.COMMAND_RTSRLY, cn.MSG_FORMAT_TYPE_1, modetype)
+
+        self.debug.info_message("RTSRLY_MSG LOC1" )
+        #timestamp = datetime.utcnow().strftime('%y%m%d%H%M%S')
+        timestamp = int(round(datetime.utcnow().timestamp()))
+
+        if(self.recent_data_flecs_pend_timestamp + 60 > timestamp):
+
+          #???????????
+          #self.form_dictionary.dataFlecCache_addRtsRelay(from_call_pre, self.dict_pend_rly_data)
+
+          self.form_dictionary.dataFlecCache_addRtsRelay(from_call_pre, self.recent_data_flecs_pend)
+          self.debug.info_message("RTSRLY_MSG LOC2" )
+          #self.rtsrly_calsign = from_call_pre
+          #self.rtsrly_data = self.recent_data_flecs_pend
+        else:
+          self.debug.info_message("RTSRLY_MSG LOC3" )
+          #self.rtsrly_calsign = ''
+          #self.rtsrly_data = []
+          self.form_dictionary.dataFlecCache_addRtsRelay(from_call_pre, [])
+
+        self.debug.info_message("RTSRLY_MSG LOC4" )
+
         return command, remainder, from_call_pre, groupname
 
       elif( self.compareStrings(cn.COMM_COPY, text, modetype) ):
@@ -235,6 +311,25 @@ class SaamParser(object):
           return cn.COMMAND_REQM, remainder, from_call_pre, msgid
         else:
           return cn.COMMAND_NONE, text, '', ''
+
+      #elif( self.compareStrings(cn.COMM_REQMRLY_MSG, text, modetype) ):
+      #  remainder = text.replace('  ', ' ')
+      #  split_string = remainder.split(cn.COMM_REQMRLY_MSG, 1)
+      #  before_text = split_string[0][-15:]
+      #  after_text = split_string[1]
+      #  pre_split = before_text.split(' ')
+      #  post_split = after_text.split(' ')
+      #  from_call_pre = pre_split[len(pre_split)-2][:-1]
+      #  msgid = post_split[0]
+      #  from_call_post = post_split[1]
+      #  self.debug.info_message("from_call_pre : " + from_call_pre )
+      #  self.debug.info_message("from_call_post : " + from_call_post )
+
+      #  if(from_call_pre == from_call_post):
+      #    remainder = text.split(cn.COMM_REQMRLY_MSG,1)[1]
+      #    return cn.COMMAND_REQMRLY, remainder, from_call_pre, msgid
+      #  else:
+      #    return cn.COMMAND_NONE, text, '', ''
 
       elif( self.compareStrings(cn.COMM_QRYSAAM_MSG, text, modetype) ):
         remainder = text.replace('  ', ' ')
@@ -398,6 +493,13 @@ class SaamParser(object):
           param2  = split3[1]
           param3  = split3[2]
           return True, remainder, param1, param2, param3
+        elif(numparams == 5):
+          param1  = split3[0]
+          param2  = split3[1]
+          param3  = split3[2]
+          param4  = split3[3]
+          param5  = split3[4]
+          return True, remainder, param1, param2, param3, param4, param5
         elif(numparams == 6):
           param1  = split3[0]
           param2  = split3[1]
@@ -407,7 +509,11 @@ class SaamParser(object):
           param6  = split3[5]
           return True, remainder, param1, param2, param3, param4, param5, param6
       else:
+        self.debug.info_message("pre msg checksum Failed Validation!")
         text = remainder
+        self.debug.error_message("DISCARDING DATA LOC 1")
+        self.fldigiclient.setReceiveString(remainder)
+
     except:
       self.debug.info_message("exception decoding pre message"  + str(sys.exc_info()[0]) + str(sys.exc_info()[1]) )
 
@@ -435,26 +541,137 @@ class SaamParser(object):
   def decodePreMsgRelay(self, text, end_of_premsg):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' RELAY(', 2)
 
-  def decodePreMsgPend(self, text, end_of_premsg):
+  def decodePreMsgPend(self, text, end_of_premsg, searchstr, numargs):
     self.debug.info_message("DECODING PRE MSG PEND(")
-    succeeded, remainder, msgid, rcv_list = self.decodePreMsgCommonN(text, end_of_premsg, ' PEND(', 2)
 
-    test_split = rcv_list.split(';')
-    add_to_inbox = False
-    for x in range (0, len(test_split)):
-      if(test_split[x].upper() == self.saamfram.getMyCall()):
-        add_to_inbox = True
-    timestamp = datetime.utcnow().strftime('%y%m%d%H%M%S')
-    if(add_to_inbox == True):
-      self.form_dictionary.createInboxDictionaryItem(msgid, rcv_list, '', '-', '-', timestamp, '-', {}, 'Stub' )
-      self.form_gui.window['table_inbox_messages'].update(values=self.group_arq.getMessageInbox() )
-      self.form_gui.window['table_inbox_messages'].update(row_colors=self.group_arq.getMessageInboxColors())
-    else:
-      self.form_dictionary.createRelayboxDictionaryItem(msgid, rcv_list, '', '-', '-', timestamp, '-', '', '', {}, 'Stub')
-      self.form_gui.window['table_relay_messages'].update(values=self.group_arq.getMessageRelaybox() )
-      self.form_gui.window['table_relay_messages'].update(row_colors=self.group_arq.getMessageRelayboxColors())
+    succeeded = False
+    remainder = ''
+    msgid=''
+    rcv_list = ''
+    total_hops = ''
+    hops_from_source = ''
+    conf_required = ''
+    dest_call = ''
+
+    try:
+      if(numargs == 2):
+        succeeded, remainder, msgid, rcv_list = self.decodePreMsgCommonN(text, end_of_premsg, searchstr, numargs)
+        self.debug.info_message("PEND msgid: " + str(msgid))
+        self.debug.info_message("PEND rcvlist: " + str(rcv_list))
+      elif(numargs == 5):
+        succeeded, remainder, msgid, dest_call, total_hops, hops_from_source, conf_required = self.decodePreMsgCommonN(text, end_of_premsg, searchstr, numargs)
+        rcv_list = dest_call
+        self.debug.info_message("PNDR msgid: " + str(msgid))
+        self.debug.info_message("PNDR dest_call: " + str(dest_call))
+        self.debug.info_message("PNDR total_hops " + str(total_hops))
+        self.debug.info_message("PNDR hops_from_source: " + str(hops_from_source))
+        self.debug.info_message("PNDR conf_required: " + str(conf_required))
+
+        if(dest_call not in self.dict_pend_rly_data):
+          self.dict_pend_rly_data[dest_call] = []
+        items = self.dict_pend_rly_data.get(dest_call)
+        items.append(str(msgid) + ',' + str(total_hops) + ',' + str(hops_from_source) + ',' + str(conf_required))
+        self.dict_pend_rly_data[dest_call] = items
+        self.debug.info_message("pend dictionary is: " + str(self.dict_pend_rly_data))
+
+      test_split = rcv_list.split(';')
+      add_to_inbox = False
+      for x in range (0, len(test_split)):
+        if(test_split[x].upper() == self.saamfram.getMyCall() ):
+          add_to_inbox = True
+      timestamp = datetime.utcnow().strftime('%y%m%d%H%M%S')
+
+      if(succeeded == True):
+        if(add_to_inbox == True):
+          self.form_dictionary.createInboxDictionaryItem(msgid, rcv_list, '', '-', '-', timestamp, '-', {}, 'Stub' )
+          self.form_gui.window['table_inbox_messages'].update(values=self.group_arq.getMessageInbox() )
+          self.form_gui.window['table_inbox_messages'].update(row_colors=self.group_arq.getMessageInboxColors())
+        else:
+          self.form_dictionary.createRelayboxDictionaryItem(msgid, rcv_list, '', '-', '-', timestamp, '-', '', '', {}, 'Stub')
+          self.form_gui.window['table_relay_messages'].update(values=self.group_arq.getMessageRelaybox() )
+          self.form_gui.window['table_relay_messages'].update(row_colors=self.group_arq.getMessageRelayboxColors())
+
+      if(succeeded):
+        timestamp_now = int(round(datetime.utcnow().timestamp()))
+        self.debug.info_message("success")
+        if(self.recent_data_flecs_pend_timestamp == 0):
+          self.debug.info_message("LOC5")
+          self.recent_data_flecs_pend_timestamp = timestamp_now
+        elif(self.recent_data_flecs_pend_timestamp + 60 < timestamp_now):
+          self.debug.info_message("LOC6")
+          self.recent_data_flecs_pend_timestamp = timestamp_now
+          self.recent_data_flecs_pend = []
+        self.debug.info_message("LOC7a")
+        self.recent_data_flecs_pend.append(msgid)
+        self.debug.info_message("LOC7b")
+        self.recent_data_flecs_pend_timestamp = timestamp_now
+        self.debug.info_message("LOC7")
+    except:
+      self.debug.error_message("Exception in decodePreMsgPend: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      #def decodePreMsgCommonN(self, text, end_of_premsg, findstr, numparams):
+      split_string = text.split(searchstr, 1)
+      split2 = split_string[1].split(end_of_premsg, 1)
+      remainder = split_string[0] + ' ' + split2[1]
+      self.debug.error_message("DISCARDING DATA LOC 2")
+      self.fldigiclient.setReceiveString(remainder)
+      #content = split2[0]
 
     return succeeded, remainder
+
+  """
+  def decodePreMsgPendRelay(self, text, end_of_premsg):
+    self.debug.info_message("DECODING PRE MSG PNDR(")
+
+    succeeded = False
+
+    try:
+      succeeded, remainder, msgid, rcv_list = self.decodePreMsgCommonN(text, end_of_premsg, ' PNDR(', 2)
+
+      test_split = rcv_list.split(';')
+      add_to_inbox = False
+      for x in range (0, len(test_split)):
+        if(test_split[x].upper() == self.saamfram.getMyCall() ):
+          add_to_inbox = True
+      timestamp = datetime.utcnow().strftime('%y%m%d%H%M%S')
+
+      if(succeeded == True):
+        if(add_to_inbox == True):
+          self.form_dictionary.createInboxDictionaryItem(msgid, rcv_list, '', '-', '-', timestamp, '-', {}, 'Stub' )
+          self.form_gui.window['table_inbox_messages'].update(values=self.group_arq.getMessageInbox() )
+          self.form_gui.window['table_inbox_messages'].update(row_colors=self.group_arq.getMessageInboxColors())
+        else:
+          self.form_dictionary.createRelayboxDictionaryItem(msgid, rcv_list, '', '-', '-', timestamp, '-', '', '', {}, 'Stub')
+          self.form_gui.window['table_relay_messages'].update(values=self.group_arq.getMessageRelaybox() )
+          self.form_gui.window['table_relay_messages'].update(row_colors=self.group_arq.getMessageRelayboxColors())
+
+      if(succeeded):
+        timestamp_now = int(round(datetime.utcnow().timestamp()))
+        self.debug.info_message("success")
+        if(self.recent_data_flecs_pend_timestamp == 0):
+          self.debug.info_message("LOC5")
+          self.recent_data_flecs_pend_timestamp = timestamp_now
+        elif(self.recent_data_flecs_pend_timestamp + 60 < timestamp_now):
+          self.debug.info_message("LOC6")
+          self.recent_data_flecs_pend_timestamp = timestamp_now
+          self.recent_data_flecs_pend = []
+        self.debug.info_message("LOC7a")
+        self.recent_data_flecs_pend.append(msgid)
+        self.debug.info_message("LOC7b")
+        self.recent_data_flecs_pend_timestamp = timestamp_now
+        self.debug.info_message("LOC7")
+    except:
+      self.debug.error_message("Exception in decodePreMsgPendRelay: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      #def decodePreMsgCommonN(self, text, end_of_premsg, findstr, numparams):
+      split_string = text.split(' PNDR(', 1)
+      split2 = split_string[1].split(end_of_premsg, 1)
+      remainder = split_string[0] + ' ' + split2[1]
+      self.debug.error_message("DISCARDING DATA LOC 2")
+      self.fldigiclient.setReceiveString(remainder)
+      #content = split2[0]
+
+    return succeeded, remainder
+  """
+
 
   def decodePreMsgQmsg(self, text, end_of_premsg):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' QMSG(', 6)
@@ -469,7 +686,10 @@ class SaamParser(object):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' ENDM(', 3)
 
   def decodePreMsgInfoGrid(self, text, end_of_premsg):
-    return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(GRID,', 2)
+    return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 3)
+
+  def decodePreMsgInfoSNR(self, text, end_of_premsg):
+    return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
 
   def decodePreMsgInfo(self, text, end_of_premsg):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
@@ -520,7 +740,7 @@ class SaamParser(object):
     return succeeded, remainder
 
 
-
+  """ This method is the top level method to decode all of the data flecs"""
   def testAndDecodePreMessage(self, text, modetype):
 
     succeeded = False
@@ -541,8 +761,20 @@ class SaamParser(object):
       end_of_premsg = self.testPreMsgStartEnd(text, ' PEND(', modetype)
       if( end_of_premsg != ''):
         self.debug.info_message("decode PEND")
-        succeeded, remainder = self.decodePreMsgPend(text, end_of_premsg)
+        succeeded, remainder = self.decodePreMsgPend(text, end_of_premsg,' PEND(', 2)
         return succeeded, remainder
+
+      end_of_premsg = self.testPreMsgStartEnd(text, ' PNDR(', modetype)
+      if( end_of_premsg != ''):
+        self.debug.info_message("decode PNDR")
+        succeeded, remainder = self.decodePreMsgPend(text, end_of_premsg,' PNDR(', 5)
+        return succeeded, remainder
+
+      #end_of_premsg = self.testPreMsgStartEnd(text, ' RMSG(', modetype)
+      #if( end_of_premsg != ''):
+      #  self.debug.info_message("decode PEND")
+      #  succeeded, remainder = self.decodePreMsgRequestMsg(text, end_of_premsg)
+      #  return succeeded, remainder
 
       end_of_premsg = self.testPreMsgStartEnd(text, ' QMSG(', modetype)
       if( end_of_premsg != ''):
@@ -567,12 +799,17 @@ class SaamParser(object):
       end_of_premsg = self.testPreMsgStartEnd(text, ' INFO(GRID,', modetype)
       if( end_of_premsg != ''):
         self.debug.info_message("decode INFO GRID")
-        succeeded, remainder = self.decodePreMsgInfoGrid(text, end_of_premsg)
+        succeeded, remainder, param1, param2, param3 = self.decodePreMsgInfoGrid(text, end_of_premsg)
 
-      end_of_premsg = self.testPreMsgStartEnd(text, ' INFO(', modetype)
+      end_of_premsg = self.testPreMsgStartEnd(text, ' INFO(SNR,', modetype)
       if( end_of_premsg != ''):
-        self.debug.info_message("decode INFO")
-        succeeded, remainder = self.decodePreMsgInfo(text, end_of_premsg)
+        self.debug.info_message("decode INFO SNR")
+        succeeded, remainder, param1, param2 = self.decodePreMsgInfoSNR(text, end_of_premsg)
+
+      #end_of_premsg = self.testPreMsgStartEnd(text, ' INFO(', modetype)
+      #if( end_of_premsg != ''):
+      #  self.debug.info_message("decode INFO")
+      #  succeeded, remainder = self.decodePreMsgInfo(text, end_of_premsg)
 
       end_of_premsg = self.testPreMsgStartEnd(text, ' BEAC(', modetype)
       if( end_of_premsg != ''):
@@ -588,6 +825,14 @@ class SaamParser(object):
       if( end_of_premsg != ''):
         self.debug.info_message("decode REQM")
         succeeded, remainder = self.decodePreMsgReqm(text, end_of_premsg)
+
+      """ discard erroneous flec"""
+      #if(succeeded == False):
+      #  flec = self.testPreMsgStartEnd(text, '(', modetype)
+      #  if(flec != ''):
+      #    remainder = text.split(')')[1]
+      #    self.debug.info_message("DISCARDING ERRONEOUS FLEC: ")
+
 
     except:
       self.debug.error_message("method: decodeCommands. " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
