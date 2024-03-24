@@ -64,9 +64,24 @@ class FormDictionary(object):
     self.sentbox_file_dictionary_data = {}
     self.peerstn_file_dictionary_data = {}
     self.relaystn_file_dictionary_data = {}
+#    self.conversion_file_dictionary_data = {}
     self.form_events = None
     self.group_arq = None
     self.debug = debug
+
+    #self.recent_data_flecs_pend = []
+    #self.recent_data_flecs_pend_timestamp = 0
+    #self.rts_calsign = ''
+    #self.rts_data = []
+    #self.rtsrly_calsign = ''
+    #self.rtsrly_data = []
+    #self.dict_pend_rly_data = {}
+    #self.dict_reqm_rly_data = {}
+
+    self.dataFlecCache = {}
+    self.dataFlecCache_clearAll()
+
+
     return
 
   def setFormEvents(self, form_events):
@@ -76,6 +91,377 @@ class FormDictionary(object):
   def setGroupArq(self, group_arq):
     self.group_arq = group_arq
     return
+
+
+  def dataFlecCache_addMsgPendPeer(self, ID, station, selected_item):
+
+    self.debug.info_message("dataFlecCache_addMsgPendPeer")
+
+    primary_key = station + '_' + ID
+    current_dict = self.dataFlecCache.get('pending_peer')
+
+    if(primary_key not in current_dict):
+      current_dict[primary_key] = {'timestamp' : int(round(datetime.utcnow().timestamp())) ,
+                                   'item'      : selected_item }
+
+    return
+
+  def dataFlecCache_addMsgPendRelay(self, ID, station, selected_item):
+
+    self.debug.info_message("dataFlecCache_addMsgPendRelay")
+
+    primary_key = station + '_' + ID
+    current_dict = self.dataFlecCache.get('pending_relay')
+
+    if(primary_key not in current_dict):
+      current_dict[primary_key] = {'timestamp' : int(round(datetime.utcnow().timestamp())) ,
+                                   'item'      : selected_item }
+
+    return
+
+  def dataFlecCache_addActivePeer(self, station):
+
+    self.debug.info_message("dataFlecCache_addActivePeer")
+
+    current_list = self.dataFlecCache.get('active_peer_calls')
+
+    if(station not in current_list):
+      current_list.append(station)
+      self.dataFlecCache['active_peer_calls'] = current_list
+
+    self.debug.info_message("dataFlecCache_addActivePeer: " + str(self.dataFlecCache) )
+
+    return
+
+
+  def dataFlecCache_addActiveRelay(self, station):
+
+    self.debug.info_message("dataFlecCache_addActiveRelay")
+
+    current_list = self.dataFlecCache.get('active_relay_calls')
+
+    if(station not in current_list):
+      current_list.append(station)
+      self.dataFlecCache['active_relay_calls'] = current_list
+
+    self.debug.info_message("dataFlecCache_addActiveRelay: " + str(self.dataFlecCache) )
+
+    return
+
+  def dataFlecCache_addRtsPeer(self, station, data_flecs):
+
+    self.debug.info_message("dataFlecCache_addRtsPeer")
+
+    timestamp = int(round(datetime.utcnow().timestamp()))
+    current_dict = self.dataFlecCache.get('rts_peer')
+    current_dict[station] = [timestamp, data_flecs]
+
+    self.debug.info_message("dataFlecCache_addRtsPeer completed" )
+
+    return
+
+  def dataFlecCache_getRtsPeer(self, station):
+
+    self.debug.info_message("dataFlecCache_getRtsPeer")
+
+    current_dict = self.dataFlecCache.get('rts_peer')
+    list_item = current_dict.get(station)
+
+    data_flecs = list_item[1]
+    self.debug.info_message("dataFlecCache_getRtsPeer completed" )
+
+    return data_flecs
+
+  def dataFlecCache_getRtsRelay(self, station):
+
+    self.debug.info_message("dataFlecCache_getRtsRelay")
+
+    current_dict = self.dataFlecCache.get('rts_relay')
+    list_item = current_dict.get(station)
+
+    data_flecs = list_item[1]
+    self.debug.info_message("dataFlecCache_getRtsRelay completed" )
+
+    return data_flecs
+
+  def dataFlecCache_removeItemRtsPeer(self, station, rts_msgid):
+
+    self.debug.info_message("dataFlecCache_removeItemRtsPeer")
+
+    current_dict = self.dataFlecCache.get('rts_peer')
+    list_item = current_dict.get(station)
+    timestamp = list_item[0]
+    data_flecs = list_item[1]
+    data_flecs.remove(rts_msgid)
+    #timestamp = int(round(datetime.utcnow().timestamp()))
+    current_dict[station] = [timestamp, data_flecs]
+
+    self.debug.info_message("dataFlecCache_removeItemRtsPeer completed" )
+
+    return
+
+  def dataFlecCache_removeItemRtsRelay(self, station, rts_msgid):
+
+    self.debug.info_message("dataFlecCache_removeItemRtsRelay")
+
+    current_dict = self.dataFlecCache.get('rts_relay')
+    list_item = current_dict.get(station)
+    timestamp = list_item[0]
+    data_flecs = list_item[1]
+    data_flecs.remove(rts_msgid)
+    current_dict[station] = [timestamp, data_flecs]
+
+    self.debug.info_message("dataFlecCache_removeItemRtsRelay completed" )
+
+    return
+
+  def dataFlecCache_addRtsRelay(self, station, data_flecs):
+
+    self.debug.info_message("dataFlecCache_addRtsRelay")
+
+    timestamp = int(round(datetime.utcnow().timestamp()))
+    current_dict = self.dataFlecCache.get('rts_relay')
+    current_dict[station] = [timestamp, data_flecs]
+
+    self.debug.info_message("dataFlecCache_addRtsRelay completed" )
+
+    return
+
+  def dataFlecCache_clearActive(self):
+
+    self.debug.info_message("dataFlecCache_clearActive")
+
+    self.dataFlecCache['active_peer_calls']  = []
+    self.dataFlecCache['active_relay_calls'] = []
+
+    return
+
+  def dataFlecCache_clearAll(self):
+
+    self.debug.info_message("dataFlecCache_clearAll")
+
+    self.dataFlecCache = {}
+
+    self.dataFlecCache['active_peer_calls']  = []
+    self.dataFlecCache['active_relay_calls'] = []
+    self.dataFlecCache['pending_peer']       = {}
+    self.dataFlecCache['requested_peer']     = {}
+    self.dataFlecCache['pending_relay']      = {}
+    self.dataFlecCache['requested_relay']    = {}
+    self.dataFlecCache['confirmed_relay']    = {}
+    self.dataFlecCache['rts_peer']           = {}
+    self.dataFlecCache['rts_relay']          = {}
+
+    return
+
+  def dataFlecCache_rebuild(self, how_recent):
+
+    self.debug.info_message("dataFlecCache_rebuild")
+
+    self.selectRecentFromPeerstnDicttionaryItems(how_recent)
+    self.selectRecentFromRelaystnDicttionaryItems(how_recent)
+
+    self.dataFlecCache['pending_peer']       = {}
+    self.dataFlecCache['pending_relay']      = {}
+
+    self.dataFlecCache_rebuildMsgPendPeer()
+    self.dataFlecCache_rebuildMsgPendRelay()
+
+    self.debug.info_message("dataFlecCache_rebuild. Dictionary is: " + str(self.dataFlecCache) )
+
+    return
+
+  def dataFlecCache_rebuildMsgPendPeer(self):
+    
+    self.debug.info_message("dataFlecCache_rebuildMsgPendPeer")
+
+    try:
+      items = self.group_arq.getMessageOutbox()
+
+      if(items == []):
+        return
+
+      current_list = self.dataFlecCache.get('active_peer_calls')
+
+      for selected_item in items:
+        to_list  = selected_item[1].split(';')
+        priority = selected_item[4]
+        msgid    = selected_item[6]
+
+
+        for count in range(0,len(to_list)):
+          station = to_list[count]
+          if(station in current_list):
+            self.dataFlecCache_addMsgPendPeer(msgid, station, selected_item)
+
+
+    except:
+      self.debug.error_message("Exception in dataFlecCache_rebuildMsgPendPeer: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return          
+
+  def dataFlecCache_rebuildMsgPendRelay(self):
+    
+    self.debug.info_message("dataFlecCache_rebuildMsgPendRelay")
+
+    items = self.group_arq.getMessageRelaybox()
+
+    if(items == []):
+      return
+
+    current_list = self.dataFlecCache.get('active_relay_calls')
+
+    for selected_item in items:
+      to_list  = selected_item[1].split(';')
+      priority = selected_item[4]
+      msgid    = selected_item[6]
+
+      for count in range(0,len(to_list)):
+        station = to_list[count]
+        if(station in current_list):
+          self.dataFlecCache_addMsgPendRelay(msgid, station, selected_item)
+
+    return          
+
+  def dataFlecCache_selectRandomMsgPendPeer(self, num_msgs):
+
+    self.debug.info_message("dataFlecCache_selectRandomMsgPendPeer")
+
+    complete_message = ''
+
+    try:
+
+      current_dict = self.dataFlecCache.get('pending_peer')
+
+      self.debug.info_message("pending peer messages:- " + str(current_dict))
+
+      list_one = list(current_dict.items())
+      list_two = []
+
+      if(len(list_one) > num_msgs):
+        for count in range(0, num_msgs):
+          key = random.choice(list_one)
+          list_two.append(key)
+          list_one.remove(key)
+      else:
+        for key in current_dict:
+          list_two.append(key)
+
+
+      for count in range(0, len(list_two) ):
+        self.debug.info_message("key is: " + str(list_two[count]))
+        val = current_dict.get(list_two[count])
+        selected_item = val.get('item')
+        to_list  = selected_item[1]
+        priority = selected_item[4]
+        msgid    = selected_item[6]
+
+        message = 'PEND(' + msgid + ',' + to_list 
+        checksum = self.group_arq.saamfram.getChecksum(msgid + ',' + to_list)
+        complete_message = complete_message + message + ',' + checksum +  '),'
+
+      self.debug.info_message("dataFlecCache_selectRandomMsgPendPeer complete message: " + str(complete_message.strip(',')))
+
+    except:
+      self.debug.error_message("Exception in dataFlecCache_selectRandomMsgPendPeer: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+
+    return complete_message.strip(',')
+
+
+  def dataFlecCache_selectRandomMsgPendRelay(self, num_msgs):
+
+    self.debug.info_message("dataFlecCache_selectRandomMsgPendRelay")
+
+    complete_message = ''
+
+    current_dict = self.dataFlecCache.get('pending_relay')
+    list_one = list(current_dict.items())
+    list_two = []
+
+    if(len(list_one) > num_msgs):
+      for count in range(0, num_msgs):
+        key = random.choice(list_one)
+        list_two.append(key)
+        list_one.remove(key)
+    else:
+      for key in current_dict:
+        list_two.append(key)
+      #list_two = list_one
+
+    for count in range(0, len(list_two) ):
+      #key, val = current_dict.get(list_two[count])
+      val = current_dict.get(list_two[count])
+      selected_item = val.get('item')
+      to_list  = selected_item[1]
+      priority = selected_item[4]
+      msgid    = selected_item[6]
+
+      dest_call = 'WH6TEST'
+      total_hops = 0
+      hops_from_source = 0
+      conf_required = 0
+
+      message_part = msgid + ',' + dest_call + ',' + str(total_hops) + ',' + str(hops_from_source) + ',' + str(conf_required) 
+      message = 'PNDR(' + message_part
+      checksum = self.group_arq.saamfram.getChecksum(message_part)
+      complete_message = complete_message + message + ',' + checksum +  '),'
+
+    return complete_message.strip(',')
+
+
+
+  def dataFlecCache_create(self):
+
+    self.debug.info_message("dataFlecCache_create")
+
+    """
+    self.dataFlecCache = { 'pending_peer'    :       {'destcallsign_ID'    : {'timestamp'     : '123',
+                                                                              'source'        : 'abc',
+                                                                              'conf_required' : 'abc',
+                                                                              'hop_count'     : 'abc',
+                                                                              'total_hops'    : 'abc'},
+                                                     },
+                           'requested_peer'  :       {'destcallsign_ID'    : {'timestamp' : '123',
+                                                                           'source' : 'abc'},
+                                                     },                         
+                           'pending_relay'   :       {'destcallsign_ID'    : {'timestamp' : '123',
+                                                                           'source' : 'abc'},
+                                                     },                         
+                           'requested_relay' :       {'destcallsign_ID'    : {'timestamp' : '123',
+                                                                           'source' : 'abc'},
+                                                     },                   
+                           'confirmed_relay' :       {'destcallsign_ID'    : {'timestamp' : '123',
+                                                                           'source' : 'abc'},
+                                                     },                   
+                         }
+    """
+
+    self.dataFlecCache_clearAll()
+
+
+    #if(dest_call not in self.dict_pend_rly_data):
+    #  self.dict_pend_rly_data[dest_call] = []
+
+    #items = self.dict_pend_rly_data.get(dest_call)
+    #items.append(str(msgid) + ',' + str(total_hops) + ',' + str(hops_from_source) + ',' + str(conf_required))
+    #self.dict_pend_rly_data[dest_call] = items
+
+    #self.debug.info_message("pend dictionary is: " + str(self.dict_pend_rly_data))
+    #    timestamp_now = int(round(datetime.utcnow().timestamp()))
+    #    self.debug.info_message("success")
+    #    if(self.recent_data_flecs_pend_timestamp == 0):
+    #      self.debug.info_message("LOC5")
+    #      self.recent_data_flecs_pend_timestamp = timestamp_now
+    #    elif(self.recent_data_flecs_pend_timestamp + 60 < timestamp_now):
+    #      self.debug.info_message("LOC6")
+    #      self.recent_data_flecs_pend_timestamp = timestamp_now
+    #      self.recent_data_flecs_pend = []
+
+
+
+    return
+
 
   """
   Template dictionary section
@@ -491,10 +877,28 @@ class FormDictionary(object):
     formname = dictionary2.get('formname')		  
     return formname
 
+
   def getVerifiedFromRelayboxDictionary(self, msgid):
+
+    try:
+      dictionary = self.relaybox_file_dictionary_data[msgid]
+      dictionary2 = dictionary.get('0')
+      verified = dictionary2.get('verified')		  
+    except:
+      self.debug.error_message("Exception in getVerifiedFromRelayboxDictionary: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      return ''
+
+    return verified
+
+  #FICME DELETE
+  def getVerifiedFromRelayboxDictionary2(self, msgid):
     dictionary = self.relaybox_file_dictionary_data[msgid]
     dictionary2 = dictionary.get('0')
     verified = dictionary2.get('verified')		  
+
+    #FIXME
+    verified = 'yes'
+
     return verified
 
 
@@ -767,11 +1171,8 @@ class FormDictionary(object):
         self.debug.info_message("Difference is : " + str(difference) )
         self.debug.info_message("How recent is: " + str(how_recent) )
 
-        self.debug.info_message("LOC 1"  )
 
-        self.debug.info_message("LOC 2"  )
         if(difference < how_recent):
-          self.debug.info_message("LOC 3"  )
 
           self.debug.info_message("ADDING stn : " + str(key) )
           station    = key
@@ -782,6 +1183,10 @@ class FormDictionary(object):
           modulation = message.get('modulation')
           snr        = message.get('snr')
           self.group_arq.addSelectedStation(station, num, grid, connect, rig, modulation, snr, ID)
+
+          self.dataFlecCache_addActivePeer(station)
+          #if(station not in self.group_arq.active_station_checklist):
+          #  self.group_arq.active_station_checklist.append(station)
 
     except:
       self.debug.error_message("Exception in selectRecentFromPeerstnDicttionaryItems: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
@@ -919,6 +1324,10 @@ class FormDictionary(object):
 
         self.group_arq.addSelectedRelayStation(station, num, grid, relay_callsign, connect, hops, ID)
 
+        self.dataFlecCache_addActiveRelay(station)
+        #if(station not in self.group_arq.active_station_checklist):
+        #  self.group_arq.active_station_checklist.append(station)
+
 
     self.debug.info_message("selectRecentFromRelaystnDicttionaryItems. completed" )
    
@@ -1031,7 +1440,10 @@ class FormDictionary(object):
   """ currently used for testing purposes only"""
   def getVerifiedFromOutboxDictionary(self, msgid):
     dictionary = self.outbox_file_dictionary_data[msgid]
-    verified = 'yes'
+
+    verified = dictionary.get('verified')		  
+
+    #verified = 'yes'
     return verified
 
   def getOutboxDictionaryItem(self, msgid):
@@ -1325,7 +1737,7 @@ class FormDictionary(object):
       message_dictionary2 = message.get('0')
 
       content   = message_dictionary2.get('content')
-      msgto     = message_dictionary2.get('to')
+      msgto     = self.group_arq.forwardMsgRemoveOwnCallsign(message_dictionary2.get('to'))
       msgfrom   = message_dictionary2.get('from')
       subject   = message_dictionary2.get('subject')
       timestamp = message_dictionary2.get('timestamp')
@@ -1477,7 +1889,20 @@ class FormDictionary(object):
                            'WinlinkInboxFolder'      : '',
                            'WinlinkOutboxFolder'     : '',
                            'WinlinkRMSMsgFolder'     : '',
-                           'DisplayTheme'            : 'DarkRed1',
+                           'WinlinkPatBinary'        : '',
+                           'WinlinkPatTemplatesFolder'   : '',
+                           'WinlinkOverridePatBinary'   : '',
+
+                           'AutoReplyPeer'           : False,
+                           'AutoReplyRelay'          : False,
+                           'TXEnable'                : True,
+
+                           'EmailForwardType'        : 'Internet',
+                           'FormForwardType'         : 'HRRM',
+
+                           'DisplayTheme'            : 'DarkBlue14',
+                           'EmailAutoForward'        : True,
+                           'FormsAutoForward'        : True,
 
                            'Sequences'               : self.createSequenceDefaults(),
 
@@ -1624,17 +2049,29 @@ class FormDictionary(object):
     """ individual fields first """	  
     details = { 'params': {
                            'ConnectTo'               : values['in_inbox_listentostation'],
-                           'WinlinkInboxFolder'      : values['in_winlink_inboxfolder'],
-                           'WinlinkOutboxFolder'     : values['in_winlink_outboxfolder'],
-                           'WinlinkRMSMsgFolder'     : values['in_winlink_rmsmsgfolder'],
+                           'WinlinkInboxFolder'      : self.group_arq.form_gui.getWinlinkInboxFolder(),#values['in_winlink_inboxfolder'],
+                           'WinlinkOutboxFolder'     : self.group_arq.form_gui.getWinlinkOutboxFolder(),#values['in_winlink_outboxfolder'],
+                           'WinlinkRMSMsgFolder'     : self.group_arq.form_gui.getWinlinkRmsmsgFolder(),#values['in_winlink_rmsmsgfolder'],
+                           'WinlinkPatBinary'        : values['input_general_patbinary'],
+                           'WinlinkPatTemplatesFolder'   : '', #values['input_general_pattemplatesfolder'],
+                           'WinlinkOverridePatBinary'   : values['cb_general_patbinaryoverride'],
+
+                           'AutoReplyPeer'           : values['cb_general_autoreply_peer'],
+                           'AutoReplyRelay'          : values['cb_general_autoreply_relay'],
+                           'TXEnable'                : values['cb_mainwindow_txenable'],
+
+                           'EmailForwardType'        : values['option_general_forwardemailtype'],
+                           'FormForwardType'         : values['option_general_forwardformtype'],
 
                            'DisplayTheme'            : values['listbox_theme_select'],
+                           'EmailAutoForward'        : values['cb_general_autoforward'],
+                           'FormsAutoForward'        : values['cb_general_autoforward_forms'],
 
                            'Sequences'               : self.group_arq.saamfram.main_params.get('params').get('Sequences'),
 
                            'Templates'           : self.group_arq.getLoadedTemplateFiles(), #['ICS_Form_Templates.tpl'],
                            'UseAttachedGps'      : 'Rig1',
-                           'AutoReceive'         : values['cb_mainwindow_autoacceptps'],
+                           'AutoReceive'         : values['cb_general_auto_receive_stub_from_rts'],
                            'AutoLoadTemplate'    : values['cb_settings_autoload'],
 
                            'UseConnectTo'        : values['cb_chat_useconnecto'],
