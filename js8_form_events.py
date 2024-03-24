@@ -2427,7 +2427,8 @@ class ReceiveControlsProc(object):
       items = modified_send_string2.split(cn.DELIMETER_CHAR)
 
       header_info = []
-      for count in range(0, 8):
+      #for count in range(0, 8):
+      for count in range(1, 9):
         header_info.append(items[count])
       self.debug.info_message("header info is:" + str(header_info))
 
@@ -2478,7 +2479,8 @@ class ReceiveControlsProc(object):
     items = modified_send_string2.split(cn.DELIMETER_CHAR)
 
     header_info = []
-    for count in range(0, 8):
+    #for count in range(0, 8):
+    for count in range(1, 9):
       header_info.append(items[count])
     self.debug.info_message("header info is:" + str(header_info))
 
