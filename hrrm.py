@@ -83,6 +83,8 @@ class NetGarq(object):
     self.chat_data = []
     self.selected_template = 'General Message'
     self.debug = debug
+
+    #self.active_station_checklist = []
     
     self.form_gui = None
     self.form_events = None
@@ -573,6 +575,22 @@ class NetGarq(object):
     self.winlink_outbox_files = winlinkfiles
     return
 
+  def getWinlinkOutboxColors(self):
+    selected_colors = []
+
+    for x in range (len(self.winlink_outbox_files)):
+      lineitem = self.winlink_outbox_files[x]
+      filename = lineitem[0]
+
+      if(filename in self.form_events.winlink_import.winlink_outbox_folder_files):
+        selected_colors.append([x, 'white'])
+      else:
+        selected_colors.append([x, 'green1'])
+
+    return selected_colors
+
+
+
 
   """ Winlink RMS message folder Files """
   def clearWinlinkRMSMsgFiles(self):
@@ -705,11 +723,30 @@ class NetGarq(object):
     return
 
   def getMessageRelayboxColors(self):
+    self.debug.info_message("getMessageRelayboxColors")
     selected_colors = []
+    flash_relay_button = False
 
     for x in range (len(self.messages_relaybox)):
       lineitem = self.messages_relaybox[x]
       selected = lineitem[9]
+
+      """ check if the message recipients are in the active station list"""
+      #msgto = lineitem[1].split(';')
+      #for z in range (len(msgto)):
+      #  if(msgto[z] in self.group_arq.active_station_checklist):
+      #    msgconf = lineitem[7].split(';')
+      #    found = False
+      #    for y in range (len(msgconf)):
+      #      if(msgconf[y] in self.group_arq.active_station_checklist):
+      #        found = True
+      #    if(found == False):
+      #      selected_colors.append([x, 'green1'])
+      #      flash_relay_button = True
+      #      self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_relay', True)
+      #      break
+      #self.messages_relaybox[x] = [msgfrom, msgto, subject, timestamp, priority, msgtype, msgid, conf_rcvd, frag_size, verified]
+
 
       if(selected == 'Verified'):
         selected_colors.append([x, 'green1'])
@@ -719,6 +756,13 @@ class NetGarq(object):
         selected_colors.append([x, 'blue'])
       elif(selected == 'CRC'):
         selected_colors.append([x, 'red'])
+
+    if(flash_relay_button == True):
+      self.form_gui.form_events.changeFlashButtonState('btn_compose_haverelaymsgs', True)
+      self.debug.info_message("getMessageRelayboxColors set relay flash state True")
+    else:
+      self.form_gui.form_events.changeFlashButtonState('btn_compose_haverelaymsgs', False)
+      self.debug.info_message("getMessageRelayboxColors set relay flash state False")
 
     return selected_colors
 
@@ -794,6 +838,21 @@ class NetGarq(object):
         selected_colors.append([x, 'red'])
 
     return selected_colors
+
+
+  """ re-write the to-list callsigns as a filsafe. Used when forwarding messages """
+  def forwardMsgRemoveOwnCallsign(self, tolist):
+
+    my_call = self.saamfram.getMyCall()
+
+    items = tolist.split(';')
+
+    return_str = ''
+    for x in range (len(items)):
+      if(items[x] != my_call):
+        return_str = return_str + items[x] + ';'
+
+    return return_str.strip(';')
 
 
   def getMyGPSLocationFromDongle(self):
@@ -910,7 +969,25 @@ class NetGarq(object):
     return ()
 
 
+  def sendTheMessage(self, message, set_txid):
+
+    checked = self.form_gui.window['cb_mainwindow_txenable'].get()
+    self.debug.info_message("checked : " + str(checked))
+
+    if(checked):
+      if(set_txid):
+        self.saamfram.setTxidState(self.saamfram.tx_rig, self.saamfram.tx_channel, True)
+
+      self.saamfram.setCommStatus(self.saamfram.tx_rig, self.saamfram.tx_channel, cn.COMM_QUEUED_TXMSG)
+      self.saamfram.setExpectedReply(self.saamfram.tx_rig, self.saamfram.tx_channel, cn.COMM_LISTEN)
+      self.sendItNowRig1(message)
+
+    return
+
   def sendItNowRig1(self, fragtagmsg):
+
+    self.debug.info_message("sendItNowRig1")
+
     if(self.operating_mode == cn.FLDIGI or self.operating_mode == cn.JSDIGI):
       self.debug.info_message("sendItNowRig1 FLDIGI\n")
 
@@ -930,7 +1007,9 @@ class NetGarq(object):
       self.debug.info_message("calling saamfram: " + fragtagmsg )
       pre_message = ''
 
-      self.saamfram.sendFormFldigi(pre_message + fragtagmsg, tolist, msgid)
+      checked = self.form_gui.window['cb_mainwindow_txenable'].get()
+      if(checked):
+        self.saamfram.sendFormFldigi(pre_message + fragtagmsg, tolist, msgid)
     elif(self.operating_mode == cn.JS8CALL or self.operating_mode == cn.JSDIGI):
       self.debug.info_message("sendFormRig1 JS8\n")
       self.saamfram.sendFormJS8(fragtagmsg, tolist)
