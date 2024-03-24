@@ -84,7 +84,7 @@ class ReceiveControlsProc(object):
     self.tablerow_templaterow_xref = {}
     self.window_initialized = False
 
-    self.winlink_import = winlink_import.WinlinkImport(debug)
+    self.winlink_import = winlink_import.WinlinkImport(debug, self.form_gui)
 
     self.editing_table = False
     self.editing_scrolly_pos = 0
@@ -93,6 +93,9 @@ class ReceiveControlsProc(object):
     self.editing_table_button = None
     self.editing_table_row = 0
     self.editing_table_col = 0
+
+    self.five_minute_timer = 0
+    self.ten_minute_timer = 0
 
     #FIXME REMOVE
     self.substationClient1 = None
@@ -110,6 +113,7 @@ class ReceiveControlsProc(object):
                                   'btn_compose_areyoureadytoreceive'  : ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'white,slate gray'],
                                   'btn_inbox_sendreqm'       : ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'white,slate gray'],
                                   'btn_inbox_viewmsg'        : ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'white,slate gray'],
+                                  'btn_compose_haverelaymsgs' : ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'white,slate gray'],
                                   'in_inbox_listentostation' : ['False', 'red,green1', 'green1,red', cn.STYLE_INPUT, 'white,gray'],
                                   'text_mainarea_insession'  : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
 
@@ -183,7 +187,15 @@ class ReceiveControlsProc(object):
 
     if(self.window_initialized == False and self.form_gui.window != None):
 
+      """ initialize the ten minute timer"""
+      self.event_btnmainpanelupdaterecent(values)
+      timestamp_now = int(round(datetime.utcnow().timestamp()))
+      self.five_minute_timer = timestamp_now
+      self.ten_minute_timer  = timestamp_now
+
       self.debug.info_message("event_catchall Window Not Initialized")
+
+      self.winlink_import.noteExistingWinlinkFiles(self.saamfram)
 
       self.event_btnmainareareset(values)
       self.window_initialized = True		
@@ -191,27 +203,46 @@ class ReceiveControlsProc(object):
       winlink_folder_in  = self.form_gui.window['in_winlink_inboxfolder'].get().strip()
       winlink_folder_out = self.form_gui.window['in_winlink_outboxfolder'].get().strip()
       winlink_folder_rms = self.form_gui.window['in_winlink_rmsmsgfolder'].get().strip()
+      winlink_folder_templates  = self.form_gui.window['input_general_pattemplatesfolder'].get().strip()
       callsign = self.form_gui.window['input_myinfo_callsign'].get().strip()
 
       if (platform.system() == 'Windows'):
         username = os.getenv('USERNAME')
-        if(winlink_folder_rms =='' and os.path.exists('C:\\RMS Express\\' + callsign + '\\Messages\\')):
-          self.form_gui.window['in_winlink_rmsmsgfolder'].update('C:\\RMS Express\\' + callsign + '\\Messages\\')
+        if(winlink_folder_rms =='' or winlink_folder_rms =='\\'):
+          if(os.path.exists('C:\\RMS Express\\' + callsign + '\\Messages\\')):
+            self.form_gui.window['in_winlink_rmsmsgfolder'].update('C:\\RMS Express\\' + callsign + '\\Messages\\')
         if(os.path.exists('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign )):
-          if(winlink_folder_in ==''):
+          if(winlink_folder_in =='' or winlink_folder_in =='\\'):
             self.form_gui.window['in_winlink_inboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\in\\')
-          if(winlink_folder_out ==''):
+          if(winlink_folder_out =='' or winlink_folder_out =='\\'):
             self.form_gui.window['in_winlink_outboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\out\\')
+
+        if(os.path.exists('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\' )):
+          if(winlink_folder_templates ==''):
+            self.form_gui.window['input_general_pattemplatesfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\')
+
+        self.event_winlinklist(values)
+
       else:
-        username = 'pi'
         username = os.getenv('USER')
-        if(winlink_folder_rms =='' and os.path.exists('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')):
-          self.form_gui.window['in_winlink_rmsmsgfolder'].update('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')
-        if(os.path.exists('/home/' + username + '/.wl2k/mailbox/' + callsign + '/')):
-          if(winlink_folder_in ==''):
-            self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'in/')
-          if(winlink_folder_out ==''):
-            self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'out/')
+        if(winlink_folder_rms =='' or winlink_folder_rms =='/'):
+          if(os.path.exists('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')):
+            self.form_gui.window['in_winlink_rmsmsgfolder'].update('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')
+        #if(os.path.exists('/home/' + username + '/.wl2k/mailbox/' + callsign + '/')):
+        if(os.path.exists('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/')):
+          if(winlink_folder_in =='' or winlink_folder_in =='/'):
+            #self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'in/')
+            self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'in/')
+          if(winlink_folder_out =='' or winlink_folder_out =='/'):
+            #self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'out/')
+            self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'out/')
+
+        """ set the templates folder"""
+        if(os.path.exists('/home/' + username + '/.wl2k/')):
+          if(winlink_folder_templates ==''):
+            self.form_gui.window['input_general_pattemplatesfolder'].update('/home/' + username + '/.wl2k/')
+
+        self.event_winlinklist(values)
 
 
       if(self.group_arq.formdesigner_mode == False):
@@ -248,6 +279,20 @@ class ReceiveControlsProc(object):
           self.refresh_timer = 0
 
     if(self.group_arq.formdesigner_mode == False):
+
+      timestamp_now = int(round(datetime.utcnow().timestamp()))
+      if( (self.five_minute_timer+(5*60)) <= timestamp_now ):
+      #if( (self.five_minute_timer+(5)) <= timestamp_now ):
+        self.debug.info_message("5 minute timer triggered")
+        self.five_minute_timer = timestamp_now
+        self.event_btnmainpanelupdaterecent(values)
+        self.form_gui.window['table_relay_messages'].update(row_colors=self.group_arq.getMessageRelayboxColors())
+
+      if( (self.ten_minute_timer+(10*60)) <= timestamp_now ):
+        self.debug.info_message("10 minute timer triggered")
+        self.ten_minute_timer = timestamp_now
+
+
       if(self.flash_timer_group1 <6):
         self.flash_timer_group1 = self.flash_timer_group1 + 1
       elif(self.flash_timer_group1 >=6):
@@ -781,6 +826,100 @@ class ReceiveControlsProc(object):
     return
 
 
+  def event_popupformcommon(self, values, category, formname, filename):
+    self.debug.info_message("event_popupformcommon")
+
+    form_content = ['', '', '', '']
+    selected_stations = self.group_arq.getSelectedStations()
+    msgto = values['in_compose_selected_callsigns']
+    callsign = self.saamfram.getMyCall()
+
+    self.debug.info_message("saamfram: " + str(self.saamfram) +  "\n")
+
+    ID = self.saamfram.getEncodeUniqueId(callsign)
+    self.saamfram.getDecodeTimestampFromUniqueId(ID)
+
+    self.debug.info_message("reverse encoded callsign is: " + self.group_arq.saamfram.getDecodeCallsignFromUniqueId(ID) )
+    self.debug.info_message("UNIQUE ID USING UUID IS: " + str(ID) )
+
+    subject = ''
+    self.form_gui.render_disabled_controls = False
+    window = self.form_gui.createDynamicPopupWindow(formname, form_content, category, msgto, filename, ID, subject, True)
+    dispatcher = PopupControlsProc(self, window)
+    self.form_gui.runPopup(self, dispatcher, window, False, False)
+
+    return
+
+  def event_btncomposeics205(self, values):
+    self.debug.info_message("event_btncomposeics205")
+    category = 'ICS FORMS'
+    formname = 'ICS 205'
+    filename = 'ICS_Form_Templates.tpl'
+
+    self.event_popupformcommon(values, category, formname, filename)
+
+  def event_btncomposeics213(self, values):
+    self.debug.info_message("event_btncomposeics213")
+    category = 'ICS FORMS'
+    formname = 'ICS 213'
+    filename = 'ICS_Form_Templates.tpl'
+
+    self.event_popupformcommon(values, category, formname, filename)
+
+  def event_btncomposeics309(self, values):
+    self.debug.info_message("event_btncomposeics309")
+    category = 'ICS FORMS'
+    formname = 'ICS 309'
+    filename = 'ICS_Form_Templates.tpl'
+
+    self.event_popupformcommon(values, category, formname, filename)
+
+  def event_btncomposebulletin(self, values):
+    self.debug.info_message("event_btncomposebulletin")
+    category = 'GENERAL'
+    formname = 'BULLETIN'
+    filename = 'standard_templates.tpl'
+
+    self.event_popupformcommon(values, category, formname, filename)
+
+
+  def event_btnremoteinternetsendemail(self, values):
+    self.debug.info_message("event_btnremoteinternetsendemail")
+
+    category = 'GENERAL'
+    formname = 'EMAIL'
+    filename = 'standard_templates.tpl'
+
+    self.event_popupformcommon(values, category, formname, filename)
+
+    return
+
+
+  def event_btnpreviewautopopulateics309(self, values):
+    self.debug.info_message("event_btnpreviewautopopulateics309")
+
+    window = self.form_gui.getComposePopupWindow()
+    new_table = []
+
+    sentboxmessages = self.group_arq.getMessageSentbox()
+    for x in range(len(sentboxmessages)):
+      from_call = sentboxmessages[x][0]
+      to_call   = sentboxmessages[x][1]
+      subject   = sentboxmessages[x][2]
+      datetime  = sentboxmessages[x][3]
+      new_table.append([datetime, from_call, to_call, subject])
+
+    inboxmessages = self.group_arq.getMessageInbox()
+    for x in range(len(inboxmessages)):
+      from_call = inboxmessages[x][0]
+      to_call   = inboxmessages[x][1]
+      subject   = inboxmessages[x][2]
+      datetime  = inboxmessages[x][3]
+      new_table.append([datetime, from_call, to_call, subject])
+ 
+    window['content_8'].update(values=new_table)
+
+
   def event_composemsg(self, values):
     self.debug.info_message("BTN COMPOSE\n")
 
@@ -819,6 +958,23 @@ class ReceiveControlsProc(object):
 
     return()
 
+  """ RTS Peer"""
+  def event_btncomposeareyoureadytoreceive(self, values):
+    self.debug.info_message("event_btncomposeareyoureadytoreceive\n")
+    #self.saamfram.sendQryReady()
+    from_call = self.saamfram.getMyCall()
+    group_name = self.saamfram.getMyGroup()
+    self.saamfram.sendRTSPeer(from_call, group_name)
+
+
+  def event_btnrelayRTS(self, values):
+    self.debug.info_message("event_btnrelayRTS")
+
+    from_call = self.saamfram.getMyCall()
+    group_name = self.saamfram.getMyGroup()
+    self.saamfram.sendRTSRelay(from_call, group_name)
+
+
   def event_prevposttooutbox(self, values):
     self.debug.info_message("BTN POST TO OUTBOX\n")
 
@@ -846,7 +1002,18 @@ class ReceiveControlsProc(object):
       priority = values['preview_message_priority']
       formname = values['preview_form_type']	  
       content = self.form_gui.extractContentFromForm(values)
+
+      self.debug.info_message("content is: " + str(content[0]))
+
+      if("HRRM_EXPORT" in content[0]):
+        new_content = content[0].split("HRRM_EXPORT")
+        content[0] = new_content[0]
+        self.debug.info_message("Found HRRM_EXPORT string in message content...removing")
  
+      #if(formname == 'EMAIL'):
+      #  msgto = msgto.replace('@','+')
+      #self.debug.info_message("event_prevposttooutbox msgto: " + str(msgto) )
+
       dictionary = self.form_dictionary.createOutboxDictionaryItem(ID, msgto, msgfrom, subject, priority, timestamp, formname, content)
       message_dictionary = dictionary.get(ID)		  
 
@@ -879,9 +1046,11 @@ class ReceiveControlsProc(object):
 
     try:
 
-      selected_mode = values['option_chat_fldigimode'].split(' - ')[1]
-      self.group_arq.fldigiclient.setMode(selected_mode)
-      self.debug.info_message("selected chat mode is: " + selected_mode)
+
+      if(self.group_arq.operating_mode == cn.FLDIGI or self.group_arq.operating_mode == cn.JSDIGI):
+        selected_mode = values['option_chat_fldigimode'].split(' - ')[1]
+        self.group_arq.fldigiclient.setMode(selected_mode)
+        self.debug.info_message("selected chat mode is: " + selected_mode)
 
       """ loop thru the dictionary to populate outbox display """
 
@@ -924,7 +1093,7 @@ class ReceiveControlsProc(object):
       sender_callsign = self.group_arq.saamfram.getMyCall()
       tagfile = 'ICS'
       version  = '1.3'
-      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
 
       self.form_dictionary.removeOutboxDictionaryItem(ID)
     
@@ -1398,7 +1567,7 @@ class ReceiveControlsProc(object):
     else:  
       self.debug.info_message("EVENT OUTBOX SEND SELECTED 2d\n")
 
-      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
 
     self.debug.info_message("EVENT OUTBOX SEND SELECTED 3\n")
     self.form_dictionary.transferOutboxMsgToSentbox(msgid)
@@ -1447,7 +1616,7 @@ class ReceiveControlsProc(object):
       if(include_template):
         complete_send_string = self.group_arq.saamfram.getContentAndTemplateSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
       else:  
-        complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+        complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
 
       self.form_dictionary.transferOutboxMsgToSentbox(msgid)
 
@@ -1665,6 +1834,7 @@ class ReceiveControlsProc(object):
     
     return
 
+  # NOT USED AS OptionMenu not send events when changed! FIXME
   def event_outboxfldigimode(self, values):
 
     self.debug.info_message("EVENT OUTBOX FLDIGI MODE\n")
@@ -1706,8 +1876,6 @@ class ReceiveControlsProc(object):
     text_table = self.form_gui.window['table_inbox_preview'].get()
     self.debug.info_message("preview text is: " + str(text_table) )
 
-    self.debug.info_message("event_inboxcopyclipboard LOC1")
-
     text = ''
     for x in range(len(text_table)):
       text = text + text_table[x][0] + '\n'
@@ -1721,35 +1889,24 @@ class ReceiveControlsProc(object):
     priority = (self.group_arq.getMessageOutbox()[line_index])[4]
     subject  = (self.group_arq.getMessageOutbox()[line_index])[2]
     tolist   = (self.group_arq.getMessageOutbox()[line_index])[1]
-
-    self.debug.info_message("event_inboxcopyclipboard LOC2")
-   
+ 
     frag_size = 30
     frag_string = values['option_framesize'].strip()
     if(frag_string != ''):
       frag_size = int(values['option_framesize'])
 
-    self.debug.info_message("event_inboxcopyclipboard LOC3")
-      
     sender_callsign = self.group_arq.saamfram.getMyCall()
     tagfile = 'ICS'
     version  = '1.3'
-
-    self.debug.info_message("event_inboxcopyclipboard LOC4")
 
     complete_send_string = ''
     include_template = values['cb_outbox_includetmpl']
     if(include_template):
       complete_send_string = self.group_arq.saamfram.getContentAndTemplateSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
     else:  
-      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
 
-    self.debug.info_message("event_inboxcopyclipboard LOC5")
-    
     fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
-
-    self.debug.info_message("event_inboxcopyclipboard LOC6")
-
 
     clip.copy(text + '\n\n\nSaam-Mail-Export=' + fragtagmsg)
 
@@ -1773,34 +1930,23 @@ class ReceiveControlsProc(object):
     subject  = (self.group_arq.getMessageOutbox()[line_index])[2]
     tolist   = (self.group_arq.getMessageOutbox()[line_index])[1]
 
-    self.debug.info_message("event_inboxcopyclipboard LOC2")
-   
     frag_size = 30
     frag_string = values['option_framesize'].strip()
     if(frag_string != ''):
       frag_size = int(values['option_framesize'])
 
-    self.debug.info_message("event_inboxcopyclipboard LOC3")
-      
     sender_callsign = self.group_arq.saamfram.getMyCall()
     tagfile = 'ICS'
     version  = '1.3'
-
-    self.debug.info_message("event_inboxcopyclipboard LOC4")
 
     complete_send_string = ''
     include_template = values['cb_outbox_includetmpl']
     if(include_template):
       complete_send_string = self.group_arq.saamfram.getContentAndTemplateSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
     else:  
-      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
 
-    self.debug.info_message("event_inboxcopyclipboard LOC5")
-    
     fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
-
-    self.debug.info_message("event_inboxcopyclipboard LOC6")
-
 
     clip.copy(text + '\n\n\nSaam-Mail-Export=' + fragtagmsg)
 
@@ -1812,14 +1958,12 @@ class ReceiveControlsProc(object):
     text_from_clipboard = clip.paste()
     self.debug.info_message(text_from_clipboard)
 
-    split_string = text_from_clipboard.split('Saam-Mail-Export=')
+    split_string = text_from_clipboard.split('HRRM_EXPORT = ')
     if(len(split_string)==1):
-      split_string = text_from_clipboard.split('SAAM-MAIL-EXPORT=')
+      split_string = text_from_clipboard.split('HRRM_EXPORT = ')
     if(len(split_string)==1):
-      self.debug.info_message("event_outboximportfromclipboard LOC3")
       return
     else:
-      self.debug.info_message("event_outboximportfromclipboard LOC4")
       self.debug.info_message("EXPORT STRING: " + split_string[1])
       self.saamfram.processIncomingMessage(split_string[1])
 
@@ -2246,6 +2390,136 @@ class ReceiveControlsProc(object):
 
     return
 
+  def event_btnwinlinkconnect(self, values):
+    self.debug.info_message("event_btnwinlinkconnect")
+
+    pat_binary = self.winlink_import.getWinlinkBinary()
+    callsign = values['input_general_patstation']
+    connect_mode = values['option_general_patmode']
+    self.winlink_import.winlinkConnect(callsign, pat_binary, connect_mode)
+
+
+  def event_btnrelayboxposttowinlink(self, values):
+    self.debug.info_message("event_btnrelayboxposttowinlink")
+
+    try:
+      line_index = int(values['table_relay_messages'][0])
+
+      #self.messages_relaybox.append([msgfrom, msgto, subject, timestamp, priority, msgtype, msgid, conf_rcvd, frag_size, verified])
+
+      msgid = (self.group_arq.getMessageRelaybox()[line_index])[6]
+      formname = (self.group_arq.getMessageRelaybox()[line_index])[5]
+      priority = (self.group_arq.getMessageRelaybox()[line_index])[4]
+      subject  = (self.group_arq.getMessageRelaybox()[line_index])[2]
+
+      tolist   = self.group_arq.forwardMsgRemoveOwnCallsign( (self.group_arq.getMessageRelaybox()[line_index])[1] )
+
+      frag_size = 20
+      #is_p2p = values['cb_relaybox_winlinkp2p']
+      sender_callsign = self.group_arq.saamfram.getMyCall()
+      tagfile = 'ICS'
+      version  = '1.3'
+      complete_send_string = ''
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
+      modified_send_string = complete_send_string.strip('{')
+      modified_send_string2 = modified_send_string.strip('}')
+      self.debug.info_message("complete send string is:" + str(modified_send_string2))
+      items = modified_send_string2.split(cn.DELIMETER_CHAR)
+
+      header_info = []
+      for count in range(0, 8):
+        header_info.append(items[count])
+      self.debug.info_message("header info is:" + str(header_info))
+
+      actual_data = []
+      for count in range(8, len(items)):
+        actual_data.append(items[count])
+      self.debug.info_message("complete send string is:" + str(actual_data))
+
+      return_data = self.winlink_import.generateWinlinkParamFile(actual_data, formname)
+      if(return_data != None):
+        self.debug.info_message("translating data")
+
+        winlink_binary = self.winlink_import.getWinlinkBinary()
+        #winlink_binary  = self.form_gui.window['input_general_patbinary'].get().strip()
+        os.system(winlink_binary + ' composeform --template \'' + return_data + '\' <parameters_file.txt')
+      else:
+        self.debug.info_message("no translation available. using general format")
+        fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+        self.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self.group_arq.saamfram, fragtagmsg, self.form_gui.window['table_relaybox_preview'].get())
+
+      self.event_winlinklist(values)
+
+    except:
+      self.debug.error_message("Exception in event_btnrelayboxposttowinlink: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+
+  def event_btnoutboxposttowinlink(self, values):
+    self.debug.info_message("event_btnoutboxposttowinlink")
+
+    line_index = int(values['table_outbox_messages'][0])
+    msgid = (self.group_arq.getMessageOutbox()[line_index])[6]
+    formname = (self.group_arq.getMessageOutbox()[line_index])[5]
+    priority = (self.group_arq.getMessageOutbox()[line_index])[4]
+    subject  = (self.group_arq.getMessageOutbox()[line_index])[2]
+    #tolist   = (self.group_arq.getMessageOutbox()[line_index])[1]
+    tolist   = self.group_arq.forwardMsgRemoveOwnCallsign( (self.group_arq.getMessageOutbox()[line_index])[1] )
+
+    frag_size = 20
+    #is_p2p = values['cb_outbox_winlinkp2p']
+    sender_callsign = self.group_arq.saamfram.getMyCall()
+    tagfile = 'ICS'
+    version  = '1.3'
+    complete_send_string = ''
+    complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
+    modified_send_string = complete_send_string.strip('{')
+    modified_send_string2 = modified_send_string.strip('}')
+    self.debug.info_message("complete send string is:" + str(modified_send_string2))
+    items = modified_send_string2.split(cn.DELIMETER_CHAR)
+
+    header_info = []
+    for count in range(0, 8):
+      header_info.append(items[count])
+    self.debug.info_message("header info is:" + str(header_info))
+
+    actual_data = []
+    for count in range(8, len(items)):
+      actual_data.append(items[count])
+    self.debug.info_message("complete send string is:" + str(actual_data))
+
+    return_data = self.winlink_import.generateWinlinkParamFile(actual_data, formname)
+    if(return_data != None):
+      self.debug.info_message("translating data")
+
+      winlink_binary = self.winlink_import.getWinlinkBinary()
+      #winlink_binary  = self.form_gui.window['input_general_patbinary'].get().strip()
+      os.system(winlink_binary + ' composeform --template \'' + return_data + '\' <parameters_file.txt')
+
+      #os.system(winlink_binary + ' composeform --template \'ICS USA Forms\\ICS213.txt\' <parameters_file.txt')
+      #os.system('/home/pi/patvar2/pat/pat composeform --template \'ICS USA Forms/ICS213.txt\' <parameters_file.txt')
+    else:
+      self.debug.info_message("no translation available. using general format")
+      fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+      self.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self.group_arq.saamfram, fragtagmsg, self.form_gui.window['table_outbox_preview'].get())
+
+    #fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+    #self.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self.saamfram, fragtagmsg, self.form_gui.window['table_outbox_preview'].get())
+
+    self.event_winlinklist(values)
+
+
+
+
+    return
+
+
+  def event_btnwinlinkcomposeform(self, values):
+    self.debug.info_message("event_btnwinlinkcomposeform")
+
+    self.winlink_import.generateWinlinkParamFile(['inc_name','To_Name','fm_name','Subjectline','Mdate','mtime','Message','Approved_Name','Approved_PosTitle'], 'ICS213')
+    os.system('/home/pi/patvar2/pat/pat composeform --template \'ICS USA Forms/ICS213.txt\' <parameters_file.txt')
+
+
   def event_cbwinlinkuseseq(self, values):
     self.debug.info_message("event_cbwinlinkuseseq")
     checked = self.form_gui.window['cb_winlink_useseq'].get()
@@ -2257,6 +2531,13 @@ class ReceiveControlsProc(object):
       self.form_gui.window['option_winlink_selectedseq'].update(disabled=True )
 
     return
+
+
+  def event_btncomposehaverelaymsgs(self, values):
+    self.debug.info_message("event_btncomposehaverelaymsgs")
+    self.form_gui.window['tab_hrrm'].select()
+    self.form_gui.window['tab_relaybox'].select()
+
 
   def event_btnsequencesave(self, values):
     self.debug.info_message("event_btnsequencesave\n")
@@ -2509,7 +2790,7 @@ class ReceiveControlsProc(object):
 
     from_call = self.saamfram.getMyCall()
     sender_call = self.saamfram.getSenderCall()
-    self.saamfram.sendREQM(from_call, sender_call, selected_msgid)
+    self.saamfram.sendREQMRelay(from_call, sender_call, selected_msgid)
 
   def event_btninboxsendreqm(self, values):
     self.debug.info_message("event_btninboxsendreqm\n")
@@ -2564,13 +2845,13 @@ class ReceiveControlsProc(object):
     self.form_gui.refreshSelectedTables()
 
   
-    selected_string = values['option_outbox_fldigimode']
-    split_string = selected_string.split(' - ')
-    mode = split_string[1]
-    self.group_arq.fldigiclient.setMode(mode)
-
-    channel = values['combo_settings_channels'].split(' - ')[1]
-    self.group_arq.fldigiclient.setChannel(channel.split('Hz')[0])
+    if(self.group_arq.operating_mode == cn.FLDIGI or self.group_arq.operating_mode == cn.JSDIGI):
+      selected_string = values['option_outbox_fldigimode']
+      split_string = selected_string.split(' - ')
+      mode = split_string[1]
+      self.group_arq.fldigiclient.setMode(mode)
+      channel = values['combo_settings_channels'].split(' - ')[1]
+      self.group_arq.fldigiclient.setChannel(channel.split('Hz')[0])
 
     selected_callsigns = self.group_arq.getConnectToString()
 
@@ -2603,8 +2884,13 @@ class ReceiveControlsProc(object):
     elif(selected_timescale == 'Unlimited'): #This is 1000 years!
       how_recent = 217728000000
 
-    self.form_dictionary.selectRecentFromPeerstnDicttionaryItems(how_recent)
-    self.form_dictionary.selectRecentFromRelaystnDicttionaryItems(how_recent)
+
+    #self.group_arq.active_station_checklist = []
+    self.form_dictionary.dataFlecCache_clearActive()
+    self.form_dictionary.dataFlecCache_rebuild(how_recent)
+    #self.form_dictionary.selectRecentFromPeerstnDicttionaryItems(how_recent)
+    #self.form_dictionary.selectRecentFromRelaystnDicttionaryItems(how_recent)
+
     self.form_gui.refreshSelectedTables()
 
     return
@@ -2639,9 +2925,6 @@ class ReceiveControlsProc(object):
     self.debug.info_message("event_btncomposeconfirmedhavecopy\n")
     self.saamfram.sendConf()
 
-  def event_btncomposeareyoureadytoreceive(self, values):
-    self.debug.info_message("event_btncomposeareyoureadytoreceive\n")
-    self.saamfram.sendQryReady()
 
   def event_btncomposereadytoreceive(self, values):
     self.debug.info_message("event_btncomposereadytoreceive\n")
@@ -3118,7 +3401,7 @@ class ReceiveControlsProc(object):
     with open(folder + filename) as f:
       data = f.read()
       string_data = str(data)
-      self.debug.info_message("data: " + string_data)
+      #self.debug.info_message("data: " + string_data)
       data = string_data.split('\n')
       for x in range(len(data)):
         data_item = [str(data[x])]
@@ -3160,7 +3443,10 @@ class ReceiveControlsProc(object):
   def event_winlinklist(self, values):
     self.debug.info_message("event_winlinklist")
 
-    folder = values['in_winlink_inboxfolder']
+    folder = self.form_gui.getWinlinkInboxFolder()
+    #folder = values['in_winlink_inboxfolder']
+
+    self.debug.info_message("folder is " + folder)
 
     extension = "*.b2f"
     if (platform.system() == 'Windows'):
@@ -3186,7 +3472,8 @@ class ReceiveControlsProc(object):
         self.group_arq.addWinlinkInboxFile(filename, msg_from, msg_to, subject, date, formname, message_id)
       self.form_gui.window['winlink_inbox_table'].update(values=self.group_arq.getWinlinkInboxFiles())
 
-    folder = values['in_winlink_outboxfolder']
+    folder = self.form_gui.getWinlinkOutboxFolder()
+    #folder = values['in_winlink_outboxfolder']
 
     if(folder != ''):
       extension = "*.b2f"
@@ -3201,7 +3488,9 @@ class ReceiveControlsProc(object):
         self.group_arq.addWinlinkOutboxFile(filename, msg_from, msg_to, subject, date, formname, message_id)
       self.form_gui.window['winlink_outbox_table'].update(values=self.group_arq.getWinlinkOutboxFiles())
 
-    folder = values['in_winlink_rmsmsgfolder']
+    #"""
+    folder = self.form_gui.getWinlinkRmsmsgFolder()
+    #folder = values['in_winlink_rmsmsgfolder']
 
     if(folder != ''):
       extension = "*.mime"
@@ -3215,6 +3504,11 @@ class ReceiveControlsProc(object):
         filename, msg_from, msg_to, subject, date, formname, message_id = self.processFileData(folder, filename)
         self.group_arq.addWinlinkRMSMsgFile(filename, msg_from, msg_to, subject, date, formname, message_id)
       self.form_gui.window['winlink_rmsmsg_table'].update(values=self.group_arq.getWinlinkRMSMsgFiles())
+    #"""
+
+    self.form_gui.window['winlink_outbox_table'].update(row_colors=self.group_arq.getWinlinkOutboxColors())
+
+    self.winlink_import.checkFilesForImportData(self.saamfram)
 
     return
 
@@ -3233,7 +3527,8 @@ class ReceiveControlsProc(object):
       self.form_gui.window['btn_winlink_edit_selected'].update(disabled = True)
 
 
-    folder = values['in_winlink_inboxfolder']
+    folder = self.form_gui.getWinlinkInboxFolder()
+    #folder = values['in_winlink_inboxfolder']
 
     self.debug.info_message("selected id: " + str(filename))
 
@@ -3283,7 +3578,8 @@ class ReceiveControlsProc(object):
     else:
       self.form_gui.window['btn_winlink_edit_selected'].update(disabled = True)
 
-    folder = values['in_winlink_outboxfolder']
+    folder = self.form_gui.getWinlinkOutboxFolder()
+    #folder = values['in_winlink_outboxfolder']
 
     tabledata = []
 
@@ -3315,6 +3611,7 @@ class ReceiveControlsProc(object):
 
     self.form_gui.window['winlink_inbox_table'].update(values=self.group_arq.getWinlinkInboxFiles())
     self.form_gui.window['winlink_rmsmsg_table'].update(values=self.group_arq.getWinlinkRMSMsgFiles())
+    self.form_gui.window['winlink_outbox_table'].update(row_colors=self.group_arq.getWinlinkOutboxColors())
 
     return
 
@@ -3334,7 +3631,8 @@ class ReceiveControlsProc(object):
     else:
       self.form_gui.window['btn_winlink_edit_selected'].update(disabled = True)
 
-    folder = values['in_winlink_rmsmsgfolder']
+    folder = self.form_gui.getWinlinkRmsmsgFolder()
+    #folder = values['in_winlink_rmsmsgfolder']
 
     tabledata = []
 
@@ -3384,17 +3682,20 @@ class ReceiveControlsProc(object):
       line_index = int(values['winlink_outbox_table'][0])
       filename = (self.group_arq.getWinlinkOutboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkOutboxFiles()[line_index])[5]
-      folder = values['in_winlink_outboxfolder']
+      folder = self.form_gui.getWinlinkOutboxFolder()
+      #folder = values['in_winlink_outboxfolder']
     elif(values['winlink_inbox_table'] != []):
       line_index = int(values['winlink_inbox_table'][0])
       filename = (self.group_arq.getWinlinkInboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkInboxFiles()[line_index])[5]
-      folder = values['in_winlink_inboxfolder']
+      folder = self.form_gui.getWinlinkInboxFolder()
+      #folder = values['in_winlink_inboxfolder']
     elif(values['winlink_rmsmsg_table'] != []):
       line_index = int(values['winlink_rmsmsg_table'][0])
       filename = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[5]
-      folder = values['in_winlink_rmsmsgfolder']
+      folder = self.form_gui.getWinlinkRmsmsgFolder()
+      #folder = values['in_winlink_rmsmsgfolder']
 
 
     self.debug.info_message("selected id: " + str(filename))
@@ -3404,7 +3705,6 @@ class ReceiveControlsProc(object):
 
     full_filename = str(folder + filename)
 
-###################
     sender_callsign = self.group_arq.saamfram.getMyCall()
     msgid = self.group_arq.saamfram.getEncodeUniqueId(sender_callsign)
     formname = filename
@@ -3447,20 +3747,26 @@ class ReceiveControlsProc(object):
       line_index = int(values['winlink_outbox_table'][0])
       filename = (self.group_arq.getWinlinkOutboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkOutboxFiles()[line_index])[5]
-      folder = values['in_winlink_outboxfolder']
+      folder = self.form_gui.getWinlinkOutboxFolder()
+      #folder = values['in_winlink_outboxfolder']
+      self.winlink_import.winlink_outbox_folder_files.append(filename)
     elif(values['winlink_inbox_table'] != []):
       line_index = int(values['winlink_inbox_table'][0])
       filename = (self.group_arq.getWinlinkInboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkInboxFiles()[line_index])[5]
-      folder = values['in_winlink_inboxfolder']
+      folder = self.form_gui.getWinlinkInboxFolder()
+      #folder = values['in_winlink_inboxfolder']
+      self.winlink_import.winlink_inbox_folder_files.append(filename)
     elif(values['winlink_rmsmsg_table'] != []):
       line_index = int(values['winlink_rmsmsg_table'][0])
       filename = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[5]
-      folder = values['in_winlink_rmsmsgfolder']
+      folder = self.form_gui.getWinlinkRmsmsgFolder()
+      #folder = values['in_winlink_rmsmsgfolder']
 
 
     self.debug.info_message("selected id: " + str(filename))
+
 
     tabledata = []
 
@@ -3512,7 +3818,6 @@ class ReceiveControlsProc(object):
 
     self.form_gui.window['table_winlink_inbox_preview'].update(values=tabledata)
 
-    self.debug.info_message("event_winlinkoutboxtable LOC3")
     self.debug.info_message("event_winlinkoutboxtable XML is: " + str(xml_data))
 
     if( has_xml == True):
@@ -3556,7 +3861,6 @@ class ReceiveControlsProc(object):
       dispatcher = PopupControlsProc(self, window)
       self.form_gui.runPopup(self, dispatcher, window, False, False)
 
-    self.debug.info_message("event_winlinkoutboxtable LOC10")
 
     return
 
@@ -3589,7 +3893,6 @@ class ReceiveControlsProc(object):
       client = self.group_arq.pipes.getPipe(name, ip_address, port )
       client.sendMsg("MODE.SET_SPEED", "", params={"SPEED":int(speed), "_ID":-1} )
 
-      self.debug.info_message("event_btnsubstationconnect1 LOC4")
       sys.stdout.write("sending message from HRRM Client to external module server\n")
 
     except:
@@ -3610,6 +3913,24 @@ class ReceiveControlsProc(object):
     client = self.group_arq.pipes.getPipe(name, ip_address, port )
     client.stopThreads()
     self.group_arq.pipes.removePipe(name, ip_address, port )
+
+
+  def event_tabgrpwinlink(self, values):
+    self.debug.info_message("event_tabgrpwinlink")
+
+    tabname = values['tabgrp_winlink4']
+    #self.debug.info_message("tabname = " + str(tabname) )
+
+    if(tabname == 'tab_winlink_pat_inbox'):
+      self.debug.info_message("clicked on inbox" )
+      self.form_gui.window['btn_winlink_connect'].update(disabled = False)
+    elif(tabname == 'tab_winlink_pat_outbox'):
+      self.debug.info_message("clicked on outbox" )
+      self.form_gui.window['btn_winlink_connect'].update(disabled = False)
+    elif(tabname == 'tab_winlink_rms_folder'):
+      self.debug.info_message("clicked on express" )
+      self.form_gui.window['btn_winlink_connect'].update(disabled = True)
+
 
 
   def event_comboelement1(self, values):
@@ -3859,6 +4180,24 @@ class ReceiveControlsProc(object):
       'cb_filexfer_useseq'        : event_cbfilexferuseseq,
       'cb_outbox_useseq'          : event_cboutboxuseseq,
       'cb_winlink_useseq'         : event_cbwinlinkuseseq,
+      'btn_winlink_connect'       : event_btnwinlinkconnect,
+      'btn_winlink_composeform'   : event_btnwinlinkcomposeform,
+
+      'btn_outbox_posttowinlink'   : event_btnoutboxposttowinlink,
+      'btn_relaybox_posttowinlink' : event_btnrelayboxposttowinlink,
+      'btn_compose_haverelaymsgs'  : event_btncomposehaverelaymsgs,
+
+      'btn_remoteinternet_sendemail' : event_btnremoteinternetsendemail,
+
+      'btn_preview_auto_populate_ics309' : event_btnpreviewautopopulateics309,
+
+      'tabgrp_winlink4'           : event_tabgrpwinlink,
+
+      'btn_compose_ics205'        : event_btncomposeics205,
+      'btn_compose_ics213'        : event_btncomposeics213,
+      'btn_compose_ics309'        : event_btncomposeics309,
+      'btn_compose_bulletin'      : event_btncomposebulletin,
+      'btn_relay_RTS'             : event_btnrelayRTS,
 
       'combo_element1'            : event_comboelement1,
       'combo_element2'            : event_comboelement2,
