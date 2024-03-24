@@ -2655,9 +2655,9 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v1.0.6 Beta \n\
+                                                Ham Radio Relay Messenger de WH6GGO v1.0.7 Beta \n\
 \n\
-Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2023 Lawrence Byng. MIT License details included\n\
+Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2024 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
 please refer to https://github.com/gh42lb/\n\
 Contact Email: LarryByng@gmail.com\n\
@@ -3632,7 +3632,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main' )] ]  
 
-    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.6 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
+    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.7 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
 
     return (self.window)
 
