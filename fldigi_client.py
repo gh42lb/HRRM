@@ -94,50 +94,50 @@ class FLDIGI_Client(object):
     the last number is the relative timing for a test message in seconds.
     """
     self.timing_lookup = {
-                           'PSK1000RC2'  : '1,300,6,4000,12,8000,2400,MODE 1 - PSK1000RC2',  #13   512 = 7s     yes
-                           'PSK125RC16'  : '1,300,6,4000,12,8000,2730,MODE 30 - PSK800C2',        #512 = 8s     yes
-                           'PSK63RC32'   : '1,300,6,4000,12,8000,2750,MODE 30 - PSK800C2',        #512 = 8s     yes
-                           'PSK800RC2'   : '1,300,6,4000,12,8000,1900,MODE 3 - PSK800RC2',   #15   512 = 9s     yes
-                           'PSK250RC6'   : '1,300,6,4000,12,8000,2000,MODE 4 - PSK250RC6',   #16   512 = 9s     yes middle
-                           'PSK500RC3'   : '1,300,6,4000,12,8000,1900,MODE 6 - PSK500RC3',   #16   512 = 9s     yes middle
-                           'PSK125RC12'  : '1,300,6,4000,12,8000,2050,MODE 30 - PSK800C2',        #512 = 9s     yes middle
-                           'BPSK500'     : '1,300,5,5000,10,6000,500,MODE 8 - BPSK500',      #19   512 = 9s     yes CONTROL MODE!!
-                           'PSK1000R'    : '1,300,6,4000,12,8000,1000,MODE 9 - PSK1000R',    #19   512 = 10s    yes middle
-                           'OFDM750F'    : '1,300,6,4000,16,12000,750,MODE 30 - OFDM750F',        #512 = 10s    yes
-                           'PSK250RC5'   : '1,300,6,4000,12,8000,1650,MODE 7 - PSK250RC5',   #18   512 = 10s    yes middle
-                           'PSK250RC7'   : '1,300,6,4000,12,8000,2350,MODE 30 - PSK800C2',        #512 = 10s    yes
-                           'PSK125RC10'  : '1,300,6,4000,12,8000,1700,MODE 30 - PSK800C2',        #512 = 10s    yes middle
-                           'PSK63RC20'   : '1,300,6,4000,12,8000,1700,MODE 30 - PSK800C2',        #512 = 10s    yes middle
-                           'PSK500RC2'   : '1,300,6,4000,12,8000,1200,MODE 10 - PSK500RC2',  #20   512 = 11s    YES
-                           'DOMX88'      : '1,500,4,3000,12,6000,1550,MODE 11 - DOMX88',     #23   512 = 12s    yes middle
-                           'PSK250RC3'   : '1,300,6,4000,12,8000,900,MODE 12 - PSK250RC3',   #23   512 = 12s    YES CONTROL MODE!!
-                           '8PSK125'     : '1,300,6,4000,12,8000,125,MODE 13 - 8PSK125',     #23   512 = 12s    yes
-                           '8PSK250FL'   : '1,300,6,4000,12,8000,250,MODE 15 - 8PSK250FL',   #24   512 = 12s    YES CONTROL MODE!!
-                           '8PSK250F'    : '1,300,6,4000,12,8000,250,MODE 14 - 8PSK250F',    #24   512 = 13s    yes CONTROL MODE!!
-                           'PSK500R'     : '1,300,6,4000,12,8000,500,MODE 16 - PSK500R',     #31   512 = 14s    yes CONTROL MODE!!
-                           'MFSK128L'    : '1,300,6,4000,16,12000,1800,MODE 30 - MFSK128L',       #512 = 14s    yes
-                           'OFDM500F'    : '1,300,6,4000,16,12000,500,MODE 29 - OFDM500F',        #512 = 15s    yes CONTROL MODE!!
-                           'QPSK250'     : '1,500,5,3000,12,3000,250,MODE 18 - QPSK250',     #32   512 = 15s    yes CONTROL MODE!!
-                           'BPSK250'     : '1,500,5,3000,10,4000,250,MODE 19 - BPSK250',     #32   512 = 15s    yes CONTROL MODE!!
+                           'PSK1000RC2'  : '1,300,6,4000,12,8000,2400,Exc',     #13   512 = 7s      yes
+                           'PSK125RC16'  : '1,300,6,4000,12,8000,2730,Exc',        #512 = 8s        yes
+                           'PSK63RC32'   : '1,300,6,4000,12,8000,2750,Exc',        #512 = 8s        yes
+                           'PSK800RC2'   : '1,300,6,4000,12,8000,1900,Exc',   #15   512 = 9s        yes
+                           'PSK250RC6'   : '1,300,6,4000,12,8000,2000,Avg',         #16   512 = 9s      yes middle
+                           'PSK500RC3'   : '1,300,6,4000,12,8000,1900,Avg',         #16   512 = 9s      yes middle
+                           'PSK125RC12'  : '1,300,6,4000,12,8000,2050,Avg',              #512 = 9s      yes middle
+                           'BPSK500'     : '1,300,5,5000,10,6000,500,NSG',              #19   512 = 9s      yes CONTROL MODE!!
+                           'PSK1000R'    : '1,300,6,4000,12,8000,1000,Avg',         #19   512 = 10s     yes middle
+                           'OFDM750F'    : '1,300,6,4000,16,12000,750,Exc',        #512 = 10s       yes
+                           'PSK250RC5'   : '1,300,6,4000,12,8000,1650,Avg',         #18   512 = 10s     yes middle
+                           'PSK250RC7'   : '1,300,6,4000,12,8000,2350,Exc',          #512 = 10s     yes
+                           'PSK125RC10'  : '1,300,6,4000,12,8000,1700,Avg',              #512 = 10s     yes middle
+                           'PSK63RC20'   : '1,300,6,4000,12,8000,1700,Avg',              #512 = 10s     yes middle
+                           'PSK500RC2'   : '1,300,6,4000,12,8000,1200,Exc',  #20   512 = 11s        YES
+                           'DOMX88'      : '1,500,4,3000,12,6000,1550,Avg',         #23   512 = 12s     yes middle
+                           'PSK250RC3'   : '1,300,6,4000,12,8000,900,NSG',              #23   512 = 12s     YES CONTROL MODE!!
+                           '8PSK125'     : '1,300,6,4000,12,8000,125,Exc',     #23   512 = 12s      yes
+                           '8PSK250FL'   : '1,300,6,4000,12,8000,250,NSG',              #24   512 = 12s     YES CONTROL MODE!!
+                           '8PSK250F'    : '1,300,6,4000,12,8000,250,NSG',              #24   512 = 13s     yes CONTROL MODE!!
+                           'PSK500R'     : '1,300,6,4000,12,8000,500,NSG',                  #31   512 = 14s     yes CONTROL MODE!!
+                           'MFSK128L'    : '1,300,6,4000,16,12000,1800,Exc',       #512 = 14s       yes
+                           'OFDM500F'    : '1,300,6,4000,16,12000,500,NSG',                  #512 = 15s     yes CONTROL MODE!!
+                           'QPSK250'     : '1,500,5,3000,12,3000,250,NSG',              #32   512 = 15s     yes CONTROL MODE!!
+                           'BPSK250'     : '1,500,5,3000,10,4000,250,NSG',              #32   512 = 15s     yes CONTROL MODE!!
                            'PSK250RC2'   : '1,300,6,4000,12,8000,600,MODE 17 - PSK250RC2',   #32   512 = 16s
                            'PSK125RC4'   : '1,300,6,4000,12,8000,650,MODE 20 - PSK125RC4',   #33   512 = 16s
-                           'PSK125RC5'   : '1,300,6,4000,12,8000,820,MODE 30 - PSK800C2',        #512 = 16s     yes
-                           'PSK63RC10'   : '1,300,6,4000,12,8000,830,MODE 30 - PSK800C2',        #512 = 16s     yes
-                           'THOR100'     : '1,300,6,4000,12,8000,1800,MODE 30 - THOR100',        #512 = 17s     yes CONTROL MODE!!
-                           'DOMX44'      : '1,500,4,3000,12,6000,1550,MODE 21 - DOMX44',     #40   512 = 19s    yes middle
-                           '8PSK125FL'   : '1,300,6,4000,12,8000,125,MODE 22 - 8PSK125FL',   #40   512 = 19s    yes CONTROL MODE!!
-                           '8PSK125F'    : '1,300,6,4000,12,8000,125,MODE 23 - 8PSK125F',    #41   512 = 19s    yes CONTROL MODE!!
-                           'MT63-2KL'    : '1,300,6,4000,16,12000,2000,MODE 30 - MT63-2KL',       #512 = 21s     yes CONTROL MODE!!
+                           'PSK125RC5'   : '1,300,6,4000,12,8000,820,Exc',        #512 = 16s        yes
+                           'PSK63RC10'   : '1,300,6,4000,12,8000,830,Exc',        #512 = 16s        yes
+                           'THOR100'     : '1,300,6,4000,12,8000,1800,NSG',                 #512 = 17s      yes CONTROL MODE!!
+                           'DOMX44'      : '1,500,4,3000,12,6000,1550,Avg',         #40   512 = 19s     yes middle
+                           '8PSK125FL'   : '1,300,6,4000,12,8000,125,NSG',              #40   512 = 19s     yes CONTROL MODE!!
+                           '8PSK125F'    : '1,300,6,4000,12,8000,125,NSG',              #41   512 = 19s     yes CONTROL MODE!!
+                           'MT63-2KL'    : '1,300,6,4000,16,12000,2000,NSG',                 #512 = 21s     yes CONTROL MODE!!
                            'MT63-2KS'    : '1,300,6,4000,12,8000,2000,MODE 30 - MT63-2KS',       #512 = 21s 
-                           'PSK250R'     : '1,300,6,4000,12,8000,250,MODE 24 - PSK250R',     #54   512 = 24s    yes CONTROL MODE!!
+                           'PSK250R'     : '1,300,6,4000,12,8000,250,NSG',              #54   512 = 24s     yes CONTROL MODE!!
                            'PSK63RC4'    : '1,300,6,4000,12,8000,320,MODE 25 - PSK63RC4',    #54   512 = 25s
-                           'PSK63RC5'    : '1,300,6,4000,12,8000,400,MODE 30 - PSK800C2',        #512 = 27s    yes
-                           'THOR50x2'    : '1,300,6,4000,12,8000,1800,MODE 30 - THOR50x2',       #512 = 30s     yes CONTROL MODE!!
-                           'DOMX22'      : '1,500,6,6000,12,6000,380,MODE 26 - DOMX22',      #74   512 = 31s    yes CONTROL MODE!!   YES BEST FOR WEAK SIGNAL
-                           'MT63-1KL'    : '1,300,6,4000,16,12000,1000,MODE 30 - MT63-1KL',       #512 = 37s     yes CONTROL MODE!!  YES BEST FOR WEAK SIGNAL
-                           'MT63-1KS'    : '1,300,6,4000,16,12000,1000,MODE 30 - MT63-1KS',       #512 = 37s     yes CONTROL MODE!!  YES BEST FOR WEAK SIGNAL
-                           'OLIVIA-4/1K' : '1,300,6,4000,12,8000,750,MODE 27 - OLIVIA-4/1K', #89   512 = 42s     yes CONTROL MODE!!
-                           'DOMX16'      : '1,500,6,6000,12,6000,280,MODE 28 - DOMX16',      #101  512 = 42s     yes CONTROL MODE!!  YES BEST FOR WEAK SIGNAL
+                           'PSK63RC5'    : '1,300,6,4000,12,8000,400,Exc',        #512 = 27s        yes
+                           'THOR50x2'    : '1,300,6,4000,12,8000,1800,NSG',                 #512 = 30s      yes CONTROL MODE!!
+                           'DOMX22'      : '1,500,6,6000,12,6000,380,Weak',              #74   512 = 31s     yes CONTROL MODE!!   YES BEST FOR WEAK SIGNAL
+                           'MT63-1KL'    : '1,300,6,4000,16,12000,1000,Weak',                 #512 = 37s     yes CONTROL MODE!!  YES BEST FOR WEAK SIGNAL
+                           'MT63-1KS'    : '1,300,6,4000,16,12000,1000,Weak',                 #512 = 37s     yes CONTROL MODE!!  YES BEST FOR WEAK SIGNAL
+                           'OLIVIA-4/1K' : '1,300,6,4000,12,8000,750,NSG',              #89   512 = 42s     yes CONTROL MODE!!
+                           'DOMX16'      : '1,500,6,6000,12,6000,280,Weak',              #101  512 = 42s     yes CONTROL MODE!!  YES BEST FOR WEAK SIGNAL
 
 #                           'THOR25x4'    : '1,300,6,4000,16,12000,1800,MODE 30 - THOR25x4',       #512 = 55s    no 
 #                           'MT63-500L'   : '1,300,6,4000,16,12000,500,MODE 30 - MT63-500L',       #512 = 68s    no 
@@ -166,29 +166,48 @@ class FLDIGI_Client(object):
     new_selection_list_mode_only = ''
     mode_count = 1
     delimeter = ''
-    width = 500
+    width = 0
 
-    if(selected_width == 'HF - 500'):
+    if(selected_width == 'Span 500Hz'):
       width = 500
-    elif(selected_width == 'HF - 1000'):
+    elif(selected_width == 'Span 1000Hz'):
       width = 1000
-    elif(selected_width == 'HF - 1500'):
+    elif(selected_width == 'Span 1500Hz'):
       width = 1500
-    elif(selected_width == 'HF - 2000'):
+    elif(selected_width == 'Span 2000Hz'):
       width = 2000
-    elif(selected_width == 'HF - 2800'):
+    elif(selected_width == 'Span 2800Hz'):
       width = 2800
-    elif(selected_width == 'VHF/UHF - 3500'):
-      width = 3500
+    #elif(selected_width == 'VHF/UHF - 3500'):
+    #  width = 3500
 
     for key in self.timing_lookup: 
       value = self.timing_lookup.get(key)
       items = value.split(',')
         
-      if(int(items[6]) <= width):
-        new_selection_list = new_selection_list + delimeter + 'MODE ' + str(mode_count) + ' - ' + str(key) 
-        new_selection_list_mode_only = new_selection_list_mode_only + delimeter + str(key) 
-        delimeter = ','
+      if(width > 0):
+        if(int(items[6]) <= width):
+          new_selection_list = new_selection_list + delimeter + 'MODE ' + str(mode_count) + ' - ' + str(key) 
+          new_selection_list_mode_only = new_selection_list_mode_only + delimeter + str(key) 
+          delimeter = ','
+      else:
+        match = False
+        if(selected_width == 'Excellent Propagation'):
+          if('Exc' in items[7] or 'Avg' in items[7] or 'NSG' in items[7] or 'Weak' in items[7]):
+            match = True
+        elif(selected_width == 'Average Propagation'):
+          if('Avg' in items[7] or 'NSG' in items[7] or 'Weak' in items[7]):
+            match = True
+        elif(selected_width == 'Not So Good'):
+          if('NSG' in items[7] or 'Weak' in items[7]):
+            match = True
+        elif(selected_width == 'Weak Signal' and 'Weak' in items[7] ):
+          match = True
+
+        if(match):
+          new_selection_list = new_selection_list + delimeter + 'MODE ' + str(mode_count) + ' - ' + str(key) 
+          new_selection_list_mode_only = new_selection_list_mode_only + delimeter + str(key) 
+          delimeter = ','
 
       mode_count = mode_count + 1
 
@@ -273,8 +292,11 @@ class FLDIGI_Client(object):
     if(self.connected == False):
       try:
         address, port = server
+        #if(self.server == None):
         self.server = xmlrpc.client.ServerProxy('http://' + address + ':' + str(port) )
         self.debug.info_message("method connect CONNECTING to " + 'http://' + address + ':' + str(port) )
+        self.debug.info_message('server: ' + str(self.server))
+
         self.connected = True
 
         self.server.main.set_txid(True)
@@ -295,6 +317,8 @@ class FLDIGI_Client(object):
         self.server.main.set_afc(False)
 
       except:
+        self.debug.info_message("exception in method connect: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+        #self.connected = False
         time.sleep(5)
 
   """
