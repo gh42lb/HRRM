@@ -1,6 +1,6 @@
 ## Overview
 
-Ham Radio Relay Messenger v1.0.5 beta test release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v1.0.6 beta test release de WH6GGO. The software is currently in active development and early release testing phase.
 
 
 #### Features
@@ -30,7 +30,7 @@ Ham Radio Relay Messenger v1.0.5 beta test release de WH6GGO. The software is cu
 Download the following:
 
 * Fldigi
-* HRRM v1.0.5 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
+* HRRM v1.0.6 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
 
 run the windows installer or create a folder on the desktop called HRRM and add the binary file
 
@@ -85,7 +85,7 @@ enjoy :)
 
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2024 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
