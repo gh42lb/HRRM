@@ -397,6 +397,7 @@ class FormDictionary(object):
       priority = selected_item[4]
       msgid    = selected_item[6]
 
+      #FIXME HARDCODED
       dest_call = 'WH6TEST'
       total_hops = 0
       hops_from_source = 0
@@ -1892,13 +1893,25 @@ class FormDictionary(object):
                            'WinlinkPatBinary'        : '',
                            'WinlinkPatTemplatesFolder'   : '',
                            'WinlinkOverridePatBinary'   : '',
+                           'WinlinkDefaultMode'   : 'Vara',
+                           'WinlinkDefaultStation'   : '',
+
+                           'ExtAppsJs8Net'           : '',
+                           'ExtAppsJs8NetBinary'     : '' if (platform.system() == 'Linux') else 'c:\\Program Files (x86)\\HRRM\\js8_net_client.exe',
+
+                           'GeneralRetries1'           : '10',
+                           'GeneralRetries2'           : '2',
+
+                           'RewriteFrom'             : False,
+                           'IncludeHRRMExport'           : False,
+
 
                            'AutoReplyPeer'           : False,
                            'AutoReplyRelay'          : False,
                            'TXEnable'                : True,
 
                            'EmailForwardType'        : 'Internet',
-                           'FormForwardType'         : 'HRRM',
+                           'FormForwardType'         : 'None',
 
                            'DisplayTheme'            : 'DarkBlue14',
                            'EmailAutoForward'        : True,
@@ -2055,6 +2068,17 @@ class FormDictionary(object):
                            'WinlinkPatBinary'        : values['input_general_patbinary'],
                            'WinlinkPatTemplatesFolder'   : '', #values['input_general_pattemplatesfolder'],
                            'WinlinkOverridePatBinary'   : values['cb_general_patbinaryoverride'],
+                           'WinlinkDefaultMode'   : values['option_general_patmode'],
+                           'WinlinkDefaultStation'   : values['input_general_patstation'],
+
+                           'ExtAppsJs8Net'           : values['cb_general_extappsjs8net'],
+                           'ExtAppsJs8NetBinary'     : values['input_general_extappsjs8netbinary'],
+
+                           'GeneralRetries1'           : values['input_general_retries_1'],
+                           'GeneralRetries2'           : values['input_general_retries_2'],
+
+                           'RewriteFrom'             : values['cb_general_rewrite_from'],
+                           'IncludeHRRMExport'           : values['cb_general_include_HRRM_export'],
 
                            'AutoReplyPeer'           : values['cb_general_autoreply_peer'],
                            'AutoReplyRelay'          : values['cb_general_autoreply_relay'],
