@@ -2645,7 +2645,7 @@ dark violet,gray,magenta2,slate gray,slategray4,grey30,grey60,dark gray,white,bl
 Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
     combo_reply_tmplts  = 'ICS_305_REPLY, ICS_305_PG2, GENERIC_REPLY'.split(',')
 
-    combo_send_to_calls  = 'WH6GGO, WH6FQI'.split(',')
+    #combo_send_to_calls  = 'WH6GGO, WH6FQI'.split(',')
 
     combo_verify_by      = 'Next Only,All,None'.split(',')
 
@@ -2655,7 +2655,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v1.0.7 Beta \n\
+                                                Ham Radio Relay Messenger de WH6GGO v1.0.8 Beta \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2024 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2780,16 +2780,17 @@ SOFTWARE.\n'
                           [sg.MLine('', size=(64, 3), font=("Courier New", 9), key='ml_chat_sendtext', text_color='black', background_color='white', expand_x = True, expand_y=False, disabled = False)], 
                           [
                            sg.Text('Mode:', size=(5, 1), background_color=js.get("params").get('ChatTabClr'), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_chat_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
+                           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(23, 1), key='option_chat_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
                            #sg.OptionMenu(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_chat_fldigimode', visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
-                           sg.Button('Send', size=(7, 1), key='btn_prev_chat_post_and_send' ) ,
+                           sg.Button('Send', size=(5, 1), key='btn_prev_chat_post_and_send' ) ,
                            #sg.Text('To: ', size=(3, 1), background_color=js.get("params").get('ChatTabClr'), text_color='black' ) ,
                            sg.Text('To: ', size=(3, 1), background_color=js.get("params").get('ChatTabClr') ) ,
-                           sg.InputText('', key='in_chat_msgto', size=(40, 1)),
+                           sg.InputText('', key='in_chat_msgto', size=(30, 1)),
                            #sg.CBox('Use \'Connect To:\'', default = js.get("params").get('UseConnectTo'), key='cb_chat_useconnecto', background_color=js.get("params").get('ChatTabClr'), text_color='black'),
                            sg.CBox('Use \'Connect To:\'', default = js.get("params").get('UseConnectTo'), key='cb_chat_useconnecto', background_color=js.get("params").get('ChatTabClr')),
-                           sg.Button('Launch Net', size=(11, 1), disabled = True )],
+                           sg.Button('Launch JS8-Net', size=(11, 1), disabled = False if (js.get("params").get('ExtAppsJs8Net')==True) else True, key='button_launch_net' ) ,
+                           sg.CBox('Net Control', key='cb_chat_netcontrol', background_color=js.get("params").get('ChatTabClr'))],
 
 
                           [sg.Table(values=[], headings=['From', 'Message', 'MSGID'],
@@ -2870,7 +2871,7 @@ SOFTWARE.\n'
            sg.Button('Post', size=(6, 1), key='btn_relay_copytooutbox'),
            sg.Button('RTS Relay', size=(12, 1), key='btn_relay_RTS', disabled = True),
            sg.Button('Query Msg', size=(9, 1), key='btn_relay_querymessageorfragments', visible=False),
-           sg.Button('REQM Rly', size=(9, 1), key='btn_relay_sendreqm'),
+           sg.Button('REQM Rly', size=(9, 1), key='btn_relay_sendreqm', disabled = True),
            sg.Button('Request CRC', size=(10, 1), key='btn_relay_requestchecksums', disabled = True),
            sg.Button('Post to Winlink', size=(11, 1), key='btn_relaybox_posttowinlink'),
            sg.CBox('P2P?', key='cb_relaybox_winlinkp2p', background_color=js.get("params").get('RelayboxTabClr'), enable_events=True )],
@@ -3114,7 +3115,8 @@ SOFTWARE.\n'
 
     self.layout_colors = [
                         [sg.Text('Theme (requires restart)' ), 
-                         sg.OptionMenu(values = sg.theme_list(), size = (20,5), key='listbox_theme_select', default_value=js.get("params").get('DisplayTheme'))],
+                         #sg.OptionMenu(values = sg.theme_list(), size = (20,5), key='listbox_theme_select', default_value=js.get("params").get('DisplayTheme'))],
+                         sg.Combo(values = sg.theme_list(), size = (20,5), key='listbox_theme_select', default_value=js.get("params").get('DisplayTheme'))],
                         [sg.Text('TX Buttons', size=(20, 1), visible = False ), 
                          sg.OptionMenu(option_colors, key='option_colors_tx_btns', default_value=js.get("params").get('TxButtonClr'), visible = False),
                          sg.Text('Message Management Buttons', size=(20, 1), visible = False ), 
@@ -3194,10 +3196,12 @@ SOFTWARE.\n'
                             [sg.Frame('Automatic Forwarding', [
                                 [sg.CBox('Emails:- ', size=(10, 1), default = js.get("params").get('EmailAutoForward'), key='cb_general_autoforward', enable_events=True),
                                  #sg.OptionMenu('HRRM,Winlink,Internet,None'.split(','), key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
-                                 sg.Combo('HRRM,Winlink,Internet,None'.split(','), key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
+                                 sg.Combo('Winlink,Internet,None'.split(','), key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
                                  sg.CBox('Forms:- ', size=(10, 1), default = js.get("params").get('FormsAutoForward'), key='cb_general_autoforward_forms', enable_events=True),
                                  #sg.OptionMenu('HRRM,Winlink,Internet,None'.split(','), key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
-                                 sg.Combo('HRRM,Winlink,Internet,None'.split(','), key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
+                                 sg.Combo('Winlink,Internet,None'.split(','), key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
+                                [sg.CBox('Re-write From as My Station Callsign', size=(33, 1), default = js.get("params").get('RewriteFrom'), key='cb_general_rewrite_from', enable_events=True),
+                                 sg.CBox('Include HRRM Export Tag', size=(25, 1), default = js.get("params").get('IncludeHRRMExport'), key='cb_general_include_HRRM_export', enable_events=True)],
 
                             [sg.Frame('HRRM Overrides', [
 
@@ -3205,16 +3209,16 @@ SOFTWARE.\n'
                                sg.CBox('Auto Receive', default = js.get("params").get('AutoReceive'), size=(15, 1), key='cb_general_auto_receive_stub_from_rts', enable_events=True)],
 
                               [
-                               sg.CBox('Callsign', size=(10, 1), key='cb_general_forward_usefixedcallsign', enable_events=True),
-                               sg.InputText('', size=(20, 1), key='input_general_HRRM_fixed_callsign'),
+                               sg.CBox('Callsign', size=(10, 1), key='cb_general_forward_usefixedcallsign', enable_events=True, visible=False),
+                               sg.InputText('', size=(20, 1), key='input_general_HRRM_fixed_callsign', visible=False),
                               
-                               sg.CBox('Frequency', size=(10, 1), key='cb_general_forward_hrrmusefixedcallsign', enable_events=True),
-                               sg.InputText('', size=(20, 1), key='input_general_hrrm_fixed_frequency'),
+                               sg.CBox('Frequency', size=(10, 1), key='cb_general_forward_hrrmusefixedcallsign', enable_events=True, visible=False),
+                               sg.InputText('', size=(20, 1), key='input_general_hrrm_fixed_frequency', visible=False),
                               
-                               sg.CBox('Mode', size=(5, 1), enable_events=True),
+                               sg.CBox('Mode', size=(5, 1), enable_events=True, visible=False),
                                #sg.InputText('', size=(15, 1), key='input_general_hrrm_fixed_mode')],
                                #sg.OptionMenu(combo_mode_all_mode_only, default_value=control_mode, key='option_general_hrrm_fixed_mode', size=(15, 1))],
-                               sg.Combo(combo_mode_all_mode_only, default_value=control_mode, key='option_general_hrrm_fixed_mode', size=(15, 1))],
+                               sg.Combo(combo_mode_all_mode_only, default_value=control_mode, key='option_general_hrrm_fixed_mode', size=(15, 1), visible=False)],
 
 
                                 ], expand_x=True)
@@ -3234,14 +3238,16 @@ SOFTWARE.\n'
 
                                #sg.CBox('P2P', size=(15, 1), key='cb_general_forward_winlinkp2p', enable_events=True)],
 
-                              [sg.Text('Mode' ), 
-                               sg.OptionMenu('vara,ardop,telnet'.split(','), key='option_general_patmode', default_value='telnet'),
-                               sg.Text('Station:' ), 
-                               sg.InputText('', key='input_general_patstation', size=(20, 1))],
+                              #[sg.Text('Mode' ), 
+                              # sg.InputText(js.get("params").get('WinlinkDefaultMode'), key='option_general_patmode', size=(15, 1)),
+                              # sg.Text('Station:' ), 
+                              # sg.InputText(js.get("params").get('WinlinkDefaultStation'), key='input_general_patstation', size=(20, 1))],
 
-                              [sg.CBox('Pat Winlink binary:', default=js.get("params").get('WinlinkOverridePatBinary'), key='cb_general_patbinaryoverride', size=(18, 1), enable_events=True ), 
-                               sg.InputText(js.get("params").get('WinlinkPatBinary'), key='input_general_patbinary', size=(25, 1)),
-                               sg.FileBrowse(),
+                              [sg.Text('Mode' ), 
+                               sg.InputText(js.get("params").get('WinlinkDefaultMode'), key='option_general_patmode', size=(15, 1)),
+                               sg.Text('Station:' ), 
+                               sg.InputText(js.get("params").get('WinlinkDefaultStation'), key='input_general_patstation', size=(20, 1)),
+
                                sg.Text('Pat Winlink Templates Folder', visible = False),
                                sg.InputText(js.get("params").get('WinlinkPatTemplatesFolder'), key='input_general_pattemplatesfolder', size=(25, 1), visible = False)],
                                #sg.FolderBrowse()],
@@ -3272,7 +3278,29 @@ SOFTWARE.\n'
                             ],
 
 
+                            [sg.Frame('External Apps', [
 
+                              [sg.CBox('Pat Winlink binary:', default=js.get("params").get('WinlinkOverridePatBinary'), key='cb_general_patbinaryoverride', size=(18, 1), enable_events=True ), 
+                               sg.InputText(js.get("params").get('WinlinkPatBinary'), key='input_general_patbinary', size=(25, 1)),
+                               sg.FileBrowse()],
+
+                              [sg.CBox('Js8-Net binary:', default=js.get("params").get('ExtAppsJs8Net'), key='cb_general_extappsjs8net', size=(18, 1), enable_events=True ), 
+                               sg.InputText(js.get("params").get('ExtAppsJs8NetBinary'), key='input_general_extappsjs8netbinary', size=(25, 1)),
+                               sg.FileBrowse()],
+
+
+                                ], expand_x=True)
+                            ],
+
+                            [sg.Frame('Form Parameters', [
+
+                              [sg.Text('Max Fragment Retransmits:' ), 
+                               sg.InputText(js.get("params").get('GeneralRetries1'), key='input_general_retries_1', size=(25, 1)),
+                               sg.Text('Max AckNack Retransmits:' ), 
+                               sg.InputText(js.get("params").get('GeneralRetries2'), key='input_general_retries_2', size=(25, 1))],
+
+                                ], expand_x=True)
+                            ],
 
 
                           ] 
@@ -3497,6 +3525,52 @@ SOFTWARE.\n'
 
                           ] 
 
+
+    self.layout_peer_stations = [
+#                            [sg.Text('RMS Messages Folder:', size=(20,1), justification='left')],
+
+                        [sg.Table(values=self.group_arq.getSelectedStations(), headings=['Peer Callsign', '#', 'Grid', 'Sel.', 'Rig', 'Mod', 'SNR', 'ID', 'Signal Report'],
+                            max_col_width=35,
+                            col_widths=[13, 3, 9, 3, 10, 8, 4, 11, 11, 11],
+                            auto_size_columns=False,
+                            justification='left',
+                            text_color='black',
+                            background_color='ivory2',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=5, key='tbl_compose_selectedstations', expand_x=True)],
+
+                        ] 
+
+    self.layout_relay_stations = [
+#                            [sg.Text('RMS Messages Folder:', size=(20,1), justification='left')],
+
+                       [sg.Table(values=self.group_arq.getSelectedRelayStations(), headings=['Callsign', '#', 'Grid', 'Relay Callsign', 'Sel.', 'hops'],
+                            max_col_width=35,
+                            col_widths=[13, 3, 9, 13, 3, 4, 11],
+                            auto_size_columns=False,
+                            justification='left',
+                            text_color='black',
+                            background_color='plum1',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=5, key='tbl_compose_selectedrelaystations', expand_x=True)],
+
+
+                        ] 
+
+
+#    self.layout_peer_relay = [
+#                            [sg.TabGroup([[
+#                                sg.Tab('Peer Station', self.layout_peer_stations,  title_color='Black', key='tab_winlink_pat_inbox', background_color='Dark Gray'),
+#                                sg.Tab('Relay Station', self.layout_relay_stations, title_color='Black', key='tab_winlink_pat_outbox', background_color='Dark Gray')]],
+#                             tab_location='centertop',
+#                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True )],
+#                          ] 
+
+
+
+
     if(self.group_arq.formdesigner_mode ==True):
       self.tabgrp = [[sg.TabGroup([[
                              sg.Tab('Form Designer', self.layout_template, title_color='Black', key='tab_templates', background_color='Purple'),
@@ -3544,31 +3618,38 @@ SOFTWARE.\n'
                         sg.Button('Abort', size=(4, 1), key='btn_compose_abortsend'),
                         sg.Button('Save & Exit', size=(9, 1), key='Exit')],
                             ], expand_x=True)],
-                       [
-                           sg.Frame('Peer Stations', [
-                        [sg.Table(values=self.group_arq.getSelectedStations(), headings=['Peer Callsign', '#', 'Grid', 'Sel.', 'Rig', 'Mod', 'SNR'],
-                            max_col_width=35,
-                            col_widths=[13, 3, 9, 3, 10, 8, 4, 11],
-                            auto_size_columns=False,
-                            justification='left',
-                            text_color='black',
-                            background_color='ivory2',
-                            enable_events=True,
-                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=5, key='tbl_compose_selectedstations')],
-                            ], expand_x=True),
-                           sg.Frame('Relay Stations', [
-                       [sg.Table(values=self.group_arq.getSelectedRelayStations(), headings=['Callsign', '#', 'Grid', 'Relay Callsign', 'Sel.', 'hops'],
-                            max_col_width=35,
-                            col_widths=[13, 3, 9, 13, 3, 4, 11],
-                            auto_size_columns=False,
-                            justification='left',
-                            text_color='black',
-                            background_color='plum1',
-                            enable_events=True,
-                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=5, key='tbl_compose_selectedrelaystations')],
-                            ], expand_x=True)],
+
+                            [sg.TabGroup([[
+                                sg.Tab('Peer Stations', self.layout_peer_stations,  title_color='Black', key='tab_winlink_pat_inbox', background_color='Dark Gray'),
+                                sg.Tab('Relay Stations', self.layout_relay_stations, title_color='Black', key='tab_winlink_pat_outbox', background_color='Dark Gray')]],
+                             tab_location='centertop',
+                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True, expand_x=True )],
+
+#                       [
+#                           sg.Frame('Peer Stations', [
+#                        [sg.Table(values=self.group_arq.getSelectedStations(), headings=['Peer Callsign', '#', 'Grid', 'Sel.', 'Rig', 'Mod', 'SNR'],
+#                            max_col_width=35,
+#                            col_widths=[13, 3, 9, 3, 10, 8, 4, 11],
+#                            auto_size_columns=False,
+#                            justification='left',
+#                            text_color='black',
+#                            background_color='ivory2',
+#                            enable_events=True,
+#                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+#                            num_rows=5, key='tbl_compose_selectedstations')],
+#                            ], expand_x=True),
+#                           sg.Frame('Relay Stations', [
+#                       [sg.Table(values=self.group_arq.getSelectedRelayStations(), headings=['Callsign', '#', 'Grid', 'Relay Callsign', 'Sel.', 'hops'],
+#                            max_col_width=35,
+#                            col_widths=[13, 3, 9, 13, 3, 4, 11],
+#                            auto_size_columns=False,
+#                            justification='left',
+#                            text_color='black',
+#                            background_color='plum1',
+#                            enable_events=True,
+#                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+#                            num_rows=5, key='tbl_compose_selectedrelaystations')],
+#                            ], expand_x=True)],
 
                        [
                         sg.CBox('Active TX Channel: ', key='cb_mainwindow_acttxchan', visible = False),
@@ -3622,7 +3703,7 @@ SOFTWARE.\n'
 
 
                           [sg.TabGroup([[
-                             sg.Tab('Chat', self.layout_chat, title_color='Blue',border_width =10, background_color=js.get("params").get('ChatTabClr'), key='tab_chat' ),
+                             sg.Tab('Chat - Peer & Group', self.layout_chat, title_color='Blue',border_width =10, background_color=js.get("params").get('ChatTabClr'), key='tab_chat' ),
                              sg.Tab('HRRM Messages', self.layout_HRRM, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_hrrm' ),
                              sg.Tab('Winlink Messages', self.layout_winlink, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_winlink' ),
                              sg.Tab('Files & Images', self.layout_filexfer, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_filexfer'),
@@ -3632,7 +3713,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main' )] ]  
 
-    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.7 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
+    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.8 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
 
     return (self.window)
 
