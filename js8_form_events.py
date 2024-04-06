@@ -18,6 +18,7 @@ import xmlrpc.client
 import glob
 import webbrowser
 import shutil
+from subprocess import Popen
 
 import base64
 import bz2 as bz2
@@ -414,6 +415,7 @@ class ReceiveControlsProc(object):
     return (table_data)
 
 
+  # This method used by the form designer
   def event_btntmpltpreviewform(self, values):
     self.debug.info_message("BTN NEW TEMPLATE\n")
 
@@ -1750,6 +1752,7 @@ class ReceiveControlsProc(object):
 
     return
 
+  # METHOD DEPRECATED
   def event_inboxrcvstatus(self, values):
     self.debug.info_message("EVENT INBOX SEND RCV STATUS\n")
 
@@ -1911,6 +1914,47 @@ class ReceiveControlsProc(object):
     clip.copy(text + '\n\n\nSaam-Mail-Export=' + fragtagmsg)
 
 
+  def event_relayboxcopyclipboard(self, values):
+
+    self.debug.info_message("event_relayboxcopyclipboard")
+
+    text_table = self.form_gui.window['table_relaybox_preview'].get()
+
+    text = ''
+    for x in range(len(text_table)):
+      text = text + text_table[x][0] + '\n'
+
+    self.debug.info_message("preview text is: " + str(text) )
+
+    line_index = int(values['table_relay_messages'][0])
+    msgid = (self.group_arq.getMessageRelaybox()[line_index])[6]
+    formname = (self.group_arq.getMessageRelaybox()[line_index])[5]
+    priority = (self.group_arq.getMessageRelaybox()[line_index])[4]
+    subject  = (self.group_arq.getMessageRelaybox()[line_index])[2]
+    tolist   = (self.group_arq.getMessageRelaybox()[line_index])[1]
+
+    frag_size = 30
+    frag_string = values['option_framesize'].strip()
+    if(frag_string != ''):
+      frag_size = int(values['option_framesize'])
+
+    sender_callsign = self.group_arq.saamfram.getMyCall()
+    tagfile = 'ICS'
+    version  = '1.3'
+
+    complete_send_string = ''
+    #include_template = values['cb_outbox_includetmpl']
+    include_template = False
+    if(include_template):
+      complete_send_string = self.group_arq.saamfram.getContentAndTemplateSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+    else:  
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.RELAYBOX)
+
+    fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+
+    clip.copy(text + '\n\n\nHRRM_EXPORT = ' + fragtagmsg + '\n\n')
+
+
   def event_outboxcopyclipboard(self, values):
 
     self.debug.info_message("event_outboxcopyclipboard")
@@ -1948,7 +1992,7 @@ class ReceiveControlsProc(object):
 
     fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
 
-    clip.copy(text + '\n\n\nSaam-Mail-Export=' + fragtagmsg)
+    clip.copy(text + '\n\n\nHRRM_EXPORT = ' + fragtagmsg + '\n\n')
 
 
   def event_outboximportfromclipboard(self, values):
@@ -2420,7 +2464,7 @@ class ReceiveControlsProc(object):
       tagfile = 'ICS'
       version  = '1.3'
       complete_send_string = ''
-      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.RELAYBOX)
       modified_send_string = complete_send_string.strip('{')
       modified_send_string2 = modified_send_string.strip('}')
       self.debug.info_message("complete send string is:" + str(modified_send_string2))
@@ -2816,6 +2860,8 @@ class ReceiveControlsProc(object):
 
   def event_btnmainareareset(self, values):
     self.debug.info_message("event_btnmainareareset\n")
+
+    self.form_gui.form_events.flash_buttons_group1['btn_mainpanel_cqcqcq'] = ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'black,green1']
 
     self.changeFlashButtonState('btn_mainpanel_cqcqcq', True)
     self.changeFlashButtonState('btn_mainpanel_copycopy', True)
@@ -3604,6 +3650,22 @@ class ReceiveControlsProc(object):
           running_count = 0
         elif('Type: ' in data[x]):
           running_count = 0
+        elif('Content-Transfer-Encoding: ' in data[x]):
+          running_count = 0
+        elif('Content-Type: ' in data[x]):
+          running_count = 0
+        elif('Date: ' in data[x]):
+          running_count = 0
+        elif('From: ' in data[x]):
+          running_count = 0
+        elif('Mbo: ' in data[x]):
+          running_count = 0
+        elif('Subject: ' in data[x]):
+          running_count = 0
+        elif('To: ' in data[x]):
+          running_count = 0
+        elif('Type: ' in data[x]):
+          running_count = 0
 
         if(running_count <= body_length):
           data_item = [str(data[x])]
@@ -3800,6 +3862,20 @@ class ReceiveControlsProc(object):
           running_count = 0
         elif('Content-Transfer-Encoding: ' in data[x]):
           running_count = 0
+        elif('Content-Type: ' in data[x]):
+          running_count = 0
+        elif('Date: ' in data[x]):
+          running_count = 0
+        elif('From: ' in data[x]):
+          running_count = 0
+        elif('Mbo: ' in data[x]):
+          running_count = 0
+        elif('Subject: ' in data[x]):
+          running_count = 0
+        elif('To: ' in data[x]):
+          running_count = 0
+        elif('Type: ' in data[x]):
+          running_count = 0
 
         if(running_count <= body_length or formname != ''):
           data_item = [str(data[x])]
@@ -3917,22 +3993,43 @@ class ReceiveControlsProc(object):
     self.group_arq.pipes.removePipe(name, ip_address, port )
 
 
+  def event_btnlaunchnet(self, values):
+    self.debug.info_message("event_btnlaunchnet")
+
+    #net_control = values['cb_chat_netcontrol']
+
+    #js8_net_binary = values['input_general_extappsjs8netbinary'].strip()
+
+    #if(net_control):
+    self.startinnewthread(values)
+    #else:
+    #  self.startinnewthread(values)
+
+
+  def startinnewthread(self, values):
+    new_class = NewProcessClass(values)
+    t1 = threading.Thread(target=new_class.run, args=())
+    t1.start()
+
+
   def event_tabgrpwinlink(self, values):
     self.debug.info_message("event_tabgrpwinlink")
 
-    tabname = values['tabgrp_winlink4']
-    #self.debug.info_message("tabname = " + str(tabname) )
+    tabname = values['tabgrp_winlink7']
+    self.debug.info_message("tabname = " + str(tabname) )
 
-    if(tabname == 'tab_winlink_pat_inbox'):
+    if(tabname == 'tab_winlink_pat_inbox3'):
       self.debug.info_message("clicked on inbox" )
       self.form_gui.window['btn_winlink_connect'].update(disabled = False)
-    elif(tabname == 'tab_winlink_pat_outbox'):
+      self.form_gui.window['btn_winlink_send_selected'].update(disabled = False)
+    elif(tabname == 'tab_winlink_pat_outbox5'):
       self.debug.info_message("clicked on outbox" )
       self.form_gui.window['btn_winlink_connect'].update(disabled = False)
+      self.form_gui.window['btn_winlink_send_selected'].update(disabled = False)
     elif(tabname == 'tab_winlink_rms_folder'):
       self.debug.info_message("clicked on express" )
       self.form_gui.window['btn_winlink_connect'].update(disabled = True)
-
+      self.form_gui.window['btn_winlink_send_selected'].update(disabled = True)
 
 
   def event_comboelement1(self, values):
@@ -4193,7 +4290,14 @@ class ReceiveControlsProc(object):
 
       'btn_preview_auto_populate_ics309' : event_btnpreviewautopopulateics309,
 
-      'tabgrp_winlink4'           : event_tabgrpwinlink,
+
+      'btn_relay_copytoclipboard' : event_relayboxcopyclipboard,
+
+
+      'tabgrp_winlink7'           : event_tabgrpwinlink,
+
+      'button_launch_net'           : event_btnlaunchnet,
+
 
       'btn_compose_ics205'        : event_btncomposeics205,
       'btn_compose_ics213'        : event_btncomposeics213,
@@ -4234,6 +4338,23 @@ class PopupControlsProc(object):
   def event_exit_receive(self, values):
     return
 
+
+class NewProcessClass(object):
+  
+  
+  def __init__(self, values):  
+    self.values = values
+    return
+
+  def run(self):
+
+    net_control = self.values['cb_chat_netcontrol']
+    js8_net_binary = self.values['input_general_extappsjs8netbinary'].strip()
+
+    if(net_control):
+      os.system('"' + js8_net_binary + '"' + ' --interface=netcontrol')
+    else:
+      os.system('"' + js8_net_binary + '"' + ' --interface=participant')
 
 
 
