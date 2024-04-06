@@ -71,8 +71,8 @@ class SAAMFRAM(object):
       self.max_frag_retransmits = 5
       self.max_qry_acknack_retransmits = 5
     else:
-      self.max_frag_retransmits = 10
-      self.max_qry_acknack_retransmits = 2
+      self.max_frag_retransmits = int(js.get("params").get('GeneralRetries1'))
+      self.max_qry_acknack_retransmits = int(js.get("params").get('GeneralRetries2'))
 
     self.delimiter_char = cn.DELIMETER_CHAR
     self.group_arq = group_arq
@@ -81,10 +81,12 @@ class SAAMFRAM(object):
     self.fldigiclient = fldigiclient_rig1
     self.debug = debug
     self.form_gui = form_gui
-    self.recipient_stations_str = 'WH6ABC;WH6DEF;WH6GHI'
+    #self.recipient_stations_str = 'WH6ABC;WH6DEF;WH6GHI'
     self.announce = ''
-    self.pre_message = 'WH6GGO: @HINET ' + self.announce
-    self.groupname = "@HINET"
+    #self.pre_message = 'WH6GGO: @HINET ' + self.announce
+    self.pre_message = ''
+    #self.groupname = "@HINET"
+    self.groupname = "@HRRM"
     self.chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     self.js8_tx_speed = 'TURBO'
     self.tx_mode = ''
@@ -121,6 +123,11 @@ class SAAMFRAM(object):
     #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F7,F15,F20,F21 : " + self.getRunLengthEncodeNackFldigi("F5,F7,F15,F20,F21"))
 
 
+  #def getMaxFragRetransmits(self):
+  #  return self.max_frag_retransmits
+
+  #def getMaxAckNackRetransmits(self):
+  #  return self.max_qry_acknack_retransmits
 
   def getSenderCall(self):
     if(self.form_gui.window != None and self.form_gui.form_events != None and self.form_gui.form_events.window_initialized == True and self.group_arq.formdesigner_mode == False):
@@ -264,7 +271,7 @@ class SAAMFRAM(object):
   def createPreMessageInfoSNRDataFlec(self, snr):
     self.debug.info_message("createPreMessageInfoSNRDataFlec")
     message = 'INFO(SNR,' + snr
-    checksum = self.getChecksum(snr)
+    checksum = self.getChecksum('SNR,' + snr)
     return message + ',' + checksum +  ')'
 
   def createPreMessagePend(self):
@@ -2078,32 +2085,36 @@ outbox dictionary items formatted as...
 
             autoForward = self.form_gui.window['cb_general_autoforward'].get()
             autoForwardForms = self.form_gui.window['cb_general_autoforward_forms'].get()
-            if(autoForward and data[5] == 'EMAIL'):
-              forwardType = self.form_gui.window['option_general_forwardemailtype'].get()
-              pat_binary = self.group_arq.form_events.winlink_import.getWinlinkBinary()
-              mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(data[5])
-              text_render, table_render, actual_render = self.form_gui.renderPage(mytemplate, False, actual_data)
-              if(forwardType == 'Internet'):
-                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
-                self.group_arq.form_events.winlink_import.winlinkConnect('', pat_binary, 'telnet')
-              elif(forwardType == 'Winlink'):
-                callsign = self.form_gui.window['input_general_patstation'].get()
-                connect_mode = self.form_gui.window['option_general_patmode'].get()
-                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
-                self.group_arq.form_events.winlink_import.winlinkConnect(callsign, pat_binary, connect_mode)
-            elif(autoForwardForms and data[5] != 'EMAIL'):
-              forwardType = self.form_gui.window['option_general_forwardformtype'].get()
-              pat_binary = self.group_arq.form_events.winlink_import.getWinlinkBinary()
-              mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(data[5])
-              text_render, table_render, actual_render = self.form_gui.renderPage(mytemplate, False, actual_data)
-              if(forwardType == 'Internet'):
-                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
-                self.group_arq.form_events.winlink_import.winlinkConnect('', pat_binary, 'telnet')
-              elif(forwardType == 'Winlink'):
-                callsign = self.form_gui.window['input_general_patstation'].get()
-                connect_mode = self.form_gui.window['option_general_patmode'].get()
-                self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
-                self.group_arq.form_events.winlink_import.winlinkConnect(callsign, pat_binary, connect_mode)
+
+            #if(autoForward and data[5] == 'EMAIL'):
+        
+            if( self.getMyCall() in data[1]):
+              if(autoForward and data[5] == 'EMAIL'):
+                forwardType = self.form_gui.window['option_general_forwardemailtype'].get()
+                pat_binary = self.group_arq.form_events.winlink_import.getWinlinkBinary()
+                mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(data[5])
+                text_render, table_render, actual_render = self.form_gui.renderPage(mytemplate, False, actual_data)
+                if(forwardType == 'Internet'):
+                  self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                  self.group_arq.form_events.winlink_import.winlinkConnect('', pat_binary, 'telnet')
+                elif(forwardType == 'Winlink'):
+                  callsign = self.form_gui.window['input_general_patstation'].get()
+                  connect_mode = self.form_gui.window['option_general_patmode'].get()
+                  self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                  self.group_arq.form_events.winlink_import.winlinkConnect(callsign, pat_binary, connect_mode)
+              elif(autoForwardForms and data[5] != 'EMAIL'):
+                forwardType = self.form_gui.window['option_general_forwardformtype'].get()
+                pat_binary = self.group_arq.form_events.winlink_import.getWinlinkBinary()
+                mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(data[5])
+                text_render, table_render, actual_render = self.form_gui.renderPage(mytemplate, False, actual_data)
+                if(forwardType == 'Internet'):
+                  self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                  self.group_arq.form_events.winlink_import.winlinkConnect('', pat_binary, 'telnet')
+                elif(forwardType == 'Winlink'):
+                  callsign = self.form_gui.window['input_general_patstation'].get()
+                  connect_mode = self.form_gui.window['option_general_patmode'].get()
+                  self.group_arq.form_events.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self, received_text, table_render)
+                  self.group_arq.form_events.winlink_import.winlinkConnect(callsign, pat_binary, connect_mode)
 
           except:
             self.debug.info_message("processing incoming EMAIL")
@@ -2821,8 +2832,8 @@ outbox dictionary items formatted as...
         self.debug.info_message("requestConfirm. Mode: " + str(mode) )
 
     else:
-      self.max_frag_retransmits = 10
-      self.max_qry_acknack_retransmits = 2
+      self.max_frag_retransmits = int(self.form_gui.window['input_general_retries_1'].get())
+      self.max_qry_acknack_retransmits = int(self.form_gui.window['input_general_retries_2'].get())
 
     return
 
@@ -3001,14 +3012,33 @@ outbox dictionary items formatted as...
 
     self.fldigiclient.setMode(random_mode)
 
-    message = ''
-
+    """ BEAC for my peer stations"""
     ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
-    self.pre_message = self.createPreMessageDataFlecBeac(ID, grid, hop)
+    sendstring = ''
+    delimeter = ''
+    if(ID != ''):  
+      sendstring = sendstring + self.createPreMessageDataFlecBeac(ID, grid, hop)
 
+    if(sendstring != ''):
+      delimeter = ','
+
+    """ send PEND for pending messages"""
     pending = self.createPreMessagePend() 
     if(pending != ''):
-      self.pre_message = self.pre_message + ',' + pending
+      sendstring = sendstring + delimeter + pending
+
+    if(sendstring != ''):
+      delimeter = ','
+
+    """ send BEAC for my station """
+    myStnID = self.getEncodeUniqueId(self.getMyCall())
+    mygrid  = self.form_gui.window['input_myinfo_gridsquare'].get()
+    myhops  = '1'
+    pending = self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
+    if(pending != ''):
+      sendstring = sendstring + delimeter + pending
+
+    self.pre_message = sendstring
 
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_TESTPROP + from_callsign + ' '
@@ -3075,13 +3105,14 @@ outbox dictionary items formatted as...
     from_callsign = self.getMyCall()
     myStnID = self.getEncodeUniqueId(from_callsign)
 
-    """ INFO(GRID for my station"""
     sendstring = ''
     delimeter = ''
-    part_msg = self.createPreMessageInfoGRIDDataFlec(myStnID, mygrid)
-    if(part_msg != ''):  
-      sendstring = sendstring + part_msg
-      delimeter = ','
+
+    """ INFO(GRID for my station"""
+    #part_msg = self.createPreMessageInfoGRIDDataFlec(myStnID, mygrid)
+    #if(part_msg != ''):  
+    #  sendstring = sendstring + part_msg
+    #  delimeter = ','
 
     """ INFO(SNR for station in QSO"""
     if(snr != ''):
@@ -3089,6 +3120,16 @@ outbox dictionary items formatted as...
       if(part_msg != ''):  
         sendstring = sendstring + delimeter + part_msg
         delimeter = ','
+
+    """ BEAC for my station """
+    #if(sendstring != ''):
+    #  delimeter = ','
+    from_callsign = self.getMyCall()
+    myStnID = self.getEncodeUniqueId(from_callsign)
+    mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
+    self.debug.info_message("buildPreMessageForCQCOPYRR73_TYPE2 MYGRID = " + mygrid)
+    myhops = '1'
+    sendstring = sendstring + delimeter + self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
 
     return sendstring
 
@@ -3198,13 +3239,44 @@ outbox dictionary items formatted as...
     self.fldigiclient.setMode(selected_mode)
     self.debug.info_message("selected main mode is: " + selected_mode)
 
-    message = ''
-    self.pre_message = self.createPreMessageBeac()
+    #message = ''
+    #ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
+    #self.pre_message = self.createPreMessageDataFlecBeac(ID, grid, hop)
 
+    #pending = self.createPreMessagePend() 
+    #if(pending != ''):
+    #  self.pre_message = self.pre_message + ',' + pending
+
+##############
+    """ BEAC for my peer stations"""
+    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
+    sendstring = ''
+    delimeter = ''
+    if(ID != ''):  
+      sendstring = sendstring + self.createPreMessageDataFlecBeac(ID, grid, hop)
+
+    if(sendstring != ''):
+      delimeter = ','
+
+    """ send PEND for pending messages"""
     pending = self.createPreMessagePend() 
     if(pending != ''):
-      self.pre_message = self.pre_message + ',' + pending
+      sendstring = sendstring + delimeter + pending
 
+    if(sendstring != ''):
+      delimeter = ','
+
+    """ send BEAC for my station """
+    myStnID = self.getEncodeUniqueId(self.getMyCall())
+    mygrid  = self.form_gui.window['input_myinfo_gridsquare'].get()
+    myhops  = '1'
+    pending = self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
+    if(pending != ''):
+      sendstring = sendstring + delimeter + pending
+
+    self.pre_message = sendstring
+
+##############
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_STANDBY + from_callsign + ' '
 
@@ -4580,22 +4652,28 @@ outbox dictionary items formatted as...
           """ self.sendSAAM(from_call, group_name) """
           self.debug.info_message("heard CQCQCQ\n")
           group_name = param_1
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', True)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
 
-          newID = self.getEncodeUniqueId(from_call)
-          newMode = self.fldigiclient.current_mode
-          rigname = ''
-          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
+          if(group_name == self.getMyGroup() ):
 
-          index = self.group_arq.getSelectedStationIndex(from_call)
-          if(index != -1):
-            self.group_arq.selectSelectedStations(index)
+            self.form_gui.form_events.flash_buttons_group1['btn_mainpanel_cqcqcq'] = ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'white,slate gray']
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', True)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', True)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
 
-          self.form_gui.refreshSelectedTables()
-          self.form_gui.window['in_inbox_listentostation'].update(from_call)
+            #FIXME remove...all station need to be on at least v1.0.8
+            newID = self.getEncodeUniqueId(from_call)
+            newMode = self.fldigiclient.current_mode
+            rigname = ''
+            self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
+
+            index = self.group_arq.getSelectedStationIndex(from_call)
+            if(index != -1):
+              self.group_arq.selectSelectedStations(index)
+
+            self.form_gui.refreshSelectedTables()
+            self.form_gui.window['in_inbox_listentostation'].update(from_call)
 
         if(command == cn.COMMAND_RTS):
 
@@ -4655,58 +4733,89 @@ outbox dictionary items formatted as...
           """ Do not send an automatic reply as all stations potentially use the same channel in fldigi"""
           """ self.sendSAAM(from_call, group_name) """
           self.debug.info_message("heard COPY\n")
-          group_name = param_1
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', True)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
+          #group_name = param_1
+          dest_call = param_1
+          
+          if(dest_call == self.getMyCall() ):
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', True)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
+ 
+            #FIXME remove...all station need to be on at least v1.0.8
+            newID = self.getEncodeUniqueId(from_call)
+            newMode = self.fldigiclient.current_mode
+            rigname = ''
+            self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
 
-          newID = self.getEncodeUniqueId(from_call)
-          newMode = self.fldigiclient.current_mode
-          rigname = ''
-          self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
-          self.form_gui.refreshSelectedTables()
-          self.form_gui.window['in_inbox_listentostation'].update(from_call)
+            self.form_gui.refreshSelectedTables()
+            self.form_gui.window['in_inbox_listentostation'].update(from_call)
 
-          """ If full auto is selected then send reply"""
-          checked = self.form_gui.window['cb_mainpanel_ft8stylefullauto'].get()
-          if(checked):
-            from_call = self.getMyCall()
-            group_name = self.getMyGroup()
-            self.sendRR73(from_call, group_name)
+            """ If full auto is selected then send reply"""
+            checked = self.form_gui.window['cb_mainpanel_ft8stylefullauto'].get()
+            if(checked):
+              from_call = self.getMyCall()
+              group_name = self.getMyGroup()
+              self.sendRR73(from_call, group_name)
 
         if(command == cn.COMMAND_RR73):
           """ Do not send an automatic reply as all stations potentially use the same channel in fldigi"""
           """ self.sendSAAM(from_call, group_name) """
           self.debug.info_message("heard RR73\n")
-          group_name = param_1
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', True)
-          self.form_gui.refreshSelectedTables()
+          #group_name = param_1
+          dest_call = param_1
+          
+          if(dest_call == self.getMyCall() ):
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', True)
 
-          self.form_gui.window['in_inbox_listentostation'].update(from_call)
+            #self.form_gui.window['in_inbox_listentostation'].update(from_call)
 
-          """ If full auto is selected then send reply"""
-          checked = self.form_gui.window['cb_mainpanel_ft8stylefullauto'].get()
-          if(checked):
-            from_call = self.getMyCall()
-            group_name = self.getMyGroup()
-            self.send73(from_call, group_name)
+            """ If full auto is selected then send reply"""
+            checked = self.form_gui.window['cb_mainpanel_ft8stylefullauto'].get()
+            if(checked):
+              #from_call = 
+              #group_name = 
+              self.send73(self.getMyCall(), self.getMyGroup())
+
+            sigrepdata = self.saam_parser.context_dependent_sigrepdata
+            self.debug.info_message("heard RR73. sigrepdata is :-" + str(sigrepdata))
+            self.saam_parser.context_dependat_sigrepdata = ''
+            to_call = param_1
+            if(sigrepdata != '' and to_call == self.getMyCall()):
+              self.group_arq.updateSelectedStationSignalReport(from_call, sigrepdata)
+
+            self.form_gui.refreshSelectedTables()
 
 
         if(command == cn.COMMAND_73):
           """ Do not send an automatic reply as all stations potentially use the same channel in fldigi"""
           """ self.sendSAAM(from_call, group_name) """
           self.debug.info_message("heard 73\n")
-          group_name = param_1
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', False)
-          self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
-          self.form_gui.refreshSelectedTables()
-          self.form_gui.window['in_inbox_listentostation'].update(from_call)
+          #group_name = param_1
+          dest_call = param_1
+          
+          if(dest_call == self.getMyCall() ):
+
+            self.form_gui.form_events.flash_buttons_group1['btn_mainpanel_cqcqcq'] = ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'black,green1']
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', True)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
+            #self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', False)
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
+
+            sigrepdata = self.saam_parser.context_dependent_sigrepdata
+            self.debug.info_message("heard RR73. sigrepdata is :-" + str(sigrepdata))
+            self.saam_parser.context_dependat_sigrepdata = ''
+            to_call = param_1
+            if(sigrepdata != '' and to_call == self.getMyCall()):
+              self.group_arq.updateSelectedStationSignalReport(from_call, sigrepdata)
+
+            self.form_gui.refreshSelectedTables()
+            #self.form_gui.window['in_inbox_listentostation'].update(from_call)
 
         if(command == cn.COMMAND_SAAM):
           """ Do not send an automatic reply as all stations potentially use the same channel in fldigi"""
