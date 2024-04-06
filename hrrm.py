@@ -184,6 +184,8 @@ class NetGarq(object):
 
     self.debug.info_message("addSelectedStation" )
 
+    signal_report = ''
+
     for x in range (len(self.selected_stations)):
       lineitem = self.selected_stations[x]
       callsign        = lineitem[0]
@@ -201,10 +203,10 @@ class NetGarq(object):
           return self.selected_stations
         else:
           self.selected_stations.remove(lineitem)
-          self.selected_stations.append([station, num, grid, connect, rig, modulation, snr, ID])
+          self.selected_stations.append([station, num, grid, connect, rig, modulation, snr, ID, signal_report])
           return self.selected_stations
 
-    self.selected_stations.append([station, num, grid, connect, rig, modulation, snr, ID])
+    self.selected_stations.append([station, num, grid, connect, rig, modulation, snr, ID, signal_report])
     return self.selected_stations
 
 
@@ -236,8 +238,32 @@ class NetGarq(object):
         rig        = lineitem[4]
         modulation = lineitem[5]
         last_heard = lineitem[7]
+        signal_report = lineitem[8]
 
-        self.selected_stations[x] = [callsign, num, grid, connect, rig, modulation, snr, last_heard]
+        self.selected_stations[x] = [callsign, num, grid, connect, rig, modulation, snr, last_heard, signal_report]
+
+        return 
+
+  def updateSelectedStationSignalReport(self, station, signal_report):
+
+    self.debug.info_message("updateSelectedStationSignalReport " + station + ' ' + signal_report )
+
+    for x in range (len(self.selected_stations)):
+      lineitem = self.selected_stations[x]
+      callsign = lineitem[0]
+      self.debug.info_message("updateSelectedStationSignalReport callsign " + callsign + ' ' + station)
+      if(callsign == station):
+        self.debug.info_message("updateSelectedStationSignalReport updating sigrep")
+
+        num        = lineitem[1]
+        grid       = lineitem[2]
+        connect    = lineitem[3]
+        rig        = lineitem[4]
+        modulation = lineitem[5]
+        snr        = lineitem[6]
+        last_heard = lineitem[7]
+
+        self.selected_stations[x] = [callsign, num, grid, connect, rig, modulation, snr, last_heard, signal_report]
 
         return 
 
@@ -274,12 +300,13 @@ class NetGarq(object):
     modulation = lineitem[5]
     snr        = lineitem[6]
     last_heard = lineitem[7]
+    signal_report  = lineitem[8]
 
     if(selected == 'X'):
       selected = ' '
     else:
       selected = 'X'
-    self.selected_stations[index] = [callsign, num, grid, selected, rig, modulation, snr, last_heard]
+    self.selected_stations[index] = [callsign, num, grid, selected, rig, modulation, snr, last_heard, signal_report]
 
 
   def selectSelectedStations(self, index):
@@ -293,9 +320,10 @@ class NetGarq(object):
     modulation = lineitem[5]
     snr        = lineitem[6]
     last_heard = lineitem[7]
+    signal_report  = lineitem[8]
 
     selected = 'X'
-    self.selected_stations[index] = [callsign, num, grid, selected, rig, modulation, snr, last_heard]
+    self.selected_stations[index] = [callsign, num, grid, selected, rig, modulation, snr, last_heard, signal_report]
 
 
   def getConnectToString(self):
