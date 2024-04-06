@@ -63,6 +63,9 @@ class SaamParser(object):
     self.dict_pend_rly_data = {}
     self.dict_reqm_rly_data = {}
 
+    self.context_dependent_sigrepdata = ''
+
+
   def compareStrings(self, text1, text2, modetype):
     if(modetype == cn.JS8CALL):
       return self.js8client.isTextInMessage(text1, text2)
@@ -134,11 +137,15 @@ class SaamParser(object):
       """
       if(msg_format == cn.MSG_FORMAT_TYPE_1):
 
+        self.debug.info_message("newParser MSG_FORMAT_TYPE_1" )
+
         split_string   = remainder.split(command_str, 1)
         post_text      = split_string[1].split(' ', 1)
         from_call_post = post_text[0].strip()
         pre_text       = split_string[0].rsplit(' ', 2)
         from_call_pre  = pre_text[1].replace(':', '').strip()
+
+        """ this may be groupname or dest_call depending on context"""
         groupname      = pre_text[2].strip()
 
         self.debug.info_message("from_call_pre " + from_call_pre )
@@ -173,7 +180,10 @@ class SaamParser(object):
 
           return cn.COMMAND_NONE, text, '', ''
 
+
       elif(msg_format == cn.MSG_FORMAT_TYPE_2):
+        self.debug.info_message("newParser MSG_FORMAT_TYPE_2" )
+
         """
         MSG_FORMAT_TYPE_2
         <From Call Sign>: <To call sign> COMMAND <MSGID> <From Call Sign>  
@@ -205,7 +215,60 @@ class SaamParser(object):
 
           return command, remainder, from_call_pre, to_call, msgid
         else:
+          self.context_dependent_sigrepdata = ''
           return cn.COMMAND_NONE, text, '', ''
+
+      elif(msg_format == cn.MSG_FORMAT_TYPE_3):
+        self.debug.info_message("newParser MSG_FORMAT_TYPE_3" )
+
+        """
+        MSG_FORMAT_TYPE_3
+        <From Call Sign>: <To call sign> COMMAND <From Call Sign>  
+        WH6GGO: WH6ABC COPY WH6GGO
+        """
+        split_string   = remainder.split(command_str, 1)
+        post_text      = split_string[1].split(' ', 1)
+        from_call_post = post_text[0].strip()
+        pre_text       = split_string[0].rsplit(' ', 2)
+        from_call_pre  = pre_text[1].replace(':', '').strip()
+
+        """ this may be groupname or dest_call depending on context"""
+        #groupname      = pre_text[2].strip()
+        to_call        = pre_text[2].strip()
+
+        self.debug.info_message("from_call_pre " + from_call_pre )
+        self.debug.info_message("from_call_post " + from_call_post )
+        self.debug.info_message("to_call " + to_call )
+        self.debug.info_message("command " + command_str )
+
+        if(from_call_pre == from_call_post):
+          self.debug.info_message("processing command " + command_str )
+          remainder = post_text[1]
+          self.debug.info_message("LOC2 ")
+
+          snr = self.saamfram.acquireSNR(self.fldigiclient)
+          self.debug.info_message("LOC3 ")
+          self.group_arq.updateSelectedStationSNR(from_call_post, snr)
+          self.debug.info_message("LOC4 ")
+
+          self.form_gui.refreshSelectedTables()
+
+          self.debug.info_message("SNR during command = " + snr )
+
+          return command, remainder, from_call_pre, to_call
+        else:
+          if(len(from_call_pre) <= len(from_call_post)):
+            text = post_text[1]
+            self.debug.error_message("DISCARDING DATA LOC 3")
+            self.fldigiclient.setReceiveString(post_text[1])
+          #elif(groupname != self.saamfram.getMyGroup()):
+          #  text = post_text[1]
+          #  self.debug.error_message("DISCARDING DATA LOC 4")
+          #  self.fldigiclient.setReceiveString(post_text[1])
+
+          return cn.COMMAND_NONE, text, '', ''
+
+
 
 
     except:
@@ -281,15 +344,15 @@ class SaamParser(object):
         return command, remainder, from_call_pre, groupname
 
       elif( self.compareStrings(cn.COMM_COPY, text, modetype) ):
-        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_COPY, cn.COMMAND_COPY, cn.MSG_FORMAT_TYPE_1, modetype)
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_COPY, cn.COMMAND_COPY, cn.MSG_FORMAT_TYPE_3, modetype)
         return command, remainder, from_call_pre, groupname
 
       elif( self.compareStrings(cn.COMM_RR73, text, modetype) ):
-        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_RR73, cn.COMMAND_RR73, cn.MSG_FORMAT_TYPE_1, modetype)
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_RR73, cn.COMMAND_RR73, cn.MSG_FORMAT_TYPE_3, modetype)
         return command, remainder, from_call_pre, groupname
 
       elif( self.compareStrings(cn.COMM_73, text, modetype) ):
-        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_73, cn.COMMAND_73, cn.MSG_FORMAT_TYPE_1, modetype)
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_73, cn.COMMAND_73, cn.MSG_FORMAT_TYPE_3, modetype)
         return command, remainder, from_call_pre, groupname
 
 
@@ -481,12 +544,18 @@ class SaamParser(object):
       if(self.validateChecksum(content_2, checksum)):
         self.debug.info_message("pre msg checksum validated OK!")
         split3  = content_2.split(',')
+        #split3  = content.split(',')
         if(numparams == 1):
           param1  = split3[0]
           return True, remainder, param1
         elif(numparams == 2):
+
           param1  = split3[0]
           param2  = split3[1]
+
+          self.debug.info_message("decodePreMsgCommonN. Param1 = " + param1)
+          self.debug.info_message("decodePreMsgCommonN. Param2 = " + param2)
+
           return True, remainder, param1, param2
         elif(numparams == 3):
           param1  = split3[0]
@@ -686,10 +755,19 @@ class SaamParser(object):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' ENDM(', 3)
 
   def decodePreMsgInfoGrid(self, text, end_of_premsg):
+
+    #succeeded, remainder, command_type, gridsquare, msgid = self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 3)
+    #from_call = self.getDecodeCallsignFromUniqueId(msgid)
+    #self.group_arq.addSelectedStation(from_call, '', '', '', '', '', '', msgid)
+
     return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 3)
 
   def decodePreMsgInfoSNR(self, text, end_of_premsg):
-    return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
+    self.debug.info_message("DECODING PRE MSG INFO(SNR")
+    succeeded, remainder, command_type, sigrep = self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
+    self.context_dependent_sigrepdata = sigrep
+    return succeeded, remainder, sigrep
+    #return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
 
   def decodePreMsgInfo(self, text, end_of_premsg):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
@@ -711,7 +789,13 @@ class SaamParser(object):
     from_call = remainder.rsplit(':',1)[0].rsplit(' ',1)[1]
     self.debug.info_message("from call = " + from_call)
 
-    if(succeeded and from_call != decoded_call and decoded_call != self.saamfram.getMyCall() ):
+    newMode = self.fldigiclient.current_mode
+
+    if(succeeded and int(hop_count) == 1):
+      self.group_arq.addSelectedStation(decoded_call, '', grid_square, '', '', newMode, '', msgid)
+#  def addSelectedStation(self, station, num, grid, connect, rig, modulation, snr, ID):
+
+    if(succeeded and int(hop_count) > 1 and from_call != decoded_call and decoded_call != self.saamfram.getMyCall() ):
       self.group_arq.addSelectedRelayStation(decoded_call, '', grid_square, from_call, '', hop_count, msgid)
       table = self.group_arq.getSelectedRelayStations()
       self.form_gui.window['tbl_compose_selectedrelaystations'].update(values=table )
@@ -804,7 +888,7 @@ class SaamParser(object):
       end_of_premsg = self.testPreMsgStartEnd(text, ' INFO(SNR,', modetype)
       if( end_of_premsg != ''):
         self.debug.info_message("decode INFO SNR")
-        succeeded, remainder, param1, param2 = self.decodePreMsgInfoSNR(text, end_of_premsg)
+        succeeded, remainder, sigrep = self.decodePreMsgInfoSNR(text, end_of_premsg)
 
       #end_of_premsg = self.testPreMsgStartEnd(text, ' INFO(', modetype)
       #if( end_of_premsg != ''):
