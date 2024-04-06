@@ -199,8 +199,8 @@ class WinlinkImport(object):
     self.conversion_file_additional_params = { 'txtStr'          : 'test1',
                                                'FormTitle'       : 'test2',
                                                'Templateversion' : 'test3',
-                                               'From'            : 'WH6ABC',
-                                               'To'              : 'WH6DEF',
+                                               'From'            : 'TEST',
+                                               'To'              : 'TEST',
                                                'cc'              : '',
                                                'P2P'             : 'N',
                                                'Subject'         : 'Test Subject'}
@@ -448,13 +448,25 @@ class WinlinkImport(object):
       self.debug.info_message("header info 2:- " + str(header_info[2]))
 
 
+      complete_message = ''
+      if( self.form_gui.window['cb_general_include_HRRM_export'].get() ):
+        complete_message = the_message + '\n\n\n\n\n' + 'HRRM_EXPORT = ' + fragtagmsg + '\n\n'
+      else:
+        complete_message = the_message + '\n\n\n\n\n' 
 
-      complete_message = the_message + '\n\n\n\n\n' + 'HRRM_EXPORT = ' + fragtagmsg + '\n\n'
+      #complete_message = the_message + '\n\n\n\n\n' + 'HRRM_EXPORT = ' + fragtagmsg + '\n\n'
       #the_datetime     = saamfram.getDecodeTimestampAltFromUniqueId(header_info[1])
       the_datetime     = saamfram.getDecodeTimestampAltFromUniqueId(header_info[0])
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 3a")
       #from_call        = saamfram.getDecodeCallsignFromUniqueId(header_info[1])
-      from_call        = saamfram.getDecodeCallsignFromUniqueId(header_info[0])
+
+      from_call = ''
+      if( self.form_gui.window['cb_general_rewrite_from'].get() ):
+        from_call = saamfram.getMyCall()
+      else:
+        from_call = saamfram.getDecodeCallsignFromUniqueId(header_info[0])
+
+
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 3b")
       #to_call          = header_info[2].replace('+', '@')
       to_call          = header_info[1].replace('+', '@')
@@ -632,9 +644,9 @@ class WinlinkImport(object):
       self.debug.info_message("exception reading fixed params file" )
 
       with open('fixed_params_file.txt', 'w') as new_file:
-        line_to_write = 'WH6ABC\n'
+        line_to_write = 'TEST\n'
         new_file.write(line_to_write)
-        line_to_write = 'WH6DEF\n'
+        line_to_write = 'TEST\n'
         new_file.write(line_to_write)
         line_to_write = '\n'
         new_file.write(line_to_write)
