@@ -432,8 +432,6 @@ class WinlinkImport(object):
 
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 2")
 
-      #self.debug.info_message("Exception:" + str(header_info))
-
       the_message      = text
 
       """ remove any existing export data as do not want nested export data"""
@@ -454,11 +452,8 @@ class WinlinkImport(object):
       else:
         complete_message = the_message + '\n\n\n\n\n' 
 
-      #complete_message = the_message + '\n\n\n\n\n' + 'HRRM_EXPORT = ' + fragtagmsg + '\n\n'
-      #the_datetime     = saamfram.getDecodeTimestampAltFromUniqueId(header_info[1])
       the_datetime     = saamfram.getDecodeTimestampAltFromUniqueId(header_info[0])
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 3a")
-      #from_call        = saamfram.getDecodeCallsignFromUniqueId(header_info[1])
 
       from_call = ''
       if( self.form_gui.window['cb_general_rewrite_from'].get() ):
@@ -468,9 +463,7 @@ class WinlinkImport(object):
 
 
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 3b")
-      #to_call          = header_info[2].replace('+', '@')
       to_call          = header_info[1].replace('+', '@')
-      #the_subject      = header_info[5]
       the_subject      = header_info[4]
 
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 3c")
@@ -484,7 +477,6 @@ class WinlinkImport(object):
       self.debug.info_message("post_HRRM_to_pat_winlink LOC 4")
 
       with open(new_item, 'w') as new_file:
-        #line_to_write = 'Mid: ' + new_item_name.strip('.b2f') + '\n'
         line_to_write = 'Mid: ' + new_item_name[:-4] + '\n'
         new_file.write(line_to_write)
         line_to_write = 'Body: ' + str(len(complete_message)+ newline_count) + '\n'
@@ -618,8 +610,6 @@ class WinlinkImport(object):
 
   def testCreateWinlinkXlateFiles(self):
     self.debug.info_message("testCreateWinlinkXlateFiles")
-
-    #with open('parameters_file.txt','w') as param_file:
 
     try:
       self.readHRRMWinlinkConvFile('HRRM_Winlink_Conversion.txt')

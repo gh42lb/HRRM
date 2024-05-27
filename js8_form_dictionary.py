@@ -1051,11 +1051,12 @@ class FormDictionary(object):
       if(callsign == station):
         num        = lineitem[1]
         grid       = lineitem[2]
-        connect    = lineitem[3]
-        rig        = lineitem[4]
-        modulation = lineitem[5]
-        snr        = lineitem[6]
-        last_heard = lineitem[7]
+        memo       = lineitem[3]
+        connect    = lineitem[4]
+        rig        = lineitem[5]
+        modulation = lineitem[6]
+        snr        = lineitem[7]
+        last_heard = lineitem[8]
 
         return num, grid, connect, rig, modulation, snr, last_heard
 
@@ -1073,11 +1074,12 @@ class FormDictionary(object):
     callsign   = lineitem[0]
     num        = lineitem[1]
     grid       = lineitem[2]
-    connect    = lineitem[3]
-    rig        = lineitem[4]
-    modulation = lineitem[5]
-    snr        = lineitem[6]
-    last_heard = lineitem[7]
+    memo       = lineitem[3]
+    connect    = lineitem[4]
+    rig        = lineitem[5]
+    modulation = lineitem[6]
+    snr        = lineitem[7]
+    last_heard = lineitem[8]
 
     return last_heard, grid, '2'
 
@@ -1092,11 +1094,12 @@ class FormDictionary(object):
       callsign   = lineitem[0]
       num        = lineitem[1]
       grid       = lineitem[2]
-      connect    = lineitem[3]
-      rig        = lineitem[4]
-      modulation = lineitem[5]
-      snr        = lineitem[6]
-      last_heard = lineitem[7]
+      memo       = lineitem[3]
+      connect    = lineitem[4]
+      rig        = lineitem[5]
+      modulation = lineitem[6]
+      snr        = lineitem[7]
+      last_heard = lineitem[8]
 
       self.createPeerstnDictionaryItem(callsign, num, grid, connect, rig, modulation, snr, last_heard)
   
@@ -1146,11 +1149,12 @@ class FormDictionary(object):
       callsign   = lineitem[0]
       num        = lineitem[1]
       grid       = lineitem[2]
-      connect    = lineitem[3]
-      rig        = lineitem[4]
-      modulation = lineitem[5]
-      snr        = lineitem[6]
-      last_heard = lineitem[7]
+      memo       = lineitem[3]
+      connect    = lineitem[4]
+      rig        = lineitem[5]
+      modulation = lineitem[6]
+      snr        = lineitem[7]
+      last_heard = lineitem[8]
 
       self.createPeerstnDictionaryItem(callsign, num, grid, connect, rig, modulation, snr, last_heard)
 
@@ -1902,6 +1906,8 @@ class FormDictionary(object):
                            'GeneralRetries1'           : '10',
                            'GeneralRetries2'           : '2',
 
+                           'InboxStationMemo'          : 'CQ POTA',
+
                            'RewriteFrom'             : False,
                            'IncludeHRRMExport'           : False,
 
@@ -2076,6 +2082,8 @@ class FormDictionary(object):
 
                            'GeneralRetries1'           : values['input_general_retries_1'],
                            'GeneralRetries2'           : values['input_general_retries_2'],
+
+                           'InboxStationMemo'           : values['in_mainwindow_stationtext'],
 
                            'RewriteFrom'             : values['cb_general_rewrite_from'],
                            'IncludeHRRMExport'           : values['cb_general_include_HRRM_export'],

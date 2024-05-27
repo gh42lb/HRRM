@@ -65,6 +65,10 @@ class SaamParser(object):
 
     self.context_dependent_sigrepdata = ''
 
+    self.last_chat_text = ''
+    self.last_chat_msgid = ''
+
+
 
   def compareStrings(self, text1, text2, modetype):
     if(modetype == cn.JS8CALL):
@@ -257,6 +261,8 @@ class SaamParser(object):
 
           return command, remainder, from_call_pre, to_call
         else:
+          self.debug.info_message("newParser text =  " + text  )
+          self.debug.info_message("newParser remainder =  " + remainder  )
           if(len(from_call_pre) <= len(from_call_post)):
             text = post_text[1]
             self.debug.error_message("DISCARDING DATA LOC 3")
@@ -290,6 +296,10 @@ class SaamParser(object):
 
       elif( self.compareStrings(cn.COMM_TESTPROP, text, modetype) ):
         command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_TESTPROP, cn.COMMAND_TESTPROP, cn.MSG_FORMAT_TYPE_1, modetype)
+        return command, remainder, from_call_pre, groupname
+
+      elif( self.compareStrings(cn.COMM_CHAT, text, modetype) ):
+        command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_CHAT, cn.COMMAND_CHAT, cn.MSG_FORMAT_TYPE_1, modetype)
         return command, remainder, from_call_pre, groupname
 
       elif( self.compareStrings(cn.COMM_STANDBY, text, modetype) ):
@@ -769,6 +779,21 @@ class SaamParser(object):
     return succeeded, remainder, sigrep
     #return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
 
+  def decodePreMsgMemo(self, text, end_of_premsg):
+    self.debug.info_message("DECODING PRE MSG MEMO(")
+    succeeded, remainder, msgid, memo = self.decodePreMsgCommonN(text, end_of_premsg, ' MEMO(', 2)
+    self.debug.info_message("decodePreMsgMemo. msgid is:- " + msgid)
+    self.debug.info_message("decodePreMsgMemo. memo is:- " + memo)
+    return succeeded, remainder, msgid, memo
+
+  def decodePreMsgText(self, text, end_of_premsg):
+    self.debug.info_message("DECODING PRE MSG TEXT(")
+    succeeded, remainder, msgid, text = self.decodePreMsgCommonN(text, end_of_premsg, ' TEXT(', 2)
+    self.debug.info_message("decodePreMsgText. msgid is:- " + msgid)
+    self.debug.info_message("decodePreMsgText. text is:- " + text)
+    return succeeded, remainder, msgid, text
+
+
   def decodePreMsgInfo(self, text, end_of_premsg):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
 
@@ -847,6 +872,33 @@ class SaamParser(object):
         self.debug.info_message("decode PEND")
         succeeded, remainder = self.decodePreMsgPend(text, end_of_premsg,' PEND(', 2)
         return succeeded, remainder
+
+      end_of_premsg = self.testPreMsgStartEnd(text, ' MEMO(', modetype)
+      if( end_of_premsg != ''):
+        self.debug.info_message("decode MEMO")
+        succeeded, remainder, msgid, memo = self.decodePreMsgMemo(text, end_of_premsg)
+        self.debug.info_message("success. memo-: " + memo)
+
+        decoded_call = self.saamfram.getDecodeCallsignFromUniqueId(msgid)
+        self.group_arq.updateSelectedStationMemo(decoded_call, memo)
+        self.form_gui.refreshSelectedTables()
+
+        return succeeded, remainder
+
+      end_of_premsg = self.testPreMsgStartEnd(text, ' TEXT(', modetype)
+      if( end_of_premsg != ''):
+        self.debug.info_message("decode TEXT")
+        succeeded, remainder, msgid, text = self.decodePreMsgText(text, end_of_premsg)
+        self.debug.info_message("success. text-: " + text)
+
+        decoded_call = self.saamfram.getDecodeCallsignFromUniqueId(msgid)
+        #self.group_arq.updateSelectedStationMemo(decoded_call, text)
+        self.last_chat_text = text
+        self.last_chat_msgid = msgid
+        #self.form_gui.refreshSelectedTables()
+
+        return succeeded, remainder
+
 
       end_of_premsg = self.testPreMsgStartEnd(text, ' PNDR(', modetype)
       if( end_of_premsg != ''):

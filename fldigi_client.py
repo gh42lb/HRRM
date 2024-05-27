@@ -198,7 +198,7 @@ class FLDIGI_Client(object):
         elif(selected_width == 'Average Propagation'):
           if('Avg' in items[7] or 'NSG' in items[7] or 'Weak' in items[7]):
             match = True
-        elif(selected_width == 'Not So Good'):
+        elif(selected_width == 'Poor Propagation'):
           if('NSG' in items[7] or 'Weak' in items[7]):
             match = True
         elif(selected_width == 'Weak Signal' and 'Weak' in items[7] ):

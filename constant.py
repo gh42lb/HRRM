@@ -107,6 +107,7 @@ COMM_COPY          = ' COPY '
 COMM_RR73          = ' RR73 '
 COMM_73            = ' 73 '
 COMM_TESTPROP      = ' PROP '
+COMM_CHAT          = ' CHAT '
 
 
 
@@ -158,6 +159,7 @@ COMMAND_RTS       = 19
 COMMAND_RTSRLY    = 20
 COMMAND_REQMRLY   = 21
 COMMAND_TESTPROP  = 22
+COMMAND_CHAT      = 23
 
 MSG_FORMAT_TYPE_1 = 1
 MSG_FORMAT_TYPE_2 = 2

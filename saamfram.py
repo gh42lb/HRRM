@@ -81,11 +81,8 @@ class SAAMFRAM(object):
     self.fldigiclient = fldigiclient_rig1
     self.debug = debug
     self.form_gui = form_gui
-    #self.recipient_stations_str = 'WH6ABC;WH6DEF;WH6GHI'
     self.announce = ''
-    #self.pre_message = 'WH6GGO: @HINET ' + self.announce
     self.pre_message = ''
-    #self.groupname = "@HINET"
     self.groupname = "@HRRM"
     self.chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     self.js8_tx_speed = 'TURBO'
@@ -115,19 +112,6 @@ class SAAMFRAM(object):
     self.command_strings = 'COMMAND_NONE,COMMAND_SAAM,COMMAND_QRY_SAAM,COMMAND_QRY_RELAY,COMMAND_RELAY,COMMAND_CONF,COMMAND_RDY,COMMAND_QRY_RDY,COMMAND_SMT,COMMAND_EMT,COMMAND_CHKSUM'.split(',')
     self.comm_strings = 'COMM_NONE,COMM_LISTEN,COMM_RECEIVING,COMM_QUEUED_TXMSG,COMM_SENDING,COMM_AWAIT_REPLY,COMM_AWAIT_ACKNACK,COMM_AWAIT_RESEND'.split(',')
 
-    #TEST CODE REMOVE
-    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F101 : " + self.getRunLengthEncodeNackFldigi("F5,F101"))
-    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F6,F7,F8,F101 : " + self.getRunLengthEncodeNackFldigi("F5,F6,F7,F8,F101"))
-    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F101,F102,F103 : " + self.getRunLengthEncodeNackFldigi("F5,F101,F102,F103"))
-    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F6,F7 : " + self.getRunLengthEncodeNackFldigi("F5,F6,F7"))
-    #self.debug.info_message("getRunLengthEncodeNackFldigi F5,F7,F15,F20,F21 : " + self.getRunLengthEncodeNackFldigi("F5,F7,F15,F20,F21"))
-
-
-  #def getMaxFragRetransmits(self):
-  #  return self.max_frag_retransmits
-
-  #def getMaxAckNackRetransmits(self):
-  #  return self.max_qry_acknack_retransmits
 
   def getSenderCall(self):
     if(self.form_gui.window != None and self.form_gui.form_events != None and self.form_gui.form_events.window_initialized == True and self.group_arq.formdesigner_mode == False):
@@ -254,6 +238,18 @@ class SAAMFRAM(object):
     self.debug.info_message("FINISH CREATE PRE MSG BEAC\n")
     return message + ',' + checksum +  ')'
 
+  def createPreMessageDataFlecMemo(self, msgid, memo):
+    self.debug.info_message("createPreMessageDataFlecMemo")
+    message = 'MEMO(' + msgid + ',' + memo 
+    checksum = self.getChecksum(msgid + ',' + memo)
+    return message + ',' + checksum +  ')'
+
+  def createPreMessageDataFlecText(self, msgid, text):
+    self.debug.info_message("createPreMessageDataFlecText")
+    message = 'TEXT(' + msgid + ',' + text 
+    checksum = self.getChecksum(msgid + ',' + text)
+    return message + ',' + checksum +  ')'
+
   def createPreMessageDataFlecBeac(self, msgid, grid_square, hop_count):
     self.debug.info_message("createPreMessageDataFlecBeac")
     message = 'BEAC(' + msgid + ',' + grid_square + ',' + hop_count 
@@ -373,8 +369,6 @@ class SAAMFRAM(object):
 
     return message + ',' + checksum +  ')'
 
-    #message = 'relay(' + msgid + ',' + to_list + ',' + priority + ')'
-    #return message
 
 
 
@@ -428,7 +422,6 @@ class SAAMFRAM(object):
 
   def calcCRC(self, width, poly, string):
 
-    #self.debug.info_message('calcCRC for string: ' + string)
     self.debug.info_message('calcCRC')
 
     data = bytes(string,"ascii")
@@ -2065,8 +2058,14 @@ outbox dictionary items formatted as...
           else:
             self.group_arq.addChatData(msgfrom, received_data[:90].strip(), data[0])
 
+          if(self.testAnywhereOnReceiveList(msgto, self.getMyCall()) == True):
+            self.group_arq.appendChatDataColorTargeted()
+          else:
+            self.group_arq.appendChatDataColorPassive()
+
           self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
           self.form_gui.window['table_chat_received_messages'].set_vscroll_position(1.0)
+          self.form_gui.window['table_chat_received_messages'].update(row_colors=self.group_arq.getChatDataColors())
 
         else: #if(data[5] == 'EMAIL'):
 
@@ -2367,7 +2366,6 @@ outbox dictionary items formatted as...
           self.debug.info_message("incoming base64 encoded data is : " + data[7] )
 
           inbox_folder = self.form_gui.getWinlinkInboxFolder()
-          #inbox_folder = self.form_gui.window['in_winlink_inboxfolder'].get()
 
           with open(inbox_folder + formname, 'wb') as f:
             f.write(bz2.decompress(base64.b64decode(data[7])))
@@ -3002,6 +3000,17 @@ outbox dictionary items formatted as...
     return
 
 
+  def appendFlec(self, sendstring, delimeter, string_to_append):
+
+    if(string_to_append != ''):
+      sendstring = sendstring + delimeter + string_to_append
+
+    if(sendstring != ''):
+      return sendstring, ','
+    else:
+      return sendstring, ''
+
+
   def sendTestProp(self, from_callsign, group_name):
 
     selection_list = self.fldigiclient.getModeSelectionList()
@@ -3012,31 +3021,22 @@ outbox dictionary items formatted as...
 
     self.fldigiclient.setMode(random_mode)
 
-    """ BEAC for my peer stations"""
-    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
     sendstring = ''
     delimeter = ''
+    """ BEAC for my peer stations"""
+    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
     if(ID != ''):  
-      sendstring = sendstring + self.createPreMessageDataFlecBeac(ID, grid, hop)
-
-    if(sendstring != ''):
-      delimeter = ','
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
 
     """ send PEND for pending messages"""
-    pending = self.createPreMessagePend() 
-    if(pending != ''):
-      sendstring = sendstring + delimeter + pending
-
-    if(sendstring != ''):
-      delimeter = ','
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessagePend() )
 
     """ send BEAC for my station """
     myStnID = self.getEncodeUniqueId(self.getMyCall())
     mygrid  = self.form_gui.window['input_myinfo_gridsquare'].get()
     myhops  = '1'
-    pending = self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
-    if(pending != ''):
-      sendstring = sendstring + delimeter + pending
+
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops) )
 
     self.pre_message = sendstring
 
@@ -3048,10 +3048,6 @@ outbox dictionary items formatted as...
     """
 
     self.group_arq.sendTheMessage(message, True)
-    #self.setTxidState(self.tx_rig, self.tx_channel, True)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
 
 
@@ -3068,24 +3064,26 @@ outbox dictionary items formatted as...
     sendstring = ''
     delimeter = ''
     if(ID != ''):  
-      sendstring = sendstring + self.createPreMessageDataFlecBeac(ID, grid, hop)
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
 
     """ BEAC for my relay stations"""
-    if(sendstring != ''):
-      delimeter = ','
     relaycall, relayID, relaygrid, relayhops = self.form_dictionary.getRandomRelaystnDictItem()
     if(relaycall != ''):  
-      sendstring = sendstring + delimeter + self.createPreMessageDataFlecBeac(relayID, relaygrid, relayhops)
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(relayID, relaygrid, relayhops))
 
     """ BEAC for my station """
-    if(sendstring != ''):
-      delimeter = ','
     from_callsign = self.getMyCall()
     myStnID = self.getEncodeUniqueId(from_callsign)
     mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
     self.debug.info_message("buildPreMessageForCQCOPYRR73_TYPE1 MYGRID = " + mygrid)
     myhops = '1'
-    sendstring = sendstring + delimeter + self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
+
+    checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
+    if(checked):
+      memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
+      myStnID = self.getEncodeUniqueId(self.getMyCall())
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
 
     return sendstring
 
@@ -3122,8 +3120,6 @@ outbox dictionary items formatted as...
         delimeter = ','
 
     """ BEAC for my station """
-    #if(sendstring != ''):
-    #  delimeter = ','
     from_callsign = self.getMyCall()
     myStnID = self.getEncodeUniqueId(from_callsign)
     mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
@@ -3132,6 +3128,33 @@ outbox dictionary items formatted as...
     sendstring = sendstring + delimeter + self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
 
     return sendstring
+
+
+  """ alternate format for chat messages when group destination only specified"""
+  def sendChatPassive(self, the_message, from_callsign, group_name):
+
+    selected_mode = self.form_gui.window['option_main_fldigimode'].get().split(' - ')[1]
+    self.fldigiclient.setMode(selected_mode)
+    self.debug.info_message("selected main mode is: " + selected_mode)
+
+    myStnID = self.getEncodeUniqueId(self.getMyCall())
+    #myStnID = self.getEncodeUniqueId(from_callsign)
+    sendstring = ''
+    delimeter = ''
+    #the_message = self.form_gui.window['ml_chat_sendtext'].get().strip()
+
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecText(myStnID, the_message) )
+    self.pre_message = sendstring
+    message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_CHAT + from_callsign + ' '
+
+    #sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
+
+
+    """
+    set the Txid on for CQ messages
+    """
+    self.group_arq.sendTheMessage(message, True)
+    return
 
 
   def sendCQCQCQ(self, from_callsign, group_name):
@@ -3149,10 +3172,6 @@ outbox dictionary items formatted as...
     set the Txid on for CQ messages
     """
     self.group_arq.sendTheMessage(message, True)
-    #self.setTxidState(self.tx_rig, self.tx_channel, True)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
 
   """
@@ -3165,23 +3184,18 @@ outbox dictionary items formatted as...
     send_to = self.form_gui.window['in_inbox_listentostation'].get().strip()
     self.pre_message = self.buildPreMessageForCQCOPYRR73_TYPE1(from_callsign, group_name)
     self.debug.info_message("sendstring is " + self.pre_message)
+
     message = ' ' + from_callsign + ': ' + send_to + ' ' + self.getPreMessage() + cn.COMM_COPY + from_callsign + ' '
 
     """
     set the Txid on for CQ messages
     """
     self.group_arq.sendTheMessage(message, True)
-    #self.setTxidState(self.tx_rig, self.tx_channel, True)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
 
   def sendRR73(self, from_callsign, group_name):
     message = ''
-
     send_to = self.form_gui.window['in_inbox_listentostation'].get().strip()
-
     self.pre_message = self.buildPreMessageForCQCOPYRR73_TYPE2(from_callsign, group_name)
     self.debug.info_message("sendstring is " + self.pre_message)
 
@@ -3192,10 +3206,6 @@ outbox dictionary items formatted as...
     set the Txid on for CQ messages
     """
     self.group_arq.sendTheMessage(message, True)
-    #self.setTxidState(self.tx_rig, self.tx_channel, True)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
 
   def send73(self, from_callsign, group_name):
@@ -3215,10 +3225,6 @@ outbox dictionary items formatted as...
     set the Txid on for CQ messages
     """
     self.group_arq.sendTheMessage(message, True)
-    #self.setTxidState(self.tx_rig, self.tx_channel, True)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
 
   def sendCheckin(self, from_callsign, group_name):
@@ -3239,51 +3245,35 @@ outbox dictionary items formatted as...
     self.fldigiclient.setMode(selected_mode)
     self.debug.info_message("selected main mode is: " + selected_mode)
 
-    #message = ''
-    #ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
-    #self.pre_message = self.createPreMessageDataFlecBeac(ID, grid, hop)
-
-    #pending = self.createPreMessagePend() 
-    #if(pending != ''):
-    #  self.pre_message = self.pre_message + ',' + pending
-
-##############
-    """ BEAC for my peer stations"""
-    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
     sendstring = ''
     delimeter = ''
+    """ BEAC for my peer stations"""
+    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
     if(ID != ''):  
-      sendstring = sendstring + self.createPreMessageDataFlecBeac(ID, grid, hop)
-
-    if(sendstring != ''):
-      delimeter = ','
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
 
     """ send PEND for pending messages"""
-    pending = self.createPreMessagePend() 
-    if(pending != ''):
-      sendstring = sendstring + delimeter + pending
-
-    if(sendstring != ''):
-      delimeter = ','
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessagePend())
 
     """ send BEAC for my station """
     myStnID = self.getEncodeUniqueId(self.getMyCall())
     mygrid  = self.form_gui.window['input_myinfo_gridsquare'].get()
     myhops  = '1'
-    pending = self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
-    if(pending != ''):
-      sendstring = sendstring + delimeter + pending
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
+
+    """ send MEMO for my station """
+    checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
+    if(checked):
+      memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
+      myStnID = self.getEncodeUniqueId(self.getMyCall())
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
 
     self.pre_message = sendstring
 
-##############
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_STANDBY + from_callsign + ' '
 
-    self.group_arq.sendTheMessage(message, False)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
+    self.group_arq.sendTheMessage(message, True)
     return
 
   def sendQrt(self, from_callsign, group_name):
@@ -3298,9 +3288,6 @@ outbox dictionary items formatted as...
     message = ' ' + from_callsign + ': ' + group_name + cn.COMM_QRT + from_callsign + ' '
 
     self.group_arq.sendTheMessage(message, False)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
 
   def sendSAAM(self, from_callsign, group_name):
@@ -3326,9 +3313,6 @@ outbox dictionary items formatted as...
     self.setInSession(self.tx_rig, self.tx_channel, False)
     self.setInSession(self.active_rig, self.active_channel, False)
 
-    #self.group_arq.fldigiclient.setReceiveString('')
-    #self.group_arq.fldigiclient.resetLastTwenty()
-
     self.debug.info_message("ABORT BUTTON PRESSED\n")
     if(self.group_arq.operating_mode == cn.FLDIGI):
       self.group_arq.fldigiclient.abortTransmit()
@@ -3339,8 +3323,6 @@ outbox dictionary items formatted as...
     self.setCommStatus(self.active_rig, self.active_channel, cn.COMM_LISTEN)
 
     self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-
-    #self.form_gui.form_events.changeFlashButtonState('text_mainarea_insession', False)
 
     return
 
@@ -3446,10 +3428,6 @@ outbox dictionary items formatted as...
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_RTS_MSG + from_callsign + ' '
 
     self.group_arq.sendTheMessage(message, True)
-    #self.setTxidState(self.tx_rig, self.tx_channel, True)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
 
 
@@ -3480,13 +3458,7 @@ outbox dictionary items formatted as...
     message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_RTSRLY_MSG + from_callsign + ' '
 
     self.group_arq.sendTheMessage(message, True)
-    #self.setTxidState(self.tx_rig, self.tx_channel, True)
-    #self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    #self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    #self.group_arq.sendItNowRig1(message)
     return
-
-
 
 
   def sendReadyToReceive(self):
@@ -3640,6 +3612,9 @@ outbox dictionary items formatted as...
     return
 
   def requestConfirm(self, from_callsign, to_callsign):
+
+    if(to_callsign == ''):
+      return
 
     recipient_stations = self.getRecipientStations(self.tx_rig, self.tx_channel)
     to_callsign = recipient_stations[self.getCurrentRecipient(self.tx_rig, self.tx_channel)]
@@ -4263,6 +4238,13 @@ outbox dictionary items formatted as...
     current_recipient  = self.getCurrentRecipient(self.tx_rig, self.tx_channel)
     recipient_stations = self.getRecipientStations(self.tx_rig, self.tx_channel)
     num_recipients = len(recipient_stations)
+
+    #send_EOS = True
+    self.debug.info_message("num recipients:- " + str(num_recipients) )
+    self.debug.info_message("recipient_stations:- " + str(recipient_stations) )
+    #if(num_recipients == 1 and recipient_stations[0] == ''):
+    #  send_EOS = False
+      
     if(current_recipient < num_recipients):
       self.setQryAcknackRetransmitCount(self.tx_rig, self.tx_channel, 0)
       self.debug.info_message("advancing to next station: " + str(current_recipient+1) )
@@ -4273,6 +4255,7 @@ outbox dictionary items formatted as...
         if( self.group_arq.isRecipientPresent(recipient_stations[self.getCurrentRecipient(self.tx_rig, self.tx_channel)]) == True):
           if(current_recipient < num_recipients):
             self.setPreMessage(recipient_stations[current_recipient], self.groupname)
+            self.debug.info_message("advancing to next station: requesting confirm")
             self.requestConfirm(self.getMyCall(), self.getSenderCall())
             return
           else:
@@ -4281,6 +4264,7 @@ outbox dictionary items formatted as...
             to_callsign = self.getMyGroup()
             self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
             self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+            #if(send_EOS == True):
             self.group_arq.sendItNowRig1(from_callsign + ': ' + to_callsign + ' EOS ' + from_callsign + ' ')
             return
 
@@ -4288,11 +4272,21 @@ outbox dictionary items formatted as...
 
       if(current_recipient+1 == num_recipients):
         self.setInSession(self.tx_rig, self.tx_channel, False)
+
+        self.debug.info_message("advanceToNextRecipient LOC 3")
+
         from_callsign = self.getMyCall()
         to_callsign = self.getMyGroup()
         self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
+
+        self.debug.info_message("advanceToNextRecipient LOC 4")
+
         self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+        #if(send_EOS == True):
         self.group_arq.sendItNowRig1(from_callsign + ': ' + to_callsign + ' EOS ' + from_callsign + ' ')
+
+        self.debug.info_message("advanceToNextRecipient LOC 5")
+
         return
 
     else:
@@ -4303,6 +4297,7 @@ outbox dictionary items formatted as...
       to_callsign = self.getMyGroup()
       self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
       self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
+      #if(send_EOS == True):
       self.group_arq.sendItNowRig1(from_callsign + ': ' + to_callsign + ' EOS ' + from_callsign + ' ')
     
   """
@@ -4646,6 +4641,35 @@ outbox dictionary items formatted as...
           self.group_arq.addSelectedStation(from_call, '', '', '', rigname, newMode, snr, newID)
           self.form_gui.refreshSelectedTables()
 
+        if(command == cn.COMMAND_CHAT):
+          self.debug.info_message("heard CHAT\n")
+          group_name = param_1
+          received_data = self.saam_parser.last_chat_text
+          received_msgid = self.saam_parser.last_chat_msgid
+          self.saam_parser.last_chat_text = ''
+          self.saam_parser.last_chat_msgid = ''
+
+          msgfrom = self.getDecodeCallsignFromUniqueId(received_msgid)
+
+          if(len(received_data)>100):
+            self.group_arq.addChatData(msgfrom, received_data[:90].strip(), received_msgid)
+            self.group_arq.addChatData('', received_data[90:180].strip(), received_msgid)
+            self.group_arq.addChatData('', received_data[180:].strip(), received_msgid)
+          elif(len(received_data)>50):
+            self.group_arq.addChatData(msgfrom, received_data[:90].strip(), received_msgid)
+            self.group_arq.addChatData('', received_data[90:].strip(), received_msgid)
+          else:
+            self.group_arq.addChatData(msgfrom, received_data[:90].strip(), received_msgid)
+
+          self.group_arq.appendChatDataColorPassive()
+
+          self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
+          self.form_gui.window['table_chat_received_messages'].set_vscroll_position(1.0)
+          self.form_gui.window['table_chat_received_messages'].update(row_colors=self.group_arq.getChatDataColors())
+
+
+
+
         if(command == cn.COMMAND_CQCQCQ):
           snr = self.acquireSNR(fldigi_instance)
           """ Do not send an automatic reply as all stations potentially use the same channel in fldigi"""
@@ -4737,10 +4761,14 @@ outbox dictionary items formatted as...
           dest_call = param_1
           
           if(dest_call == self.getMyCall() ):
+
+            self.form_gui.form_events.flash_buttons_group1['btn_mainpanel_cqcqcq'] = ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'white,slate gray']
+            self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', True)
             self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_cqcqcq', False)
             self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_copycopy', False)
             self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_rr73', True)
             self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
+
  
             #FIXME remove...all station need to be on at least v1.0.8
             newID = self.getEncodeUniqueId(from_call)

@@ -229,13 +229,10 @@ class ReceiveControlsProc(object):
         if(winlink_folder_rms =='' or winlink_folder_rms =='/'):
           if(os.path.exists('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')):
             self.form_gui.window['in_winlink_rmsmsgfolder'].update('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')
-        #if(os.path.exists('/home/' + username + '/.wl2k/mailbox/' + callsign + '/')):
         if(os.path.exists('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/')):
           if(winlink_folder_in =='' or winlink_folder_in =='/'):
-            #self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'in/')
             self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'in/')
           if(winlink_folder_out =='' or winlink_folder_out =='/'):
-            #self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.wl2k/mailbox/' + callsign + '/' + 'out/')
             self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'out/')
 
         """ set the templates folder"""
@@ -282,8 +279,7 @@ class ReceiveControlsProc(object):
     if(self.group_arq.formdesigner_mode == False):
 
       timestamp_now = int(round(datetime.utcnow().timestamp()))
-      if( (self.five_minute_timer+(5*60)) <= timestamp_now ):
-      #if( (self.five_minute_timer+(5)) <= timestamp_now ):
+      if( (self.five_minute_timer+(5*60)) <= timestamp_now and self.getSaamfram().inSession() == False):
         self.debug.info_message("5 minute timer triggered")
         self.five_minute_timer = timestamp_now
         self.event_btnmainpanelupdaterecent(values)
@@ -1044,10 +1040,27 @@ class ReceiveControlsProc(object):
   def event_prevchatpostandsend(self, values):
     self.debug.info_message("BTN CHAT POST AND SEND\n")
 
-    self.group_arq.saamfram.setTransmitType(cn.FORMAT_CONTENT)
-
     try:
 
+      connect_to = self.form_gui.window['in_inbox_listentostation'].get()
+      self.debug.info_message("event_prevchatpostandsend connect_to:- " + connect_to)
+      if(connect_to.strip() == ''):
+        from_call = self.saamfram.getMyCall()
+        ID = self.group_arq.saamfram.getEncodeUniqueId(from_call)
+        the_message = self.form_gui.window['ml_chat_sendtext'].get().strip()
+        #FIXME use escapes for these characters
+        """ re-write string to remove special characters"""
+        the_message = the_message.replace(',','')
+        the_message = the_message.replace('(','')
+        the_message = the_message.replace(')','')
+
+        self.group_arq.saamfram.sendChatPassive(the_message, self.group_arq.saamfram.getMyCall(), self.group_arq.saamfram.getMyGroup())
+        self.group_arq.addChatData(self.group_arq.saamfram.getMyCall(), the_message, ID)
+        self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
+        self.form_gui.window['table_chat_received_messages'].update(row_colors=self.group_arq.getChatDataColors())
+        return
+
+      self.group_arq.saamfram.setTransmitType(cn.FORMAT_CONTENT)
 
       if(self.group_arq.operating_mode == cn.FLDIGI or self.group_arq.operating_mode == cn.JSDIGI):
         selected_mode = values['option_chat_fldigimode'].split(' - ')[1]
@@ -1111,6 +1124,7 @@ class ReceiveControlsProc(object):
 
       self.group_arq.addChatData(sender_callsign, the_message, ID)
       self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
+      self.form_gui.window['table_chat_received_messages'].update(row_colors=self.group_arq.getChatDataColors())
 
     except:
       self.debug.error_message("Exception in event_prevchatpostandsend: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
@@ -1368,6 +1382,14 @@ class ReceiveControlsProc(object):
 
     self.debug.info_message("end event_listboxthemeselect\n")
 
+
+  def event_mainwindow_stationtext(self, values):
+    self.debug.info_message("event_mainwindow_stationtext")
+
+    text = values['in_mainwindow_stationtext']
+    if(len(text) > 20):
+      self.form_gui.window['in_mainwindow_stationtext'].update(text[:20])
+       
 
   def event_mainpanelsendimagefile(self, values):
     self.debug.info_message("event_mainpanelsendimagefile")
@@ -4264,6 +4286,8 @@ class ReceiveControlsProc(object):
       'btn_substation_connect_1'  : event_btnsubstationconnect1,
       'btn_substation_disconnect_1'  : event_btnsubstationdisconnect1,
       'btn_mainpanel_sendgfile'   : event_mainpanelsendfile,
+
+      'in_mainwindow_stationtext' : event_mainwindow_stationtext,
 
       'btn_mainpanel_sendimagefile'   : event_mainpanelsendimagefile,
 

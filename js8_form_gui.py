@@ -430,7 +430,6 @@ def createPreviewEditableTableElement(self, keyname, t1, text, width, height, pa
       col_widths.append(max_width+2)
 
 
-
     """ resize the columns based on the largest data item"""
     data = t1
     if(data != None):
@@ -448,9 +447,6 @@ def createPreviewEditableTableElement(self, keyname, t1, text, width, height, pa
             self.debug.info_message('createEditableTableElement new data width: ' + str(data_width) )
 
     self.debug.info_message('createEditableTableElement new col widths: ' + str(col_widths) )
-
-
-
 
 
 
@@ -2598,7 +2594,7 @@ inbox dictionary items formatted as...
     combo_list_2    = 'General Message,ICS-213'.split(',')
     combo_list_3    = '20 CHARS,40 CHARS,80 CHARS'.split(',')
     combo_sendto    = 'Rig 1 - JS8,Rig 1 - Fldigi,Rig 2 - JS8,Fig 2 - Fldigi'.split(',')
-    combo_wide      = 'Span 500Hz,Span 1000Hz,Span 1500Hz,Span 2000Hz,Span 2800Hz,Excellent Propagation,Average Propagation,Not So Good,Weak Signal'.split(',')
+    combo_wide      = 'Span 500Hz,Span 1000Hz,Span 1500Hz,Span 2000Hz,Span 2800Hz,Excellent Propagation,Average Propagation,Poor Propagation,Weak Signal'.split(',')
     combo_premsg    = 'Message IDs,Message Callsigns,Grid Square,GPS LATLONG,QTH'.split(',')
     combo_mode1     = 'SLOW,NORMAL,FAST,TURBO'.split(',')
 
@@ -2655,7 +2651,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v1.0.8 Beta \n\
+                                                Ham Radio Relay Messenger de WH6GGO v1.0.9 Beta \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2024 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2781,13 +2777,10 @@ SOFTWARE.\n'
                           [
                            sg.Text('Mode:', size=(5, 1), background_color=js.get("params").get('ChatTabClr'), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
                            sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(23, 1), key='option_chat_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
-                           #sg.OptionMenu(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_chat_fldigimode', visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
                            sg.Button('Send', size=(5, 1), key='btn_prev_chat_post_and_send' ) ,
-                           #sg.Text('To: ', size=(3, 1), background_color=js.get("params").get('ChatTabClr'), text_color='black' ) ,
                            sg.Text('To: ', size=(3, 1), background_color=js.get("params").get('ChatTabClr') ) ,
                            sg.InputText('', key='in_chat_msgto', size=(30, 1)),
-                           #sg.CBox('Use \'Connect To:\'', default = js.get("params").get('UseConnectTo'), key='cb_chat_useconnecto', background_color=js.get("params").get('ChatTabClr'), text_color='black'),
                            sg.CBox('Use \'Connect To:\'', default = js.get("params").get('UseConnectTo'), key='cb_chat_useconnecto', background_color=js.get("params").get('ChatTabClr')),
                            sg.Button('Launch JS8-Net', size=(11, 1), disabled = False if (js.get("params").get('ExtAppsJs8Net')==True) else True, key='button_launch_net' ) ,
                            sg.CBox('Net Control', key='cb_chat_netcontrol', background_color=js.get("params").get('ChatTabClr'))],
@@ -2935,7 +2928,6 @@ SOFTWARE.\n'
 
                        [sg.Text('Mode:', size=(10, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
                         sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], key='option_filexfer_fldigimode', size=(22, 1), enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
-                        #sg.OptionMenu(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], key='option_filexfer_fldigimode', size=(22, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
                         sg.CBox('Use Seq.', key='cb_filexfer_useseq', enable_events=True ),
                         sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_filexfer_selectedseq', size=(22, 1), enable_events = True, disabled = True),
                         sg.Text('', size=(20, 1), key='text_image_size' )], 
@@ -3015,7 +3007,6 @@ SOFTWARE.\n'
 
           sg.Text('Mode:', size=(5, 1), background_color=js.get("params").get('OutboxTabClr'), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], key='option_outbox_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
-          #sg.OptionMenu(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], key='option_outbox_fldigimode', visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
           sg.CBox('Use Seq.', background_color=js.get("params").get('OutboxTabClr'), key='cb_outbox_useseq', enable_events=True ),
           sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_outbox_selectedseq', size=(22, 1), enable_events = True, disabled = True)],
@@ -3068,11 +3059,6 @@ SOFTWARE.\n'
     self.layout_template = self.createFormDesignerPage()
     
 
-#                            [sg.Frame('Sequence Parameters', [
-#                                ], expand_x=True)
-#                            ],
-
-
     self.layout_myinfo = [
                             [sg.Frame('Required', [
 
@@ -3115,7 +3101,6 @@ SOFTWARE.\n'
 
     self.layout_colors = [
                         [sg.Text('Theme (requires restart)' ), 
-                         #sg.OptionMenu(values = sg.theme_list(), size = (20,5), key='listbox_theme_select', default_value=js.get("params").get('DisplayTheme'))],
                          sg.Combo(values = sg.theme_list(), size = (20,5), key='listbox_theme_select', default_value=js.get("params").get('DisplayTheme'))],
                         [sg.Text('TX Buttons', size=(20, 1), visible = False ), 
                          sg.OptionMenu(option_colors, key='option_colors_tx_btns', default_value=js.get("params").get('TxButtonClr'), visible = False),
@@ -3150,10 +3135,6 @@ SOFTWARE.\n'
                             ],
 
 
-
-
-                        #[sg.Text('Compose Message Form Colors...' )], 
-
                             [sg.Frame('Compose Message Form Colors', [
 
                         [sg.Text('Main Heading Background', size=(20, 1) ), 
@@ -3187,18 +3168,12 @@ SOFTWARE.\n'
                         ] 
 
 
-#                            [sg.Frame('Compose Message Form Colors', [
-#                                ], expand_x=True)
-#                            ],
-
 
     self.layout_general = [
                             [sg.Frame('Automatic Forwarding', [
                                 [sg.CBox('Emails:- ', size=(10, 1), default = js.get("params").get('EmailAutoForward'), key='cb_general_autoforward', enable_events=True),
-                                 #sg.OptionMenu('HRRM,Winlink,Internet,None'.split(','), key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
                                  sg.Combo('Winlink,Internet,None'.split(','), key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
                                  sg.CBox('Forms:- ', size=(10, 1), default = js.get("params").get('FormsAutoForward'), key='cb_general_autoforward_forms', enable_events=True),
-                                 #sg.OptionMenu('HRRM,Winlink,Internet,None'.split(','), key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
                                  sg.Combo('Winlink,Internet,None'.split(','), key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
                                 [sg.CBox('Re-write From as My Station Callsign', size=(33, 1), default = js.get("params").get('RewriteFrom'), key='cb_general_rewrite_from', enable_events=True),
                                  sg.CBox('Include HRRM Export Tag', size=(25, 1), default = js.get("params").get('IncludeHRRMExport'), key='cb_general_include_HRRM_export', enable_events=True)],
@@ -3216,8 +3191,6 @@ SOFTWARE.\n'
                                sg.InputText('', size=(20, 1), key='input_general_hrrm_fixed_frequency', visible=False),
                               
                                sg.CBox('Mode', size=(5, 1), enable_events=True, visible=False),
-                               #sg.InputText('', size=(15, 1), key='input_general_hrrm_fixed_mode')],
-                               #sg.OptionMenu(combo_mode_all_mode_only, default_value=control_mode, key='option_general_hrrm_fixed_mode', size=(15, 1))],
                                sg.Combo(combo_mode_all_mode_only, default_value=control_mode, key='option_general_hrrm_fixed_mode', size=(15, 1), visible=False)],
 
 
@@ -3441,7 +3414,6 @@ SOFTWARE.\n'
                             max_col_width=116,
                             col_widths=[17, 15, 15, 20, 17, 15, 15],
                             auto_size_columns=False,
-                            #text_color='black',
                             text_color='gray',
                             background_color='white',
                             justification='left',
@@ -3501,7 +3473,6 @@ SOFTWARE.\n'
 
                             [sg.Text('Mode:', size=(5, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
                              sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], size=(22, 1), key='option_winlink_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
-                             #sg.OptionMenu(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], size=(25, 1), key='option_winlink_fldigimode', visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
                              sg.CBox('Use Seq.', key='cb_winlink_useseq', enable_events=True ),
                              sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_winlink_selectedseq', size=(7, 1), enable_events = True, disabled = True),
@@ -3527,11 +3498,10 @@ SOFTWARE.\n'
 
 
     self.layout_peer_stations = [
-#                            [sg.Text('RMS Messages Folder:', size=(20,1), justification='left')],
 
-                        [sg.Table(values=self.group_arq.getSelectedStations(), headings=['Peer Callsign', '#', 'Grid', 'Sel.', 'Rig', 'Mod', 'SNR', 'ID', 'Signal Report'],
+                        [sg.Table(values=self.group_arq.getSelectedStations(), headings=['Peer Callsign', '#', 'Grid', 'Station Memo', 'Sel.', 'Rig', 'Mod', 'SNR', 'ID', 'Signal Report'],
                             max_col_width=35,
-                            col_widths=[13, 3, 9, 3, 10, 8, 4, 11, 11, 11],
+                            col_widths=[13, 3, 9, 9, 3, 10, 8, 4, 11, 11, 11],
                             auto_size_columns=False,
                             justification='left',
                             text_color='black',
@@ -3543,7 +3513,6 @@ SOFTWARE.\n'
                         ] 
 
     self.layout_relay_stations = [
-#                            [sg.Text('RMS Messages Folder:', size=(20,1), justification='left')],
 
                        [sg.Table(values=self.group_arq.getSelectedRelayStations(), headings=['Callsign', '#', 'Grid', 'Relay Callsign', 'Sel.', 'hops'],
                             max_col_width=35,
@@ -3558,17 +3527,6 @@ SOFTWARE.\n'
 
 
                         ] 
-
-
-#    self.layout_peer_relay = [
-#                            [sg.TabGroup([[
-#                                sg.Tab('Peer Station', self.layout_peer_stations,  title_color='Black', key='tab_winlink_pat_inbox', background_color='Dark Gray'),
-#                                sg.Tab('Relay Station', self.layout_relay_stations, title_color='Black', key='tab_winlink_pat_outbox', background_color='Dark Gray')]],
-#                             tab_location='centertop',
-#                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True )],
-#                          ] 
-
-
 
 
     if(self.group_arq.formdesigner_mode ==True):
@@ -3591,14 +3549,6 @@ SOFTWARE.\n'
                                sg.CBox('Auto', key='cb_mainpanel_ft8stylefullauto', enable_events=True)],
                             ], expand_x=True),
 
-                        #sg.Button('CQ CQ', size=(5, 1), key='btn_mainpanel_cqcqcq'),
-                        #sg.Button('Copy', size=(5, 1), key='btn_mainpanel_copycopy'),
-                        #sg.Button('RR 73', size=(5, 1), key='btn_mainpanel_rr73'),
-                        #sg.Button('73', size=(5, 1), key='btn_mainpanel_73'),
-                        #sg.CBox('Auto', key='cb_mainpanel_ft8stylefullauto', enable_events=True),
-
-                         #       ], expand_x=True),
-                         #   ],
 
                         sg.Button('Relay', size=(4, 1), key='btn_mainpanel_relay', visible = False),
 
@@ -3625,31 +3575,6 @@ SOFTWARE.\n'
                              tab_location='centertop',
                              title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True, expand_x=True )],
 
-#                       [
-#                           sg.Frame('Peer Stations', [
-#                        [sg.Table(values=self.group_arq.getSelectedStations(), headings=['Peer Callsign', '#', 'Grid', 'Sel.', 'Rig', 'Mod', 'SNR'],
-#                            max_col_width=35,
-#                            col_widths=[13, 3, 9, 3, 10, 8, 4, 11],
-#                            auto_size_columns=False,
-#                            justification='left',
-#                            text_color='black',
-#                            background_color='ivory2',
-#                            enable_events=True,
-#                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-#                            num_rows=5, key='tbl_compose_selectedstations')],
-#                            ], expand_x=True),
-#                           sg.Frame('Relay Stations', [
-#                       [sg.Table(values=self.group_arq.getSelectedRelayStations(), headings=['Callsign', '#', 'Grid', 'Relay Callsign', 'Sel.', 'hops'],
-#                            max_col_width=35,
-#                            col_widths=[13, 3, 9, 13, 3, 4, 11],
-#                            auto_size_columns=False,
-#                            justification='left',
-#                            text_color='black',
-#                            background_color='plum1',
-#                            enable_events=True,
-#                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-#                            num_rows=5, key='tbl_compose_selectedrelaystations')],
-#                            ], expand_x=True)],
 
                        [
                         sg.CBox('Active TX Channel: ', key='cb_mainwindow_acttxchan', visible = False),
@@ -3688,8 +3613,10 @@ SOFTWARE.\n'
                         sg.Text('Main Mode:', size=(10, 1) ), 
                         sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_main_fldigimode', enable_events = True),
 
+                        sg.CBox('Station Memo:', key='cb_mainwindow_include_stationtext'),
+                        sg.InputText(js.get("params").get('InboxStationMemo'), size=(12, 1), key='in_mainwindow_stationtext', enable_events=True ), 
+
                         sg.CBox('TX Enable', default=js.get("params").get('TXEnable'), key='cb_mainwindow_txenable'),
-                        #sg.OptionMenu(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_main_fldigimode'),
 
                         sg.Text('--In Session--', size=(10, 1), key='text_mainarea_insession', font=("Helvetica", 20), expand_x=True, justification = 'right', text_color='gray' )], 
 
@@ -3713,7 +3640,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main' )] ]  
 
-    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.8 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
+    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.9 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
 
     return (self.window)
 

@@ -81,6 +81,7 @@ class NetGarq(object):
     self.selected_stations = []
     self.selected_relay_stations = []
     self.chat_data = []
+    self.chat_data_colors = []
     self.selected_template = 'General Message'
     self.debug = debug
 
@@ -180,33 +181,57 @@ class NetGarq(object):
     self.selected_stations = []	  
     return
 
+
   def addSelectedStation(self, station, num, grid, connect, rig, modulation, snr, ID):
 
     self.debug.info_message("addSelectedStation" )
 
     signal_report = ''
+    memo = ''
 
     for x in range (len(self.selected_stations)):
       lineitem = self.selected_stations[x]
       callsign        = lineitem[0]
-      prev_ID         = lineitem[7]
+      prev_ID         = lineitem[8]
       if(callsign == station):
         """ test timestamp in here"""
         prev_timestamp_string = prev_ID.split('_',1)[1]
         prev_inttime = ((int(prev_timestamp_string,36))/100.0)
+        self.debug.error_message("addSelectedStation previous timestamp: " + prev_timestamp_string)
 
         timestamp_string = ID.split('_',1)[1]
         inttime = ((int(timestamp_string,36))/100.0)
+        self.debug.error_message("addSelectedStation this timestamp: " + timestamp_string)
 
         """ if prev station timestamp is more recent then ignore add...best guess within limitation of encoding!"""
-        if(prev_inttime > inttime):
-          return self.selected_stations
-        else:
-          self.selected_stations.remove(lineitem)
-          self.selected_stations.append([station, num, grid, connect, rig, modulation, snr, ID, signal_report])
+        if(True):#(prev_inttime > inttime):
+          #self.debug.error_message("addSelectedStation discarding")
+          #return self.selected_stations
+        #else:
+          num        = lineitem[1]
+          previous_grid = lineitem[2]
+          memo       = lineitem[3]
+          connect    = lineitem[4]
+          rig        = lineitem[5]
+          modulation = lineitem[6]
+          snr        = lineitem[7]
+          last_heard = lineitem[8]
+          signal_report = lineitem[9]
+          #self.selected_stations[x] = [callsign, num, grid, memo, connect, rig, modulation, snr, ID, signal_report]
+
+          new_grid = ''
+          if (grid.strip() != ''):
+            new_grid = grid
+          else:
+            new_grid = previous_grid
+          self.debug.error_message("addSelectedStation update grid to " + new_grid)
+          self.selected_stations[x] = [callsign, num, new_grid, memo, connect, rig, modulation, snr, ID, signal_report]
+
+          #self.selected_stations.remove(lineitem)
+          #self.selected_stations.append([station, num, grid, memo, connect, rig, modulation, snr, ID, signal_report])
           return self.selected_stations
 
-    self.selected_stations.append([station, num, grid, connect, rig, modulation, snr, ID, signal_report])
+    self.selected_stations.append([station, num, grid, memo, connect, rig, modulation, snr, ID, signal_report])
     return self.selected_stations
 
 
@@ -221,6 +246,33 @@ class NetGarq(object):
 
     return -1
 
+  
+  def updateSelectedStationMemo(self, station, memo):
+
+    self.debug.info_message("updateSelectedStationMemo " + station + ' ' + memo )
+
+    for x in range (len(self.selected_stations)):
+      lineitem = self.selected_stations[x]
+      callsign = lineitem[0]
+      self.debug.info_message("updateSelectedStationMemo callsign " + callsign + ' ' + station)
+      if(callsign == station):
+        self.debug.info_message("updateSelectedStationMemo updating Memo")
+
+        num        = lineitem[1]
+        grid       = lineitem[2]
+        #memo       = lineitem[3]
+        connect    = lineitem[4]
+        rig        = lineitem[5]
+        modulation = lineitem[6]
+        snr        = lineitem[7]
+        last_heard = lineitem[8]
+        signal_report = lineitem[9]
+
+        self.selected_stations[x] = [callsign, num, grid, memo, connect, rig, modulation, snr, last_heard, signal_report]
+
+        return 
+  
+
   def updateSelectedStationSNR(self, station, snr):
 
     self.debug.info_message("updateSelectedStationSNR " + station + ' ' + snr )
@@ -234,13 +286,16 @@ class NetGarq(object):
 
         num        = lineitem[1]
         grid       = lineitem[2]
-        connect    = lineitem[3]
-        rig        = lineitem[4]
-        modulation = lineitem[5]
-        last_heard = lineitem[7]
-        signal_report = lineitem[8]
 
-        self.selected_stations[x] = [callsign, num, grid, connect, rig, modulation, snr, last_heard, signal_report]
+        memo       = lineitem[3]
+      
+        connect    = lineitem[4]
+        rig        = lineitem[5]
+        modulation = lineitem[6]
+        last_heard = lineitem[8]
+        signal_report = lineitem[9]
+
+        self.selected_stations[x] = [callsign, num, grid, memo, connect, rig, modulation, snr, last_heard, signal_report]
 
         return 
 
@@ -257,13 +312,14 @@ class NetGarq(object):
 
         num        = lineitem[1]
         grid       = lineitem[2]
-        connect    = lineitem[3]
-        rig        = lineitem[4]
-        modulation = lineitem[5]
-        snr        = lineitem[6]
-        last_heard = lineitem[7]
+        memo       = lineitem[3]
+        connect    = lineitem[4]
+        rig        = lineitem[5]
+        modulation = lineitem[6]
+        snr        = lineitem[7]
+        last_heard = lineitem[8]
 
-        self.selected_stations[x] = [callsign, num, grid, connect, rig, modulation, snr, last_heard, signal_report]
+        self.selected_stations[x] = [callsign, num, grid, memo, connect, rig, modulation, snr, last_heard, signal_report]
 
         return 
 
@@ -276,7 +332,7 @@ class NetGarq(object):
 
     for x in range (len(self.selected_stations)):
       lineitem = self.selected_stations[x]
-      selected = lineitem[3]
+      selected = lineitem[4]
       if(selected == 'X'):
         selected_colors.append([x, 'green1'])
       else:
@@ -295,18 +351,19 @@ class NetGarq(object):
     callsign   = lineitem[0]
     num        = lineitem[1]
     grid       = lineitem[2]
-    selected   = lineitem[3]
-    rig        = lineitem[4]
-    modulation = lineitem[5]
-    snr        = lineitem[6]
-    last_heard = lineitem[7]
-    signal_report  = lineitem[8]
+    memo       = lineitem[3]
+    selected   = lineitem[4]
+    rig        = lineitem[5]
+    modulation = lineitem[6]
+    snr        = lineitem[7]
+    last_heard = lineitem[8]
+    signal_report  = lineitem[9]
 
     if(selected == 'X'):
       selected = ' '
     else:
       selected = 'X'
-    self.selected_stations[index] = [callsign, num, grid, selected, rig, modulation, snr, last_heard, signal_report]
+    self.selected_stations[index] = [callsign, num, grid, memo, selected, rig, modulation, snr, last_heard, signal_report]
 
 
   def selectSelectedStations(self, index):
@@ -315,15 +372,16 @@ class NetGarq(object):
     callsign   = lineitem[0]
     num        = lineitem[1]
     grid       = lineitem[2]
-    selected   = lineitem[3]
-    rig        = lineitem[4]
-    modulation = lineitem[5]
-    snr        = lineitem[6]
-    last_heard = lineitem[7]
-    signal_report  = lineitem[8]
+    memo       = lineitem[3]
+    selected   = lineitem[4]
+    rig        = lineitem[5]
+    modulation = lineitem[6]
+    snr        = lineitem[7]
+    last_heard = lineitem[8]
+    signal_report  = lineitem[9]
 
     selected = 'X'
-    self.selected_stations[index] = [callsign, num, grid, selected, rig, modulation, snr, last_heard, signal_report]
+    self.selected_stations[index] = [callsign, num, grid, memo, selected, rig, modulation, snr, last_heard, signal_report]
 
 
   def getConnectToString(self):
@@ -332,7 +390,7 @@ class NetGarq(object):
     for x in range (len(self.selected_stations)):
       lineitem = self.selected_stations[x]
       callsign = lineitem[0]
-      selected = lineitem[3]
+      selected = lineitem[4]
 
       if(selected == 'X'):
         if(selected_callsigns == ''):
@@ -519,6 +577,16 @@ class NetGarq(object):
   def getChatData(self):
     return self.chat_data
 
+  def getChatDataColors(self):
+    return self.chat_data_colors
+
+  def appendChatDataColorTargeted(self):
+    color_index = max(len(self.chat_data)-1, 0)
+    self.chat_data_colors.append([color_index , 'green1'])
+
+  def appendChatDataColorPassive(self):
+    color_index = max(len(self.chat_data)-1, 0)
+    self.chat_data_colors.append([color_index , 'dark gray'])
 
 
   def clearCategories(self):
