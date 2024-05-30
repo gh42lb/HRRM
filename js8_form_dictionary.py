@@ -1908,6 +1908,8 @@ class FormDictionary(object):
 
                            'InboxStationMemo'          : 'CQ POTA',
 
+                           'AutoAnswer'                : True,
+
                            'RewriteFrom'             : False,
                            'IncludeHRRMExport'           : False,
 
@@ -2084,6 +2086,8 @@ class FormDictionary(object):
                            'GeneralRetries2'           : values['input_general_retries_2'],
 
                            'InboxStationMemo'           : values['in_mainwindow_stationtext'],
+
+                           'AutoAnswer'                : values['cb_mainwindow_autoanswer'],
 
                            'RewriteFrom'             : values['cb_general_rewrite_from'],
                            'IncludeHRRMExport'           : values['cb_general_include_HRRM_export'],

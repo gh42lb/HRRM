@@ -95,6 +95,8 @@ class ReceiveControlsProc(object):
     self.editing_table_row = 0
     self.editing_table_col = 0
 
+    self.one_minute_chunks = 0
+    self.one_minute_timer = 0
     self.five_minute_timer = 0
     self.ten_minute_timer = 0
 
@@ -191,6 +193,7 @@ class ReceiveControlsProc(object):
       """ initialize the ten minute timer"""
       self.event_btnmainpanelupdaterecent(values)
       timestamp_now = int(round(datetime.utcnow().timestamp()))
+      self.one_minute_timer  = timestamp_now
       self.five_minute_timer = timestamp_now
       self.ten_minute_timer  = timestamp_now
 
@@ -279,11 +282,52 @@ class ReceiveControlsProc(object):
     if(self.group_arq.formdesigner_mode == False):
 
       timestamp_now = int(round(datetime.utcnow().timestamp()))
-      if( (self.five_minute_timer+(5*60)) <= timestamp_now and self.getSaamfram().inSession() == False):
-        self.debug.info_message("5 minute timer triggered")
-        self.five_minute_timer = timestamp_now
-        self.event_btnmainpanelupdaterecent(values)
-        self.form_gui.window['table_relay_messages'].update(row_colors=self.group_arq.getMessageRelayboxColors())
+      #if( (self.five_minute_timer+(5*60)) <= timestamp_now and self.getSaamfram().inSession() == False):
+      #if( (self.one_minute_timer + 60) <= (timestamp_now - (self.one_minute_chunks * 60)) and self.getSaamfram().inSession() == False):
+      if( (self.one_minute_timer + 60) <= timestamp_now and self.getSaamfram().inSession() == False):
+        self.debug.info_message("1 minute timer triggered")
+
+        self.one_minute_chunks = self.one_minute_chunks + 1
+        self.one_minute_timer = timestamp_now
+
+        selected_timescale = values['option_showactive']
+        #selected_timescale = self.form_gui.window['option_showactive']
+        proceed = False
+        if(selected_timescale == 'Minute'):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == '5 Minutes' and self.one_minute_chunks == 5):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == '10 Minutes' and self.one_minute_chunks == 10):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == '15 Minutes' and self.one_minute_chunks == 15):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == '30 Minutes' and self.one_minute_chunks == 30):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == 'Hour' and self.one_minute_chunks == 60):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == 'Day' and self.one_minute_chunks == 1440):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == 'Week' and self.one_minute_chunks == 10080):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == 'Month' and self.one_minute_chunks == 40320):
+          self.one_minute_chunks = 0
+          proceed = True
+        elif(selected_timescale == 'Year' and self.one_minute_chunks == 483840):
+          self.one_minute_chunks = 0
+          proceed = True
+
+        if(proceed):
+          self.debug.info_message("proceeding")
+          self.event_btnmainpanelupdaterecent(values)
+          self.form_gui.window['table_relay_messages'].update(row_colors=self.group_arq.getMessageRelayboxColors())
 
       if( (self.ten_minute_timer+(10*60)) <= timestamp_now ):
         self.debug.info_message("10 minute timer triggered")
@@ -2941,6 +2985,14 @@ class ReceiveControlsProc(object):
 
     if(selected_timescale == 'Minute'):
       how_recent = 60
+    elif(selected_timescale == '5 Minutes'):
+      how_recent = 300
+    elif(selected_timescale == '10 Minutes'):
+      how_recent = 600
+    elif(selected_timescale == '15 Minutes'):
+      how_recent = 900
+    elif(selected_timescale == '30 Minutes'):
+      how_recent = 1800
     elif(selected_timescale == 'Hour'):
       how_recent = 3600
     elif(selected_timescale == 'Day'):

@@ -90,6 +90,8 @@ class SAAMFRAM(object):
     self.last_selected_channel_view_line = -1
     self.main_params = js
 
+    self.autoMessageFrom = ''
+
     self.last_displayed_debug_message = ''
 
     self.base32_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
@@ -2021,6 +2023,8 @@ outbox dictionary items formatted as...
         timestamp = self.getDecodeTimestampFromUniqueId(ID)
         msgfrom   = self.getDecodeCallsignFromUniqueId(ID)
 
+        self.autoMessageFrom = msgfrom
+
         """ must also pass 2nd CRC check"""
         if(success):
           verified  = 'Verified'
@@ -3476,8 +3480,38 @@ outbox dictionary items formatted as...
 
     self.debug.info_message("toSendOrNotToSend. senderCall: " + self.getSenderCall() )
     """ if the field is empty then do not reply back we are listening only"""
-    if(self.getSenderCall() == ''):
+
+    autoAnswer =  self.form_gui.window['cb_mainwindow_autoanswer'].get()
+    if(self.getSenderCall() == '' and autoAnswer == False):
+      self.debug.info_message("toSendOrNotToSend return False 1")
       return False
+
+    isPeer = self.group_arq.getSelectedStationIndex(self.autoMessageFrom)
+    if(isPeer == -1):
+      self.debug.info_message("toSendOrNotToSend return False 2")
+      return False
+
+    if(self.getSenderCall() != ''):
+      if(';' in self.getSenderCall()):
+        isPeer = self.group_arq.getSelectedStationIndex(self.getSenderCall().split(';')[0])
+        if(isPeer == -1):
+          if(self.autoMessageFrom in self.getSenderCall()):
+            self.debug.info_message("toSendOrNotToSend allow ")
+          else:
+            self.debug.info_message("toSendOrNotToSend return False 3")
+            return False
+      else:
+        isPeer = self.group_arq.getSelectedStationIndex(self.getSenderCall())
+        if(isPeer == -1):
+          self.debug.info_message("toSendOrNotToSend return False 4")
+          return False
+
+#    senderCall = ''
+#    if(self.getSenderCall() == ''):
+#      senderCall = self.autoMessageFrom
+#    else:
+#      senderCall = self.getSenderCall()
+
 
     if( self.getWhatWhere(self.active_rig, self.active_channel) == cn.FRAGMENTS_TO_GROUP):
       self.debug.info_message("toSendOrNotToSend addressed to GROUP")
@@ -3507,6 +3541,14 @@ outbox dictionary items formatted as...
   """
   def sendAck(self, from_callsign, to_callsign):
 
+    if(to_callsign == ''):
+      to_callsign = self.autoMessageFrom
+    elif(';' in to_callsign):
+      if(self.autoMessageFrom in to_callsign):
+        to_callsign = self.autoMessageFrom
+      else:
+        to_callsign = to_callsign.split(';')[0]
+
     try:
       sendit = self.toSendOrNotToSend()
       if(sendit == False):
@@ -3525,6 +3567,14 @@ outbox dictionary items formatted as...
 
 
   def sendNack(self, frames, from_callsign, to_callsign):
+
+    if(to_callsign == ''):
+      to_callsign = self.autoMessageFrom
+    elif(';' in to_callsign):
+      if(self.autoMessageFrom in to_callsign):
+        to_callsign = self.autoMessageFrom
+      else:
+        to_callsign = to_callsign.split(';')[0]
 
     sendit = self.toSendOrNotToSend()
     if(sendit == False):

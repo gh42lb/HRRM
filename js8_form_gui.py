@@ -2636,7 +2636,7 @@ Channel 13 - 2000Hz,Channel 14 - 2125Hz,Channel 15 - 2250Hz,Channel 16 - 2375Hz'
 dark violet,gray,magenta2,slate gray,slategray4,grey30,grey60,dark gray,white,black,turquoise1,cyan,khaki,dark khaki,olive drab,ivory2,plum1,orchid1,OliveDrab1,thistle2'.split(',')
     combo_numtimes_frag  = 'f1x2,f1x3,f1+f2x2,f1+f2x3,f1+f2+f3x2,f1+f2+f3x3'.split(',')
     combo_numtimes_msg  = 'x1,x2,x3'.split(',')
-    combo_showactive    = 'Minute,Hour,Day,Week,Month,Year,Unlimited'.split(',')
+    combo_showactive    = 'Minute,5 Minutes,10 Minutes,15 Minutes,30 Minutes,Hour,Day,Week,Month,Year,Unlimited'.split(',')
     combo_fldigi_modes  = 'DOMX88,DOMX44,DOMX22,Cont-4/1K,Cont-8/1K,\
 Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
     combo_reply_tmplts  = 'ICS_305_REPLY, ICS_305_PG2, GENERIC_REPLY'.split(',')
@@ -2651,7 +2651,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v1.0.9 Beta \n\
+                                                Ham Radio Relay Messenger de WH6GGO v1.0.10 Beta \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2024 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -3181,7 +3181,7 @@ SOFTWARE.\n'
                             [sg.Frame('HRRM Overrides', [
 
                               [
-                               sg.CBox('Auto Receive', default = js.get("params").get('AutoReceive'), size=(15, 1), key='cb_general_auto_receive_stub_from_rts', enable_events=True)],
+                               sg.CBox('RTS Auto Receive', default = js.get("params").get('AutoReceive'), size=(17, 1), key='cb_general_auto_receive_stub_from_rts', enable_events=True)],
 
                               [
                                sg.CBox('Callsign', size=(10, 1), key='cb_general_forward_usefixedcallsign', enable_events=True, visible=False),
@@ -3593,7 +3593,7 @@ SOFTWARE.\n'
                         sg.Button('Beacon', size=(5, 1), key='btn_mainpanel_beacon', visible = False),
 
                         sg.Text('Timescale:', size=(10, 1), visible = True), 
-                        sg.Combo(combo_showactive, default_value=combo_showactive[6], key='option_showactive'),
+                        sg.Combo(combo_showactive, default_value=combo_showactive[10], key='option_showactive'),
                         sg.Button('Update', size=(5, 1), key='btn_mainpanel_updaterecent'),
                         sg.Button('Clear', size=(5, 1), key='btn_mainpanel_clearstations')],
 
@@ -3618,6 +3618,8 @@ SOFTWARE.\n'
 
                         sg.CBox('TX Enable', default=js.get("params").get('TXEnable'), key='cb_mainwindow_txenable'),
 
+                        sg.CBox('Auto Answer', default=js.get("params").get('AutoAnswer'), key='cb_mainwindow_autoanswer'),
+
                         sg.Text('--In Session--', size=(10, 1), key='text_mainarea_insession', font=("Helvetica", 20), expand_x=True, justification = 'right', text_color='gray' )], 
 
                        [ sg.Text('Fldigi mode: ', size=(15, 1) , visible = False      ), 
@@ -3640,7 +3642,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main' )] ]  
 
-    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.9 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
+    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.10 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
 
     return (self.window)
 
