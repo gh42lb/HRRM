@@ -1,9 +1,11 @@
 ## Overview
 
-Ham Radio Relay Messenger v1.0.10 beta test release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v2.0.2 alpha release de WH6GGO. The software is currently in active development and early release testing phase.
 
 
 #### Features
+* Distributed Peer To Peer IP Layer: v2.0.0 includes a distributed peer to peer ip layer for decentralized IP communications via satellite amd terrestrial internet.
+* Support for JS8: Send messages, email, forms and ICS forms via JS8 and JS8call
 * Dynamic Routing: Builds routing information from active relay stations. Relay messages directed to stations with fewest hops.
 * Self Organizing Radio Mesh: HRRM allows active stations to form a Dynamic Self Organizing Radio Mesh for message transfer either directly or via relay.
 * Critical Messages: Enables transfer of fully verified, error-corrected chats/emails/forms/files/messages to ham radio stations in real time.
@@ -29,8 +31,10 @@ Ham Radio Relay Messenger v1.0.10 beta test release de WH6GGO. The software is c
 
 Download the following:
 
+* JS8Call
 * Fldigi
 * HRRM v1.0.10 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
+* p2pnode binary from github.com/gh42lb/HRRM
 
 run the windows installer or create a folder on the desktop called HRRM and add the binary file
 
@@ -50,10 +54,20 @@ HRRM Group Name: In HRRM, 'MyInfo' tab / Group Name. Enter the chosen group name
 
 HRRM Grid Square: in HRRM, 'MyInfo' tab / Grid Square. Enter you grid square into the field.
 
+JS8Call 
+File/Settings/Reporting tab
+under the API section:
+TCP Server Hostname: 127.0.0.1   Enable TCP Server API - checked
+TCP Server Port:     2442        Accept TCP Requests   - checked
+TCP Max Connections: 1 or 2
+
+on pi\linux, copy the hrrm.key and hrrm.crt files to the ~/.HRRM folder
 
 ### Running the Application
 
-start fldigi first
+start the modem application first...this can be either js8call or fldigi
+
+start the p2pnode application
 
 Now start hrrm by running the exe\binary from the command line or double clicking on the icon on the desktop
 
