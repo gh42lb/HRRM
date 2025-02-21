@@ -4,11 +4,7 @@ import constant as cn
 import string
 import struct
 
-try:
-  import PySimpleGUI as sg
-except:
-  import PySimpleGUI27 as sg
-
+import FreeSimpleGUI as sg
 import json
 import threading
 import os
@@ -30,7 +26,7 @@ from uuid import uuid4
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -71,7 +67,6 @@ class AppPipes(object):
       value.close()
 
     self.pipes = {}
-    #if(PIPE_INTEREST_APPCLOSE
 
 
   def createServerPipe(self, name, ip_address, port):

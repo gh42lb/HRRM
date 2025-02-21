@@ -2,7 +2,7 @@
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -108,6 +108,8 @@ COMM_RR73          = ' RR73 '
 COMM_73            = ' 73 '
 COMM_TESTPROP      = ' PROP '
 COMM_CHAT          = ' CHAT '
+COMM_NOTIFY        = ' NOTIFY '
+COMM_BEACON        = ' BEACON '
 
 
 
@@ -215,3 +217,37 @@ PREVIEW_NUM_ROWS_COMPOSE    = 25
 
 OUTBOX      = 1
 RELAYBOX    = 2
+
+RADIO = 1
+P2PIP = 2
+
+""" type & sub type """
+P2P_IP_AVAILABLE_NODES = 1
+P2P_IP_CONNECTED_NODES = 2
+P2P_IP_START   = 3
+P2P_IP_STOP    = 4
+P2P_IP_RESTART = 5
+P2P_IP_NEIGHBORS = 6
+P2P_IP_SEND_MSG = 7
+P2P_IP_GET_MSG = 8
+P2P_IP_SET = 9
+P2P_IP_GET = 10
+P2P_IP_NOT_FOUND = 11
+P2P_IP_FOUND = 12
+P2P_IP_QUERY_NEIGHBORS = 13
+P2P_IP_CONNECT_UDP = 14
+P2P_IP_CONNECT_UDP_MULTI = 15
+P2P_IP_NONE = 16
+P2P_IP_CREATE_BOOSTRAP_NODE = 17
+P2P_IP_SET_DIGEST = 18
+P2P_IP_COMMAND = 19
+P2P_IP_INFO = 20
+P2P_IP_QUERY_RESULT = 21
+P2P_IP_QUERY_NEIGHBORS_RESULT = 22
+P2P_IP_SUCCESS  = 23
+P2P_IP_STOPPED = 24
+P2P_IP_SEND_TEXT = 25
+P2P_IP_GET_TEXT = 26
+P2P_IP_QUERY_PING = 27
+P2P_IP_QUERY_PING_RESULT = 28
+P2P_IP_DUMP_LOCAL_STORAGE = 29

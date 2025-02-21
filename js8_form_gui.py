@@ -4,11 +4,7 @@ import constant as cn
 import string
 import struct
 
-try:
-  import PySimpleGUI as sg
-except:
-  import PySimpleGUI27 as sg
-
+import FreeSimpleGUI as sg
 import json
 import threading
 import os
@@ -17,7 +13,7 @@ import calendar
 import xmlrpc.client
 import math
 import debug as db
-
+import uuid
 import hrrm
 import js8_form_events
 import js8_form_dictionary
@@ -30,7 +26,7 @@ from uuid import uuid4
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -374,18 +370,11 @@ def createEditableTableElement(self, keyname, t1, text, width, height, pad, sub_
 
   self.debug.info_message('createEditableTableElement data: ' + str(data) )
 
-
-  #select_mode=TABLE_SELECT_MODE_NONE 
-  #TABLE_SELECT_MODE_BROWSE
-  #TABLE_SELECT_MODE_EXTENDED
-
   line = [sg.Table(values=data, headings=headings,
                         col_widths=col_widths,
                         auto_size_columns=False,
                         justification='right',
                         num_rows=height,
-                        #FIXME USED FOR MULTI LINE ROWS IN TABLE
-                        #row_height=60,
                         alternating_row_color='lightgray',
                         key=keyname,
                         expand_x=True,
@@ -394,7 +383,6 @@ def createEditableTableElement(self, keyname, t1, text, width, height, pad, sub_
                         text_color = 'black',
                         background_color = 'white',
                         metadata=meta_value,
-                        #display_row_numbers = True,
                         enable_click_events=True,
                         font=("Courier New", 9),
                         )]
@@ -540,12 +528,25 @@ class FormGui(object):
 
     """ form designed debug code is verbose see notch this back to ERROR level unless needed"""
     self.debugForms = db.Debug(cn.DEBUG_ERROR)
-    #self.debugForms = db.Debug(cn.DEBUG_INFO)
 
     self.customized_headers=[['content_0', 4, 3, 'my\nfirst\ncol', 'my\nsecond\ncol', 'my\nthird\ncol', 'my\nfourth\ncol']]
 
+    self.pipe = None
+    self.mypipeclient = None
+
+    self.neighbors_active_dict = {}
 
     return
+
+
+  def setVpnPipe_p2pNode(self, pipe):
+    self.pipe = pipe
+
+  def setClientPipe(self, mypipeclient):
+    self.mypipeclient = mypipeclient
+
+  def getClientPipe(self):
+    return self.mypipeclient
 
   def setComposePopupWindow(self, window):
     self.compose_popup_window = window
@@ -2534,7 +2535,7 @@ inbox dictionary items formatted as...
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=5, key='tbl_compose_select_form')],
+                            num_rows=5, key='tbl_compose_select_form', expand_x=True)],
 
          [
           sg.Text('To: ', size=(5, 1), background_color=js.get("params").get('ComposeTabClr')),
@@ -2555,8 +2556,8 @@ inbox dictionary items formatted as...
           [
             sg.Frame('Remote Internet', [
                        [sg.Button('Email', key='btn_remoteinternet_sendemail'),
-                        sg.Button('SMS Text', key='btn_remoteinternet_sendemail', disabled = True),
-                        sg.Button('APRS', key='btn_remoteinternet_sendemail', disabled = True)],
+                        sg.Button('SMS Text', key='btn_remoteinternet_sendemail', disabled = True, visible = self.group_arq.include_experimental),
+                        sg.Button('APRS', key='btn_remoteinternet_sendemail', disabled = True, visible = self.group_arq.include_experimental)],
                        ], expand_x=True)
           ],
 
@@ -2568,7 +2569,7 @@ inbox dictionary items formatted as...
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=cn.PREVIEW_NUM_ROWS_COMPOSE, key='table_compose_preview', font=("Courier New", 10))],
+                            num_rows=cn.PREVIEW_NUM_ROWS_COMPOSE, key='table_compose_preview', font=("Courier New", 10), expand_x=True)],
 
     ]
     
@@ -2597,6 +2598,12 @@ inbox dictionary items formatted as...
     combo_wide      = 'Span 500Hz,Span 1000Hz,Span 1500Hz,Span 2000Hz,Span 2800Hz,Excellent Propagation,Average Propagation,Poor Propagation,Weak Signal'.split(',')
     combo_premsg    = 'Message IDs,Message Callsigns,Grid Square,GPS LATLONG,QTH'.split(',')
     combo_mode1     = 'SLOW,NORMAL,FAST,TURBO'.split(',')
+
+    if(self.group_arq.display_winlink):
+      combo_connection_options = 'Winlink,Internet,None'.split(',')
+    else:
+      combo_connection_options = 'Internet,None'.split(',')
+
 
     combo_mode2 = []
     combo_mode_all = []
@@ -2628,6 +2635,7 @@ inbox dictionary items formatted as...
     mytemplate = 'my template'
     combo_fragtypes     = '10,20,30,40,50,60,80,100,120,140,160,180,200'.split(',')
     combo_direct_relay  = 'Peer Only,Peer + Relay'.split(',')
+    combo_beacon_timer_interval  = '--Off--,1 Minute,5 Minutes,10 Minutes,15 Minutes,30 Minutes,45 Minutes,1 Hour,2 Hours'.split(',')
     combo_channels      = 'Channel 1 - 500Hz,Channel 2 - 625Hz,Channel 3 - 750Hz,Channel 4 - 875Hz,\
 Channel 5 - 1000Hz,Channel 6 - 1125Hz,Channel 7 - 1250Hz,Channel 8 - 1375Hz,\
 Channel 9 - 1500Hz,Channel 10 - 1625Hz,Channel 11 - 1750Hz,Channel 12 - 1875Hz,\
@@ -2641,7 +2649,7 @@ dark violet,gray,magenta2,slate gray,slategray4,grey30,grey60,dark gray,white,bl
 Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
     combo_reply_tmplts  = 'ICS_305_REPLY, ICS_305_PG2, GENERIC_REPLY'.split(',')
 
-    #combo_send_to_calls  = 'WH6GGO, WH6FQI'.split(',')
+    combo_mac_addr_choices  = 'Computer Mac,Manual Entry Mac'.split(',')
 
     combo_verify_by      = 'Next Only,All,None'.split(',')
 
@@ -2651,9 +2659,9 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v1.0.10 Beta \n\
+                                                Ham Radio Relay Messenger de WH6GGO v2.0.0 Beta \n\
 \n\
-Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2024 Lawrence Byng. MIT License details included\n\
+Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2025 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
 please refer to https://github.com/gh42lb/\n\
 Contact Email: LarryByng@gmail.com\n\
@@ -2726,67 +2734,51 @@ SOFTWARE.\n'
     frag_modes          = seq1.get('frag_modes').split(',')
 
     self.layout_substation = [
-                          [sg.Text('Station Name: ', size=(11, 1) ) ,
-                           sg.InputText('Yaesu HF Fldigi', key='in_substation_name_1', size=(15, 1)),
-                           sg.Text('IP Address: ', size=(11, 1) ) ,
-                           sg.InputText('127.0.0.1', key='in_substation_ipaddress_1', size=(15, 1)),
-                           sg.Text('Port #: ', size=(11, 1) ) ,
-                           sg.InputText('2555', key='in_substation_port_1', size=(15, 1)),
-                           sg.Combo(combo_server_or_client, default_value=combo_server_or_client[1], size=(11, 1), key='option_substation_svrcli_1', enable_events=True) ,
-                           sg.Button('Connect', size=(11, 1), key='btn_substation_connect_1'),
-                           sg.Button('Dis-Connect', size=(11, 1), key='btn_substation_disconnect_1', disabled = True)],
+                          [
+                           sg.InputText(default_text='GUID: ' + js.get("params").get('p2pMyStationName'), justification ='center', key='in_mystationname', font=("Helvetica", 15), size=(40, 1), enable_events = True, text_color='white', background_color='black', expand_x=True)],
 
+                          [sg.Text('P2P VPN Node Address: ', size=(22, 1) ) ,
+                           sg.InputText(default_text=js.get("params").get('p2pVpnNodeAddress'), key='in_p2pipnode_ipaddr', size=(20, 1)),
+                           sg.CBox('Auto Connect', key='cb_p2psettings_autoconnect', default = js.get("params").get('P2pVpnAutoConnect'))],
 
-                          [sg.CBox('Accept All Incoming Connection Requests', key='cb_inbox_autoresendrequest')],
+                          [sg.Text('p2p ip Public Port: ', size=(22, 1) ) ,
+                             sg.InputText(default_text=js.get("params").get('P2pIpPublicPort'), key='in_p2pipudppublicserviceport', size=(20, 1))],
 
-                          [sg.Text('='*130, size=(130, 1) ) ],
+                          [sg.Text('p2p ip Local Address : ', size=(22, 1) ) ,
+                             sg.InputText(default_text=js.get("params").get('P2pIpLocalAddress'), key='in_p2pipudpserviceaddress', size=(20, 1))],
 
-                          [sg.Text('Digital Ham Radio Net: ', size=(20, 1) ) ,
-                           sg.Text('IP Address: ', size=(11, 1) ) ,
-                           sg.InputText('127.0.0.1', key='sidebar_offset', size=(15, 1)),
-                           sg.Text('Port #: ', size=(11, 1) ) ,
-                           sg.InputText('2555', key='sidebar_offset', size=(15, 1)),
-                           sg.Button('Connect', size=(11, 1), key='btn_inbox_requestchecksums')],
+                          [sg.CBox('Fortigate Auto Retrieve', key='cb_p2pipfortigateautoretrieve', default = js.get("params").get('FortigateAutoRetrieve')),
+                           sg.Text('Fortigate Lan Interface IP: ', size=(22, 1) ) ,
+                           sg.InputText(default_text=js.get("params").get('FortigateLanIp'), key='in_p2pipfortigatelanip', size=(15, 1)),
+                           sg.Text('Fortigate Login User: ', size=(18, 1) ) ,
+                           sg.InputText(default_text=js.get("params").get('FortigateLoginUser'), key='in_p2pipfortigateloginuser', size=(15, 1)),
+                           sg.Text('Fortigate Wan Interface name: ', size=(25, 1) ) ,
+                           sg.InputText(default_text=js.get("params").get('FortigateWanInterfaceName'), key='in_p2pipfortigatewaninterfacename', size=(15, 1))],
 
-                          [sg.CBox('Auto Accept Connection', key='cb_inbox_autoresendrequest')],
-
-                          [sg.Text('='*130, size=(130, 1) ) ],
-
-                          [sg.Text('Pat Winlink Client: ', size=(20, 1) ) ,
-                           sg.Text('IP Address: ', size=(11, 1) ) ,
-                           sg.InputText('127.0.0.1', key='sidebar_offset', size=(15, 1)),
-                           sg.Text('Port #: ', size=(11, 1) ) ,
-                           sg.InputText('2555', key='sidebar_offset', size=(15, 1)),
-                           sg.Button('Connect', size=(11, 1), key='btn_inbox_requestchecksums')],
-
-                          [sg.Text('Pat Winlink VARA: ', size=(20, 1) ) ,
-                           sg.Text('IP Address: ', size=(11, 1) ) ,
-                           sg.InputText('127.0.0.1', key='sidebar_offset', size=(15, 1)),
-                           sg.Text('Port #: ', size=(11, 1) ) ,
-                           sg.InputText('2555', key='sidebar_offset', size=(15, 1)),
-                           sg.Button('Connect', size=(11, 1), key='btn_inbox_requestchecksums')],
-
-                          [sg.CBox('Auto Accept Connection', key='cb_inbox_autoresendrequest')],
+                          [sg.Button('Save',   key='btn_myinfo_save_sat', size=(6, 1) )], 
 
                         ] 
 
 
-    self.layout_chat = [
+    self.layout_chat_radio = [
 
-                          [sg.MLine('', size=(64, 3), font=("Courier New", 9), key='ml_chat_sendtext', text_color='black', background_color='white', expand_x = True, expand_y=False, disabled = False)], 
                           [
-                           sg.Text('Mode:', size=(5, 1), background_color=js.get("params").get('ChatTabClr'), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(23, 1), key='option_chat_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
+                            sg.MLine('', size=(64, 5), font=("Courier New", 9), key='ml_chat_sendtext', text_color='black', background_color='white', expand_x = True, expand_y=False, disabled = False)], 
+                          [
+                           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(23, 1), key='option_chat_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI and not self.group_arq.listenonly) else False),
 
-                           sg.Button('Send', size=(5, 1), key='btn_prev_chat_post_and_send' ) ,
-                           sg.Text('To: ', size=(3, 1), background_color=js.get("params").get('ChatTabClr') ) ,
-                           sg.InputText('', key='in_chat_msgto', size=(30, 1)),
-                           sg.CBox('Use \'Connect To:\'', default = js.get("params").get('UseConnectTo'), key='cb_chat_useconnecto', background_color=js.get("params").get('ChatTabClr')),
-                           sg.Button('Launch JS8-Net', size=(11, 1), disabled = False if (js.get("params").get('ExtAppsJs8Net')==True) else True, key='button_launch_net' ) ,
-                           sg.CBox('Net Control', key='cb_chat_netcontrol', background_color=js.get("params").get('ChatTabClr'))],
+                           sg.Button('Send', size=(4, 1), key='btn_prev_chat_post_and_send', visible = not self.group_arq.listenonly ) ,
+
+                           sg.Text('To: ', size=(3, 1), background_color=js.get("params").get('ChatTabClr'), visible=False ) ,
+                           sg.InputText('', key='in_chat_msgto', size=(15, 1), visible=False),
+                           sg.CBox('Use \'Connect To:\'', default=True, key='cb_chat_useconnecto', background_color=js.get("params").get('ChatTabClr'), visible=False),
+
+                           sg.Text('', expand_x = True ) ,
+                           sg.Button('Launch JS8-Net', size=(11, 1), disabled = False if (js.get("params").get('ExtAppsJs8Net')==True) else True, key='button_launch_net' , visible = not self.group_arq.listenonly) ,
+                           sg.CBox('Net Control', key='cb_chat_netcontrol', background_color=js.get("params").get('ChatTabClr'), visible = not self.group_arq.listenonly)],
 
 
-                          [sg.Table(values=[], headings=['From', 'Message', 'MSGID'],
+                          [sg.Table(values=[], headings=['From Callsign', 'Message', 'MSGID'],
                             max_col_width=116,
                             col_widths=[10,91,15],
                             auto_size_columns=False,
@@ -2795,9 +2787,74 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=24, key='table_chat_received_messages', font=("Courier New", 10))],
+                            num_rows=24, key='table_chat_received_messages', font=("Courier New", 10), expand_x=True )],
 
                         ] 
+
+    self.layout_chat_satellite = [
+
+                          [sg.Table(values=[], headings=['Discussion', 'Group'],
+                            max_col_width=30,
+                            col_widths=[15,10],
+                            auto_size_columns=False,
+                            text_color='black',
+                            background_color='white',
+                            justification='left',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=4, key='table_chat_satellitediscussionname_plus_group', font=("Courier New", 10) ),
+
+                            sg.MLine('', size=(64, 5), font=("Courier New", 9), key='ml_chat_sendtext_p2pip', text_color='black', background_color='white', expand_x = True, expand_y=False, disabled = False)], 
+
+
+
+                            [sg.Frame('IP - Satellite & Internet', [
+
+                          [
+                           sg.Button('Send', size=(5, 1), key='btn_p2pipchatpostandsend' ) ,
+                           sg.Text('Discussion Group:: ', size=(15, 1)) ,
+                           sg.InputText('', key='in_chat_p2pip_discussiongroup', size=(30, 1)),
+                           sg.Button('Create', size=(7, 1), key='btn_p2pipcreatediscussiongroup' ) ,
+                           sg.Button('Check for messages', size=(15, 1), key='btn_p2pipchatcheckformessages' ) ],
+
+                                ]), 
+                                
+                             sg.Frame('Radio', [
+                            [
+                              sg.Button('Announce', size=(15, 1), key='btn_announcediscussiongroup' ) ,
+                              sg.CBox('Auto Beacon', key='cb_p2pipchat_autobeacon', background_color=js.get("params").get('ChatTabClr'))],
+                                ], visible = not self.group_arq.listenonly), 
+
+
+                            ],
+                            
+                            
+
+                          [sg.Table(values=[], headings=['From Handle', 'Message', 'MSGID'],
+                            max_col_width=116,
+                            col_widths=[10,91,15],
+                            auto_size_columns=False,
+                            text_color='black',
+                            background_color='white',
+                            justification='left',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=24, key='table_chat_received_messages_p2pip', font=("Courier New", 10), expand_x=True )],
+
+                                ] 
+
+
+    self.layout_chat_tabs = [
+
+                            [sg.TabGroup([[
+                               sg.Tab('Radio', self.layout_chat_radio, title_color='Black', key='tab_myinfo'),
+                               sg.Tab('IP - Satellite & Internet', self.layout_chat_satellite, title_color='Black')]] ,
+
+                             tab_location='centertop',
+                             selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', expand_x=True, expand_y = True )],
+                     
+                            ]
+
 
 
     self.layout_inbox = [
@@ -2810,21 +2867,38 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=5, key='table_inbox_messages')],
+                            num_rows=5, key='table_inbox_messages', expand_x=True)],
 
-          [
-           sg.Button('View', size=(10, 1), key='btn_inbox_viewmsg'),
+           [sg.Frame('p2p ip - Satellite', [
+
+              [sg.Button('get Msgs IP', size=(10, 1), key='btn_inbox_getmessages_ipp2p')],
+                                  ]),
+
+            sg.Frame('Radio', [
+
+              [
+              
+              sg.Button('REQM', size=(10, 1), key='btn_inbox_sendreqm')],
+                                  ], visible = not self.group_arq.listenonly),
+
+              sg.Frame('General', [
+
+          [ sg.Button('View', size=(10, 1), key='btn_inbox_viewmsg'),
            sg.Button('Copy', size=(10, 1), key='btn_inbox_copyclipboard'),
-           sg.Button('Paste', size=(10, 1), key='btn_inbox_pasteclipboard', disabled = True),
+           #sg.Button('Paste', size=(10, 1), key='btn_inbox_pasteclipboard', disabled = True),
            sg.Button('Delete', size=(10, 1), key='btn_inbox_deleteselected'),
            sg.Button('Delete All', size=(10, 1), key='btn_inbox_deleteall'),
            sg.Button('Query Msg', size=(10, 1), key='btn_inbox_querydoyouhaveacopy', visible=False),
-           sg.Button('REQM', size=(10, 1), key='btn_inbox_sendreqm'),
-           sg.Button('Request CRC', size=(10, 1), key='btn_inbox_requestchecksums', disabled = True),
+           sg.Button('Request CRC', size=(10, 1), key='btn_inbox_requestchecksums', disabled = True, visible = self.group_arq.include_experimental),
            sg.Button('Export', size=(10, 1), key='btncli_clear', visible = False),
            sg.InputText('myfile.dat', key='sidebar_offset', size=(15, 1), visible=False),
            sg.Combo(combo_reply_tmplts, key='option_inbox_reply_template', enable_events=True, visible = False),
            sg.Button('Reply', size=(7, 1), key='btn_inbox_replytomsg', visible = False)],
+
+                                ], expand_x=True)
+
+            ],
+
 
           [sg.Text('Error Frames:', size=(12, 1), visible = False),
            sg.InputText('', key='in_inbox_errorframes', size=(15, 1), visible = False),
@@ -2840,7 +2914,7 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=cn.PREVIEW_NUM_ROWS_INBOX, key='table_inbox_preview', font=("Courier New", 10))],
+                            num_rows=cn.PREVIEW_NUM_ROWS_INBOX, key='table_inbox_preview', font=("Courier New", 10), expand_x=True)],
        
     ]
 
@@ -2854,20 +2928,20 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=5, key='table_relay_messages')],
+                            num_rows=5, key='table_relay_messages', expand_x=True)],
 
           [
            sg.Button('Copy', size=(6, 1), key='btn_relay_copytoclipboard'),
-           sg.Button('Paste', size=(6, 1), key='btn_relay_pastefromclipboard', disabled = True),
+           #sg.Button('Paste', size=(6, 1), key='btn_relay_pastefromclipboard', disabled = True),
            sg.Button('Delete', size=(6, 1), key='btn_relaybox_deleteselected'),
            sg.Button('Delete All', size=(7, 1), key='btn_relaybox_deleteall'),
            sg.Button('Post', size=(6, 1), key='btn_relay_copytooutbox'),
-           sg.Button('RTS Relay', size=(12, 1), key='btn_relay_RTS', disabled = True),
+           sg.Button('Notify Relay', size=(12, 1), key='btn_relay_RTS', disabled = True, visible = not self.group_arq.listenonly),
            sg.Button('Query Msg', size=(9, 1), key='btn_relay_querymessageorfragments', visible=False),
-           sg.Button('REQM Rly', size=(9, 1), key='btn_relay_sendreqm', disabled = True),
-           sg.Button('Request CRC', size=(10, 1), key='btn_relay_requestchecksums', disabled = True),
-           sg.Button('Post to Winlink', size=(11, 1), key='btn_relaybox_posttowinlink'),
-           sg.CBox('P2P?', key='cb_relaybox_winlinkp2p', background_color=js.get("params").get('RelayboxTabClr'), enable_events=True )],
+           sg.Button('REQM Rly', size=(9, 1), key='btn_relay_sendreqm', disabled = True, visible = self.group_arq.include_experimental),
+           sg.Button('Request CRC', size=(10, 1), key='btn_relay_requestchecksums', disabled = True, visible = self.group_arq.include_experimental),
+           sg.Button('Post to Winlink', size=(11, 1), key='btn_relaybox_posttowinlink', visible = self.group_arq.display_winlink),
+           sg.CBox('P2P?', key='cb_relaybox_winlinkp2p', background_color=js.get("params").get('RelayboxTabClr'), enable_events=True, visible = self.group_arq.display_winlink )],
 
           [sg.Table(values=[], headings=['Preview'],
                             max_col_width=116,
@@ -2878,10 +2952,9 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=cn.PREVIEW_NUM_ROWS_RELAYBOX, key='table_relaybox_preview', font=("Courier New", 10))],
+                            num_rows=cn.PREVIEW_NUM_ROWS_RELAYBOX, key='table_relaybox_preview', font=("Courier New", 10), expand_x=True)],
 
     ]
-
 
 
     self.layout_sequence = [
@@ -2926,32 +2999,32 @@ SOFTWARE.\n'
 
     self.layout_filexfer = [
 
-                       [sg.Text('Mode:', size=(10, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], key='option_filexfer_fldigimode', size=(22, 1), enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
-                        sg.CBox('Use Seq.', key='cb_filexfer_useseq', enable_events=True ),
-                        sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_filexfer_selectedseq', size=(22, 1), enable_events = True, disabled = True),
-                        sg.Text('', size=(20, 1), key='text_image_size' )], 
+                       [sg.Text('Mode:', size=(10, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI and not self.group_arq.listenonly) else False ), 
+                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_2], key='option_filexfer_fldigimode', size=(22, 1), enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI and not self.group_arq.listenonly) else False),
+                        sg.CBox('Use Seq.', key='cb_filexfer_useseq', enable_events=True, visible = not self.group_arq.listenonly ),
+                        sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_filexfer_selectedseq', size=(22, 1), enable_events = True, disabled = True, visible = not self.group_arq.listenonly),
+                        sg.Text('', size=(20, 1), key='text_image_size', visible = not self.group_arq.listenonly)], 
 
-                       [sg.Text('Send File:', size=(10, 1) ), 
-                        sg.InputText('', key='in_mainpanel_sendfilename', size=(30, 1), disabled=False),
-                        sg.FileBrowse(),
-                        sg.Button('Send', size=(7, 1), key='btn_mainpanel_sendgfile', disabled=False),
+                       [sg.Text('Send File:', size=(10, 1), visible = not self.group_arq.listenonly ), 
+                        sg.InputText('', key='in_mainpanel_sendfilename', size=(30, 1), disabled=False, visible = not self.group_arq.listenonly),
+                        sg.FileBrowse(visible = not self.group_arq.listenonly),
+                        sg.Button('Send', size=(7, 1), key='btn_mainpanel_sendgfile', disabled=False, visible = not self.group_arq.listenonly),
                         sg.Text('Save File:', size=(10, 1) ), 
                         sg.InputText('myfile', key='in_mainpanel_saveasfilename', size=(30, 1), disabled=True, enable_events=True),
                         sg.FileSaveAs(key='btn_mainpanel_saveasfile', initial_folder='/tmp', disabled=False)],
-                       [sg.Text('Send Image File:', size=(10, 1) ), 
-                        sg.InputText('', key='in_mainpanel_sendimagefilename', size=(30, 1), disabled=False, enable_events=True),
-                        sg.FileBrowse(),
+                       [sg.Text('Send Image File:', size=(10, 1), visible = not self.group_arq.listenonly ), 
+                        sg.InputText('', key='in_mainpanel_sendimagefilename', size=(30, 1), disabled=False, enable_events=True, visible = not self.group_arq.listenonly),
+                        sg.FileBrowse(visible = not self.group_arq.listenonly),
                         sg.Button('Preview', size=(7, 1), key='btn_mainpanel_previewimagefile', disabled=False, visible=False),
-                        sg.Button('Send', size=(7, 1), key='btn_mainpanel_sendimagefile', disabled=False),
+                        sg.Button('Send', size=(7, 1), key='btn_mainpanel_sendimagefile', disabled=False, visible = not self.group_arq.listenonly),
                         sg.Text('Save File:', size=(10, 1) ), 
                         sg.InputText('myfile', key='in_mainpanel_saveasimagefilename', size=(30, 1), disabled=True, enable_events=True),
                         sg.FileSaveAs(key='btn_mainpanel_saveasimagefile', initial_folder='/tmp', disabled=False)],
-                       [sg.Text('Size:', size=(10, 1) ), 
-                        sg.Slider(range=(0.01,1), resolution=0.01, default_value=0.25, expand_x=True, orientation = 'horizontal', key='filexfer_slider_size', enable_events=True ), 
-                        sg.Text('Quality:', size=(10, 1) ), 
-                        sg.Slider(range=(1,100), resolution=1, default_value=50, expand_x=True, orientation = 'horizontal', key='filexfer_slider_quality', enable_events=True ), 
-                        sg.CBox('Grayscale', key='cb_filexfer_grayscale', enable_events=True ),
+                       [sg.Text('Size:', size=(10, 1), visible = not self.group_arq.listenonly ), 
+                        sg.Slider(range=(0.01,1), resolution=0.01, default_value=0.25, expand_x=True, orientation = 'horizontal', key='filexfer_slider_size', enable_events=True, visible = not self.group_arq.listenonly ), 
+                        sg.Text('Quality:', size=(10, 1), visible = not self.group_arq.listenonly ), 
+                        sg.Slider(range=(1,100), resolution=1, default_value=50, expand_x=True, orientation = 'horizontal', key='filexfer_slider_quality', enable_events=True, visible = not self.group_arq.listenonly ), 
+                        sg.CBox('Grayscale', key='cb_filexfer_grayscale', enable_events=True, visible = not self.group_arq.listenonly ),
                         sg.CBox('BW', key='cb_filexfer_blackandwhite', enable_events=True, visible=False )],
 
                             [sg.Frame('Image Preview:', [
@@ -2980,28 +3053,49 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=5, key='table_outbox_messages')],
+                            num_rows=5, key='table_outbox_messages', expand_x=True)],
 
          [
+
+          sg.Frame('Radio', [
+
+            [sg.Button('Notify', size=(7, 1), key='btn_compose_areyoureadytoreceive'),
+            sg.Button('Send',   key='btn_outbox_sendselected', size=(7, 1) ), 
+            sg.Button('Send As File',   key='btn_outbox_sendselectedasfile', size=(11, 1), disabled = True )], 
+
+          ], visible = not self.group_arq.listenonly),
+
+          sg.Frame('P2P IP', [
+             [sg.Button('Send to IP', size=(10, 1), key='btn_outbox_sendmessages_ipp2p')],
+          ]),
+
+          sg.Frame('General', [
+
+          [
           sg.Button('View',   key='btn_outbox_viewform', size=(7, 1) ), 
           sg.Button('Copy',   key='btn_outbox_copytoclipboard', size=(7, 1) ), 
+          #sg.Button('Paste',   key='btn_outbox_importfromclipboard', size=(12, 1) ), 
           sg.Button('Edit',   key='btn_outbox_editform', size=(7, 1) ), 
           sg.Button('Delete',   key='btn_outbox_deletemsg', size=(7, 1) ), 
           sg.Button('Delete All',   key='btn_outbox_deleteallmsg', size=(7, 1) ), 
-          sg.Button('RTS Peer', size=(7, 1), key='btn_compose_areyoureadytoreceive'),
-          sg.Button('Send',   key='btn_outbox_sendselected', size=(7, 1) ), 
-          sg.Button('Send As File',   key='btn_outbox_sendselectedasfile', size=(11, 1), disabled = True ), 
-          sg.Button('Post to Winlink', size=(11, 1), key='btn_outbox_posttowinlink'),
-          sg.CBox('P2P?', key='cb_outbox_winlinkp2p', background_color=js.get("params").get('OutboxTabClr'), enable_events=True )],
+
+          sg.Button('Post to Winlink', size=(11, 1), key='btn_outbox_posttowinlink', visible = self.group_arq.display_winlink),
+          sg.CBox('P2P?', key='cb_outbox_winlinkp2p', background_color=js.get("params").get('OutboxTabClr'), enable_events=True, visible = self.group_arq.display_winlink )],
+
+
+          ]),
+
+          ],
+
 
          [
           sg.CBox('Pre Message:',  key='cb_outbox_includepremsg', background_color=js.get("params").get('OutboxTabClr') ), 
           sg.OptionMenu(combo_premsg, default_value=combo_premsg[0], key='option_outbox_premessage', visible=False),
           sg.CBox('Repeat Message',  key='cb_outbox_repeatmsg', background_color=js.get("params").get('OutboxTabClr') ), 
           sg.Combo(combo_numtimes_msg, default_value=combo_numtimes_msg[0], key='option_repeatmessagetimes'),
-          sg.CBox('Repeat Fragments',  key='cb_outbox_repeatfrag', visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_JS8CALL) else False ), 
-          sg.OptionMenu(combo_numtimes_frag, default_value=combo_numtimes_frag[0], key='option_repeatfragtimes', visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_JS8CALL) else False),
-          sg.CBox('Include Template', key='cb_outbox_includetmpl', visible=False),
+          sg.CBox('Repeat Fragments',  key='cb_outbox_repeatfrag', visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False ), 
+          sg.OptionMenu(combo_numtimes_frag, default_value=combo_numtimes_frag[0], key='option_repeatfragtimes', visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False),
+          sg.CBox('Include Template', key='cb_outbox_includetmpl', visible = self.group_arq.include_templates),
           sg.Text('Fragment Size:', background_color=js.get("params").get('OutboxTabClr') ), 
           sg.OptionMenu(combo_fragtypes, default_value=combo_fragtypes[2], key='option_framesize'),
 
@@ -3038,7 +3132,7 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=5, key='table_sent_messages')],
+                            num_rows=5, key='table_sent_messages', expand_x=True)],
 
          [sg.Button('Delete',   key='btn_sentbox_deletemsg', size=(11, 1) ), 
           sg.Button('Delete All',   key='btn_sentbox_deleteallmsg', size=(11, 1) )], 
@@ -3053,7 +3147,7 @@ SOFTWARE.\n'
                             justification='left',
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=cn.PREVIEW_NUM_ROWS_SENT, key='table_sent_preview', font=("Courier New", 10))],
+                            num_rows=cn.PREVIEW_NUM_ROWS_SENT, key='table_sent_preview', font=("Courier New", 10), expand_x=True)],
        ] 
 
     self.layout_template = self.createFormDesignerPage()
@@ -3062,12 +3156,24 @@ SOFTWARE.\n'
     self.layout_myinfo = [
                             [sg.Frame('Required', [
 
-                        [sg.Text('Callsign', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('CallSign'), key='input_myinfo_callsign', size=(20, 1)),
-                         sg.Text('Group Name', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('GroupName'), key='input_myinfo_group_name', size=(20, 1)),
-                         sg.Text('Grid Square', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('GridSquare'), key='input_myinfo_gridsquare', size=(20, 1))],
+                        [sg.Text('Callsign: ', size=(20, 1), visible = not self.group_arq.listenonly ), 
+                         sg.InputText(default_text=js.get("params").get('CallSign'), key='input_myinfo_callsign', size=(20, 1), visible = not self.group_arq.listenonly),
+                         sg.Text('Grid Square: ', size=(20, 1), visible = not self.group_arq.listenonly ), 
+                         sg.InputText(default_text=js.get("params").get('GridSquare'), key='input_myinfo_gridsquare', size=(20, 1), visible = not self.group_arq.listenonly),
+                         sg.Text('Nickname - Handle: ', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('Nickname'), key='input_myinfo_nickname', size=(20, 1))],
+
+                                ], expand_x=True)
+                            ],
+
+                            [sg.Frame('Location', [
+
+                        [sg.Text('City: ', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('City'), key='input_myinfo_city', size=(20, 1)),
+                         sg.Text('State: ', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('State'), key='input_myinfo_state', size=(20, 1)),
+                         sg.Text('Country: ', size=(20, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('Country'), key='input_myinfo_country', size=(20, 1))],
 
                                 ], expand_x=True)
                             ],
@@ -3131,7 +3237,7 @@ SOFTWARE.\n'
                          sg.Text('Chat Tab', size=(20, 1) ), 
                          sg.OptionMenu(option_colors, key='option_colors_chat_tab', default_value=js.get("params").get('ChatTabClr'))],
 
-                                ], expand_x=True)
+                                ], expand_x=True, visible=False)
                             ],
 
 
@@ -3139,6 +3245,7 @@ SOFTWARE.\n'
 
                         [sg.Text('Main Heading Background', size=(20, 1) ), 
                          sg.OptionMenu(option_colors, key='option_main_heading_background_clr', default_value=js.get("params").get('FormHeadingClr')),
+                         #sg.ColorChooserButton('Choose', key='option_main_heading_background_clr', initial_color=js.get("params").get('FormHeadingClr')),
                          sg.Text('Main Heading Text', size=(20, 1) ), 
                          sg.OptionMenu(option_colors, key='option_main_heading_text_clr', default_value=js.get("params").get('FormHeadingTextClr'))],
                         [sg.Text('Sub Heading Background', size=(20, 1) ), 
@@ -3154,7 +3261,7 @@ SOFTWARE.\n'
                          sg.Text('Table Header Text', size=(20, 1) ), 
                          sg.OptionMenu(option_colors, key='option_table_header_text_clr', default_value=js.get("params").get('TableHeaderTextClr'))],
 
-                                ], expand_x=True, expand_y=True)
+                                ], expand_x=True)
                             ],
 
 
@@ -3168,13 +3275,12 @@ SOFTWARE.\n'
                         ] 
 
 
-
     self.layout_general = [
                             [sg.Frame('Automatic Forwarding', [
                                 [sg.CBox('Emails:- ', size=(10, 1), default = js.get("params").get('EmailAutoForward'), key='cb_general_autoforward', enable_events=True),
-                                 sg.Combo('Winlink,Internet,None'.split(','), key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
+                                 sg.Combo(combo_connection_options, key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
                                  sg.CBox('Forms:- ', size=(10, 1), default = js.get("params").get('FormsAutoForward'), key='cb_general_autoforward_forms', enable_events=True),
-                                 sg.Combo('Winlink,Internet,None'.split(','), key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
+                                 sg.Combo(combo_connection_options, key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
                                 [sg.CBox('Re-write From as My Station Callsign', size=(33, 1), default = js.get("params").get('RewriteFrom'), key='cb_general_rewrite_from', enable_events=True),
                                  sg.CBox('Include HRRM Export Tag', size=(25, 1), default = js.get("params").get('IncludeHRRMExport'), key='cb_general_include_HRRM_export', enable_events=True)],
 
@@ -3200,21 +3306,6 @@ SOFTWARE.\n'
 
                             [sg.Frame('Pat Winlink', [
 
-                              #[sg.Text('Station', size=(13, 1), key='text_general_forward_usefixedcallsign'),
-                               #sg.InputText('', size=(20, 1), key='input_general_fixed_callsign'),
-
-                               #sg.Text('Frequency', size=(13, 1), key='text_general_forward_winlinkusefixedcallsign'),
-                               #sg.InputText('', size=(20, 1), key='input_general_winlink_fixed_frequency'),
-
-                               #sg.Text('Mode', size=(8, 1), key='cb_general_forward_winlinkusefixedmode'),
-                               #sg.OptionMenu('Vara,Vara FM,Ardop,Packet'.split(','), key='option_general_winlinkfixedmode', default_value='Vara', size=(15, 1)),
-
-                               #sg.CBox('P2P', size=(15, 1), key='cb_general_forward_winlinkp2p', enable_events=True)],
-
-                              #[sg.Text('Mode' ), 
-                              # sg.InputText(js.get("params").get('WinlinkDefaultMode'), key='option_general_patmode', size=(15, 1)),
-                              # sg.Text('Station:' ), 
-                              # sg.InputText(js.get("params").get('WinlinkDefaultStation'), key='input_general_patstation', size=(20, 1))],
 
                               [sg.Text('Mode' ), 
                                sg.InputText(js.get("params").get('WinlinkDefaultMode'), key='option_general_patmode', size=(15, 1)),
@@ -3223,19 +3314,10 @@ SOFTWARE.\n'
 
                                sg.Text('Pat Winlink Templates Folder', visible = False),
                                sg.InputText(js.get("params").get('WinlinkPatTemplatesFolder'), key='input_general_pattemplatesfolder', size=(25, 1), visible = False)],
-                               #sg.FolderBrowse()],
 
-                                ], expand_x=True)
+                                ], expand_x=True, visible = self.group_arq.display_winlink)
                             ],
 
-
-                            #[sg.Frame('Internet', [
-
-                            #  [sg.OptionMenu('Telnet'.split(','), default_value='Telnet', key='option_general_internet_connection', size=(10, 1))],
-
-
-                            #    ], expand_x=True)
-                            #],
 
                             [sg.Frame('Auto Reply', [
 
@@ -3253,9 +3335,9 @@ SOFTWARE.\n'
 
                             [sg.Frame('External Apps', [
 
-                              [sg.CBox('Pat Winlink binary:', default=js.get("params").get('WinlinkOverridePatBinary'), key='cb_general_patbinaryoverride', size=(18, 1), enable_events=True ), 
-                               sg.InputText(js.get("params").get('WinlinkPatBinary'), key='input_general_patbinary', size=(25, 1)),
-                               sg.FileBrowse()],
+                              [sg.CBox('Pat Winlink binary:', default=js.get("params").get('WinlinkOverridePatBinary'), key='cb_general_patbinaryoverride', size=(18, 1), enable_events=True, visible = self.group_arq.display_winlink ), 
+                               sg.InputText(js.get("params").get('WinlinkPatBinary'), key='input_general_patbinary', size=(25, 1), visible = self.group_arq.display_winlink),
+                               sg.FileBrowse(visible = self.group_arq.display_winlink)],
 
                               [sg.CBox('Js8-Net binary:', default=js.get("params").get('ExtAppsJs8Net'), key='cb_general_extappsjs8net', size=(18, 1), enable_events=True ), 
                                sg.InputText(js.get("params").get('ExtAppsJs8NetBinary'), key='input_general_extappsjs8netbinary', size=(25, 1)),
@@ -3366,20 +3448,29 @@ SOFTWARE.\n'
     self.layout_settings = [
 
                             [sg.TabGroup([[
-                               sg.Tab('My Info', self.layout_myinfo, title_color='Black', background_color=js.get("params").get('InfoTabClr'), key='tab_myinfo'),
-                               sg.Tab('General', self.layout_general, title_color='Black', background_color=js.get("params").get('SettingsTabClr')) ,
-                               sg.Tab('Colors', self.layout_colors, title_color='Black', background_color=js.get("params").get('ColorsTabClr')),
-                               sg.Tab('Templates', self.layout_templates, title_color='Black', background_color=js.get("params").get('SettingsTabClr'), visible=False) ,
-                               sg.Tab('Sequence', self.layout_sequence, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_sequence'),
-                               sg.Tab('About', self.layout_about, title_color='Black', background_color=js.get("params").get('SettingsTabClr'))]] ,
+                               sg.Tab('My Info', self.layout_myinfo, title_color='Black', key='tab_myinfo'),
+                               sg.Tab('General', self.layout_general, title_color='Black') ,
+                               sg.Tab('Colors', self.layout_colors, title_color='Black'),
+                               sg.Tab('Templates', self.layout_templates, title_color='Black', visible=False) ,
+                               sg.Tab('Sequence', self.layout_sequence, title_color='Blue', key='tab_sequence', visible = not self.group_arq.listenonly),
+                               sg.Tab('About', self.layout_about, title_color='Black')]] ,
 
                              tab_location='centertop',
-                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', expand_y = True )],
+                             selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', expand_x=True, expand_y = True )],
 
 
                          
                       ] 
 
+
+    self.layout_debug = [
+
+                       [sg.Button('Dump Local Storage',   key='btn_debugdumplocalstorage' )], 
+
+                       [sg.MLine("", size=(64, 20), font=("Courier New", 9),expand_x = True, expand_y = True, key='debug_window')], 
+
+                         
+                      ] 
 
 
 
@@ -3447,26 +3538,27 @@ SOFTWARE.\n'
     self.layout_HRRM = [
 
                             [sg.TabGroup([[
-                               sg.Tab('In Box', self.layout_inbox, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_inbox' ),
-                               sg.Tab('Out Box', self.layout_outbox, title_color='Blue', background_color=js.get("params").get('OutboxTabClr'), key='tab_outbox'),
-                               sg.Tab('Relay - Store & Forward', self.layout_relay, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_relaybox'),
-                               sg.Tab('Sent', self.layout_sent, title_color='Blue', background_color=js.get("params").get('SentboxTabClr')),
-                               sg.Tab('Compose', self.layout_compose, title_color='Green', background_color=js.get("params").get('ComposeTabClr'), key='tab_compose')]],
+                               sg.Tab('In Box', self.layout_inbox, title_color='Blue',border_width =10, key='tab_inbox' ),
+                               sg.Tab('Out Box', self.layout_outbox, title_color='Blue', key='tab_outbox'),
+                               sg.Tab('Relay - Store & Forward', self.layout_relay, title_color='Blue', key='tab_relaybox'),
+                               sg.Tab('Sent', self.layout_sent, title_color='Blue'),
+                               sg.Tab('Compose', self.layout_compose, title_color='Green', key='tab_compose')]],
 
                              tab_location='centertop',
-                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink' )],
+                             selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink' )],
 
                        [sg.Text('Sequence 1:', size=(10, 1) )], 
    ]
 
 
 
+
     self.layout_winlink = [
 
                             [sg.TabGroup([[
-                                sg.Tab('Pat - Inbox', self.layout_winlink_pat_inbox,  title_color='Black', key='tab_winlink_pat_inbox', background_color='Dark Gray'),
-                                sg.Tab('Pat - Outbox', self.layout_winlink_pat_outbox, title_color='Black', key='tab_winlink_pat_outbox', background_color='Dark Gray'),
-                                sg.Tab('Express - Msg Folder', self.layout_winlink_rms_folder, title_color='Black', key='tab_winlink_rms_folder', background_color='Dark Gray'),
+                                sg.Tab('Pat - Inbox', self.layout_winlink_pat_inbox,  title_color='Black', key='tab_winlink_pat_inbox', background_color='Dark Gray', visible = self.group_arq.display_winlink),
+                                sg.Tab('Pat - Outbox', self.layout_winlink_pat_outbox, title_color='Black', key='tab_winlink_pat_outbox', background_color='Dark Gray', visible = self.group_arq.display_winlink),
+                                sg.Tab('Express - Msg Folder', self.layout_winlink_rms_folder, title_color='Black', key='tab_winlink_rms_folder', background_color='Dark Gray', visible = self.group_arq.display_winlink),
                                 sg.Tab('Compose', self.layout_winlink_compose, title_color='Black', key='tab_winlink_compose', background_color='Dark Gray', visible=False)]],
                              tab_location='centertop',
                              title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True )],
@@ -3495,6 +3587,25 @@ SOFTWARE.\n'
                             num_rows=cn.PREVIEW_NUM_ROWS_INBOX, key='table_winlink_inbox_preview', font=("Courier New", 10))],
 
                           ] 
+
+
+    self.layout_station_capabilities = [
+
+                       [sg.Table(values=self.group_arq.getGarqStations(), headings=['Rig Name', 'Channel Name', 'Station Call', 'Mode Type', 'Mode Name', 'Offset', 'Status', 'In Session', 'Last Heard', 'SAAM?' ],
+                            max_col_width=90,
+                            col_widths=[8, 15, 10, 7, 8, 6, 6, 8, 9, 7],
+                            auto_size_columns=False,
+                            justification='left',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=7, key='tbl_compose_stationcapabilities', expand_x=True)],
+
+                        [sg.MLine('', size=(64, 10), key='ml_mainwindow_textarea_1', background_color='Green1', font=("Courier New", 9), autoscroll=True, visible=True, expand_x=True)], 
+                        [sg.MLine('', size=(64, 10), key='ml_mainwindow_textarea_2', background_color='Green1', font=("Courier New", 9), autoscroll=True, visible=True, expand_x=True)], 
+
+                        ]
+
+
 
 
     self.layout_peer_stations = [
@@ -3529,6 +3640,90 @@ SOFTWARE.\n'
                         ] 
 
 
+    self.layout_peer_p2pip_stations_satellite = [
+
+                        [sg.Table(values=self.group_arq.getSelectedP2pipStations(), headings=['Callsign', 'Nickname', 'City', 'State', 'Country', 'Selected', 'ID', 'Timestamp'],
+                            max_col_width=35,
+                            col_widths=[5, 5, 5, 5, 5, 3, 10, 5],
+                            auto_size_columns=False,
+                            justification='left',
+                            text_color='black',
+                            background_color='PaleTurquoise1',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=5, key='tbl_compose_selectedstationsp2pip', expand_x=True)],
+
+                        ] 
+
+    self.layout_peer_p2pip_stations_masterindex = [
+
+        
+                        [sg.Table(values=self.form_dictionary.getDisplayFriendly('grid:modulations:snr:lastheard'), headings=['callsign', 'grid','modulations','snr','lastheard'],
+
+                            max_col_width=35,
+                            col_widths=[10, 3, 9, 3, 13],
+                            auto_size_columns=False,
+                            justification='left',
+                            text_color='black',
+                            background_color='ivory2',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=5, key='tbl_compose_selectedstationsp2pip', expand_x=True)],
+
+                        ] 
+
+
+    self.layout_peer_p2pip_connections = [
+
+
+                        [
+
+                         sg.Frame('Satellite & Internet Communication', [
+
+                          [sg.Text('My Station VPN: ', size=(20, 1) ) ,
+                           sg.Text('IP Address: ', size=(11, 1) ) ,
+                           sg.InputText(default_text=js.get("params").get('p2pVpnNodeAddress'), key='in_p2pipnode_ipaddr', size=(15, 1)),
+                           sg.Text('Port #: ', size=(9, 1) ) ,
+                           sg.InputText('3333', key='in_p2pipnode_ipport', size=(10, 1)),
+                           sg.Text('Password: ', size=(9, 1) ) ,
+                           sg.InputText('1234', key='in_p2pipnode_ipport', size=(10, 1)),
+                           sg.Button('Listen', size=(11, 1), key='btn_mystationvpnlisten'),
+                           sg.Button('Stop', size=(11, 1), key='btn_mystationvpnstop')],
+
+                          [sg.Text('P2P External VPN: ', size=(20, 1) ) ,
+                           sg.Text('IP Address: ', size=(11, 1) ) ,
+                           sg.InputText('127.0.0.1', key='in_p2pipnode_ipaddr', size=(15, 1)),
+                           sg.Text('Port #: ', size=(9, 1) ) ,
+                           sg.InputText('2598', key='in_p2pipnode_ipport', size=(10, 1)),
+                           sg.Text('Password: ', size=(9, 1) ) ,
+                           sg.InputText('1234', key='in_p2pipnode_ipport', size=(10, 1)),
+                           sg.Button('Connect', size=(11, 1), key='btn_connectexternalvpnstation'),
+                           sg.Button('Disconnect', size=(11, 1), key='btn_disconnectexternalvpnstation')],
+
+
+                           [
+
+                             sg.Button('Bootstrap',   key='btn_p2pipsettings_connectstation', size=(12, 1) ), 
+                           ],
+                         ], )],
+
+                        ] 
+
+
+    self.layout_satellite_and_internet_tab = [
+
+                            [sg.TabGroup([[
+                               sg.Tab('Settings', self.layout_substation, title_color='Blue',border_width =10 ),
+                               sg.Tab('P2P IP Connections', self.layout_peer_p2pip_connections, title_color='Green', key='tab_compose', visible=False)]],
+
+                             tab_location='centertop',
+                             selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', expand_x=True )],
+
+   ]
+
+                      
+
+
     if(self.group_arq.formdesigner_mode ==True):
       self.tabgrp = [[sg.TabGroup([[
                              sg.Tab('Form Designer', self.layout_template, title_color='Black', key='tab_templates', background_color='Purple'),
@@ -3539,63 +3734,150 @@ SOFTWARE.\n'
       self.tabgrp = [
 
 
-
                        [
+
+                        sg.Button('Relay', size=(4, 1), key='btn_mainpanel_relay', visible = False),
+
+
+                        sg.Frame('P2P VPN Node', [
+                           [
+                           sg.Button('Connect', size=(8, 1), key='btn_connectvpnp2pnode'),
+                           sg.Button('Disconnect', size=(8, 1), key='btn_disconnectvpnp2pnode', visible=False),
+                           sg.Text('Connected', size=(9, 1), key='text_mainarea_p2pconnected', font=("Helvetica", 12), justification = 'left', text_color='gray' ), 
+                           ],
+
+                         ], ),
+
+                        sg.Frame('P2P IP Network Service', [
+                           [
+                             sg.Text('Public IP: ', size=(8, 1) ) ,
+                             sg.Button('Get', size=(3, 1), key='btn_p2pGetPublicIp'),
+                             sg.InputText(default_text=js.get("params").get('PublicIp'), key='in_p2pippublicudpserviceaddress', size=(20, 1)),
+                             sg.Button('Start', size=(4, 1), key='btn_p2pCommandStart'),
+                             sg.Button('Stop', size=(4, 1), key='btn_p2pCommandStop', visible=True),
+                             sg.Button('Restart', size=(5, 1), key='btn_p2pCommandRestart', visible = False),
+                             sg.Text('Started', size=(6, 1), key='text_mainarea_p2pservicestarted', font=("Helvetica", 12), justification = 'left', text_color='gray' ), 
+                           ],
+
+                         ], ),
+
+
+                           sg.Frame('Application Controls', [
+                        [
+                        sg.Button('Paste',   key='btn_outbox_importfromclipboard', size=(9, 1) ), 
+                        sg.Button('Reset', size=(4, 1), key='btn_mainarea_reset'),
+                        sg.Button('Abort', size=(4, 1), key='btn_compose_abortsend', visible = not self.group_arq.listenonly),
+                        sg.Button('Save & Exit', size=(9, 1), key='Exit')],
+                            ], expand_x=True)],
+
+                         [
+                         
+                           sg.Frame('P2P IP Bootstrap Nodes', [
+                            [sg.Table(values=js.get("params").get('p2pMyStationNeighbors'), headings=['IP Address', 'Port'],
+                            max_col_width=25,
+                            col_widths=[13, 8],
+                            auto_size_columns=False,
+                            justification='left',
+                            text_color='black',
+                            background_color='ivory2',
+                            enable_events=True,
+                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
+                            num_rows=7, key='tbl_selectedconnectionsp2pip', expand_x=True)],
+
+                            [sg.Button('Neighbors', size=(7, 1), key='btn_p2pipsatellite_getneighbors'),
+                            sg.Button('Ping',   key='btn_p2pipsettings_pingstation', size=(3, 1) ), 
+                            sg.Button('Bootstrap',   key='btn_p2pipsettings_connectstationmulti', size=(7, 1) )], 
+                                  ] ),
+                         
+                          sg.Frame('Address Book - Stations and Operators', [
+                            [sg.TabGroup([[
+                               sg.Tab('Active Ham Radio Peer Stations', self.layout_peer_stations, title_color='Blue',border_width =10, key='tab_inbox' ),
+                               sg.Tab('Active Ham Radio Relay Stations', self.layout_relay_stations, title_color='Green', key='tab_compose'),
+                               sg.Tab('Active p2p ip Stations - Satellite & Internet', self.layout_peer_p2pip_stations_satellite, title_color='Blue',border_width =10, key='tab_inbox' )]],
+
+                             tab_location='centertop',
+                             selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True, expand_x=True )],
+
+                        [
+                        sg.Text('Active last:', size=(8, 1), visible = True), 
+                        sg.Combo(combo_showactive, default_value=combo_showactive[4], key='option_showactive', size=(10, 1), enable_events=True),
+                        sg.Button('Update', size=(5, 1), key='btn_mainpanel_updaterecent'),
+                        sg.Button('Clear', size=(4, 1), key='btn_mainpanel_clearstations'),
+
+                        sg.Text('Connect To:', key='text_mainarea_connect_to'),
+                        sg.InputText(js.get("params").get('ConnectTo'), key='in_inbox_listentostation', size=(20, 1), disabled=False),
+
+                         sg.Text('Group Name', size=(10, 1) ), 
+                         sg.InputText(default_text=js.get("params").get('GroupName'), key='input_myinfo_group_name', size=(20, 1))],
+                         
+                         
+                         ], expand_x=True)],
+
+
+
+
+                       [sg.Frame('Ham Radio Communications', [
+
+                          [
                            sg.Frame('Signal Exchange', [
                               [sg.Button('CQ CQ', size=(5, 1), key='btn_mainpanel_cqcqcq'),
                                sg.Button('Copy', size=(5, 1), key='btn_mainpanel_copycopy'),
                                sg.Button('RR 73', size=(5, 1), key='btn_mainpanel_rr73'),
                                sg.Button('73', size=(5, 1), key='btn_mainpanel_73'),
                                sg.CBox('Auto', key='cb_mainpanel_ft8stylefullauto', enable_events=True)],
-                            ], expand_x=True),
-
-
-                        sg.Button('Relay', size=(4, 1), key='btn_mainpanel_relay', visible = False),
+                            ], visible = not self.group_arq.listenonly),
 
                            sg.Frame('Pre-Defined', [
-                        [sg.Button('Prop.', size=(5, 1), key='btn_mainpanel_testprop'),
-                        #sg.CBox('Auto', size=(4, 1), key='cb_mainpanel_autobeacon'),
-                        sg.Button('Stndby', size=(5, 1), key='btn_compose_standby'),
-                        sg.Button('Relay', size=(5, 1), key='btn_compose_haverelaymsgs'),
-                        sg.Button('QRT', size=(5, 1), key='btn_compose_qrt')],
-                            ], expand_x=True),
+                              [sg.Button('Prop.', size=(5, 1), key='btn_mainpanel_testprop'),
+                               sg.Button('Stndby', size=(5, 1), key='btn_compose_standby'),
+                               sg.Button('Relay', size=(5, 1), key='btn_compose_haverelaymsgs'),
+                               sg.Button('QRT', size=(5, 1), key='btn_compose_qrt')],
+                            ], visible = not self.group_arq.listenonly ),
+
+                            sg.Frame('Station Memo', [
+                               [sg.CBox('Enable:', key='cb_mainwindow_include_stationtext'),
+                               sg.InputText(js.get("params").get('InboxStationMemo'), size=(12, 1), key='in_mainwindow_stationtext', enable_events=True )], 
+                            ], visible = not self.group_arq.listenonly ),
 
 
-                        sg.Text('    ', size=(4, 1), visible = True), 
 
-                           sg.Frame('Application Controls', [
-                        [sg.Button('Reset', size=(4, 1), key='btn_mainarea_reset'),
-                        sg.Button('Abort', size=(4, 1), key='btn_compose_abortsend'),
-                        sg.Button('Save & Exit', size=(9, 1), key='Exit')],
-                            ], expand_x=True)],
+                            sg.Text('--In Session--', size=(10, 1), key='text_mainarea_insession', font=("Helvetica", 20), expand_x=True, justification = 'right', text_color='gray', visible = not self.group_arq.listenonly ), 
 
-                            [sg.TabGroup([[
-                                sg.Tab('Peer Stations', self.layout_peer_stations,  title_color='Black', key='tab_winlink_pat_inbox', background_color='Dark Gray'),
-                                sg.Tab('Relay Stations', self.layout_relay_stations, title_color='Black', key='tab_winlink_pat_outbox', background_color='Dark Gray')]],
-                             tab_location='centertop',
-                             title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True, expand_x=True )],
+
+                          ],
 
 
                        [
-                        sg.CBox('Active TX Channel: ', key='cb_mainwindow_acttxchan', visible = False),
+                          sg.Frame('Channel & Main Mode Selection', [
+
+                        [sg.CBox('Active TX Channel: ', key='cb_mainwindow_acttxchan', visible = False),
                         sg.InputText('', size=(30, 1), key='in_mainwindow_activetxchannel', visible = False ), 
-
-                        sg.Text('Connect To:', key='text_mainarea_connect_to'),
-                        sg.InputText(js.get("params").get('ConnectTo'), key='in_inbox_listentostation', size=(20, 1), disabled=False),
-
-                        sg.Text('Channel:', size=(7, 1) ), 
                         sg.Combo(combo_channels, key='combo_settings_channels', size=(18, 1), default_value=combo_channels[8], enable_events=True),
-
                         sg.Text('Send To:', size=(7, 1), visible = False ), 
                         sg.Combo(combo_sendto, default_value=combo_sendto[0], key='option_outbox_txrig', visible = False),
-                        sg.Text('Modes:', size=(5, 1) ), 
-                        sg.Combo(combo_wide, default_value=combo_wide[6], key='combo_main_signalwidth', size=(13, 1), enable_events=True),
-                        sg.Button('Beacon', size=(5, 1), key='btn_mainpanel_beacon', visible = False),
+                        sg.Combo(combo_wide, default_value=combo_wide[6], key='combo_main_signalwidth', size=(18, 1), enable_events=True, visible = not self.group_arq.listenonly),
+                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(22, 1), key='option_main_fldigimode', enable_events = True)],
 
-                        sg.Text('Timescale:', size=(10, 1), visible = True), 
-                        sg.Combo(combo_showactive, default_value=combo_showactive[10], key='option_showactive'),
-                        sg.Button('Update', size=(5, 1), key='btn_mainpanel_updaterecent'),
-                        sg.Button('Clear', size=(5, 1), key='btn_mainpanel_clearstations')],
+                        ], ),
+
+
+                        sg.Frame('Options', [
+
+                        [sg.CBox('TX Enable', default=js.get("params").get('TXEnable'), key='cb_mainwindow_txenable'),
+                        sg.CBox('Auto Answer', default=js.get("params").get('AutoAnswer'), key='cb_mainwindow_autoanswer')],
+
+                        ], visible = not self.group_arq.listenonly),
+
+                        sg.Frame('Beacon Timer', [
+                        [
+                         sg.Combo(combo_beacon_timer_interval, key='combo_settings_beacon_timer_interval', default_value=combo_beacon_timer_interval[0], enable_events=True ),
+                         sg.Text('----', size=(9, 1), font=("Helvetica", 18), key='beacon_clock', justification = 'center'),
+                         sg.Button('Beacon', size=(5, 1), key='btn_send_beacon_message')],
+                        ], visible = not self.group_arq.listenonly),
+
+                        sg.Text('--Receiving--', size=(10, 1), key='text_mainarea_receiving', font=("Helvetica", 20), expand_x=True, justification = 'right', text_color='gray', visible = self.group_arq.listenonly ), 
+
+                        sg.Button('Beacon', size=(5, 1), key='btn_mainpanel_beacon', visible = False)],
 
 
                        [
@@ -3604,45 +3886,39 @@ SOFTWARE.\n'
                        
                         sg.Text('Peer / Relay:', visible = False  ), 
                         sg.Combo(combo_direct_relay, key='combo_settings_direct_relay', default_value=combo_direct_relay[1], enable_events=True, visible = False ),
-                       
-                        sg.CBox('Auto Receive', key='cb_mainwindow_autoacceptps', default = js.get("params").get('AutoReceive'), visible = False),
-                        sg.Button('Clipboard Import',   key='btn_outbox_importfromclipboard', size=(12, 1), visible = False ), 
 
-                        #sg.Text('Main Mode:', size=(10, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
-                        #sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_main_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
-                        sg.Text('Main Mode:', size=(10, 1) ), 
-                        sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], size=(25, 1), key='option_main_fldigimode', enable_events = True),
+                        sg.CBox('Auto Receive', key='cb_mainwindow_autoacceptps', default = js.get("params").get('AutoReceive'), visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False)],
+                        #sg.Button('Clipboard Import',   key='btn_outbox_importfromclipboard', size=(12, 1), visible = False )], 
 
-                        sg.CBox('Station Memo:', key='cb_mainwindow_include_stationtext'),
-                        sg.InputText(js.get("params").get('InboxStationMemo'), size=(12, 1), key='in_mainwindow_stationtext', enable_events=True ), 
 
-                        sg.CBox('TX Enable', default=js.get("params").get('TXEnable'), key='cb_mainwindow_txenable'),
+                       ], expand_x=True)],
 
-                        sg.CBox('Auto Answer', default=js.get("params").get('AutoAnswer'), key='cb_mainwindow_autoanswer'),
 
-                        sg.Text('--In Session--', size=(10, 1), key='text_mainarea_insession', font=("Helvetica", 20), expand_x=True, justification = 'right', text_color='gray' )], 
+                       [
+
+
+                       ],
+
 
                        [ sg.Text('Fldigi mode: ', size=(15, 1) , visible = False      ), 
                          sg.Combo(combo_fldigi_modes, key='combo_settings_fldigimoode1', enable_events=True, visible = False),
-                         sg.Text('JS8Call Mode:', size=(5, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_JS8CALL) else False ), 
-                         sg.Combo(combo_mode1, default_value=combo_mode1[0], key='option_outbox_js8callmode', disabled = True, enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_JS8CALL) else False)],
-
-                       [sg.MLine('', size=(64, 10), key='ml_mainwindow_textarea_1', background_color='Green1', font=("Courier New", 9), autoscroll=True, visible=False), 
-                        sg.MLine('', size=(64, 10), key='ml_mainwindow_textarea_2', background_color='Green1', font=("Courier New", 9), autoscroll=True, visible=False)], 
+                         sg.Text('JS8Call Mode:', size=(5, 1), visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False ), 
+                         sg.Combo(combo_mode1, default_value=combo_mode1[0], key='option_outbox_js8callmode', disabled = True, enable_events = True, visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False)],
 
 
                           [sg.TabGroup([[
-                             sg.Tab('Chat - Peer & Group', self.layout_chat, title_color='Blue',border_width =10, background_color=js.get("params").get('ChatTabClr'), key='tab_chat' ),
-                             sg.Tab('HRRM Messages', self.layout_HRRM, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_hrrm' ),
-                             sg.Tab('Winlink Messages', self.layout_winlink, title_color='Blue',border_width =10, background_color=js.get("params").get('InboxTabClr'), key='tab_winlink' ),
-                             sg.Tab('Files & Images', self.layout_filexfer, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_filexfer'),
-                             #sg.Tab('Remote Internet', self.layout_remote_internet, title_color='Blue', background_color=js.get("params").get('RelayboxTabClr'), key='tab_remoteinternet'),
-                             #sg.Tab('Sub-Station', self.layout_substation, title_color='Blue',border_width =10, background_color=js.get("params").get('ChatTabClr') ),
-                             sg.Tab('Settings', self.layout_settings, title_color='Black', background_color=js.get("params").get('SettingsTabClr'))]],
+                             sg.Tab('Chat - Peer & Group', self.layout_chat_tabs, title_color='Blue',border_width =10, key='tab_chat' ),
+                             sg.Tab('HRRM Messages', self.layout_HRRM, title_color='Blue',border_width =10, key='tab_hrrm' ),
+                             sg.Tab('P2P IP - Satellite & Internet', self.layout_satellite_and_internet_tab, title_color='Blue',border_width =10 ),
+                             sg.Tab('Winlink Messages', self.layout_winlink, title_color='Blue',border_width =10, key='tab_winlink', visible = self.group_arq.display_winlink ),
+                             sg.Tab('Files & Images', self.layout_filexfer, title_color='Blue', key='tab_filexfer'),
+                             sg.Tab('Settings', self.layout_settings, title_color='Black'),
+                             sg.Tab('Debug', self.layout_debug, title_color='Black', visible=False),
+                             sg.Tab('JS8 Station Capabilities', self.layout_station_capabilities, title_color='Green', key='tab_compose', visible = not self.group_arq.listenonly and self.group_arq.operating_mode == cn.JS8CALL)]],
                        tab_location='centertop',
-                       title_color='Blue', tab_background_color='Dark Gray', background_color='Dark Gray', size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main' )] ]  
+                       size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main', expand_x=True  )] ]  
 
-    self.window = sg.Window("Ham Radio Relay Messenger de WH6GGO. v1.0.10 Beta", self.tabgrp, default_element_size=(40, 1), grab_anywhere=False)                       
+    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.0 Beta - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
 
     return (self.window)
 
@@ -3698,7 +3974,6 @@ SOFTWARE.\n'
           self.form_events.dispatch[event](self.form_events, values)
         except:
           if(event == '__TIMEOUT__'):
-            #self.debug.info_message("Timeout in runPopup")
             if(self.form_events.hasWindowMovedDuringEdit(window) == True):
               self.form_events.cancelEdit()
 
@@ -3735,9 +4010,6 @@ SOFTWARE.\n'
     try:
       while True:
         event, values = self.window.read(timeout=100)
-
-        #self.debug.info_message("event is:- " + str(event) + ' ' + str(values))
-        #self.debug.info_message("event: " + str(event) )
        
         try:
           self.form_events.dispatch[event](self.form_events, values)
@@ -3745,6 +4017,8 @@ SOFTWARE.\n'
           self.form_events.event_catchall(values)
 
         if event in ('Exit', None):
+          break
+        if event in ('X', None):
           break
 
       self.form_events.event_exit_receive(values)
@@ -3755,4 +4029,14 @@ SOFTWARE.\n'
     self.window.close()
 
   
+  def getTable(self, gui_table, col_count):
+    table_data = []
+    for item in gui_table.Widget.get_children():
+      values = []
+      for col_num in range(col_count):
+        values.append(gui_table.Widget.item(item)['values'][col_num])
+      table_data.append(values)
+    return table_data
+
+
     

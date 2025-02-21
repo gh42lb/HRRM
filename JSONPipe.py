@@ -11,7 +11,7 @@ import threading
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -269,8 +269,8 @@ class JSONPipe(object):
   """
   def json_client_callback(self, json_string, txrcv, rigname, js8riginstance):
 
-    sys.stdout.write("IN CLIENT CALLBACK\n")
-    sys.stdout.write("DATA RECEIVED AT CLIENT " + str(json_string) + "\n")
+    sys.stdout.write("JSONPipe.py: IN CLIENT CALLBACK\n")
+    sys.stdout.write("JSONPipe.py: DATA RECEIVED AT CLIENT " + str(json_string) + "\n")
 
     self.ignore_processing = True
 
@@ -279,46 +279,6 @@ class JSONPipe(object):
 
     return
 
-"""
-def main():
-
-  mypipeServer = JSONPipe('mailbox_server', ('127.0.0.1', 2555))
-  mypipeClient = JSONPipe('yaesu_radio', ('127.0.0.1', 2555))
-
-  #open server thread
-  t2 = threading.Thread(target=mypipeServer.listen, args=())
-  t2.start()
-  mypipeServer.setCallback(mypipeServer.json_server_callback)
-
-  #open client thread
-  mypipeClient.connect()
-  t1 = threading.Thread(target=mypipeClient.run, args=())
-  t1.start()
-  mypipeClient.setCallback(mypipeClient.json_client_callback)
-
-
-  time.sleep(5)
-  speed = 50
-  mypipeClient.sendMsg("MODE.SET_SPEED", "", params={"SPEED":int(speed), "_ID":-1} )
-  sys.stdout.write("sending message from client run() to server\n")
-
-  time.sleep(5)
-  mypipeClient.sendMsg("MODE.SET_SPEED", "", params={"SPEED":int(speed), "_ID":-1} )
-
-  time.sleep(5)
-  mypipeClient.sendMsg("MODE.SET_SPEED", "", params={"SPEED":int(speed), "_ID":-1} )
-
-  time.sleep(5)
-  mypipeClient.sendMsg("MODE.SET_SPEED", "", params={"SPEED":int(speed), "_ID":-1} )
-
-  mypipeClient.stopThreads()
-
-  sys.stdout.write("end of test\n")
-
-
-if __name__ == '__main__':
-    main()
-"""
 
 
 
