@@ -1,6 +1,6 @@
 ## Overview
 
-Ham Radio Relay Messenger v2.0.2 alpha release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v2.0.0 alpha release de WH6GGO. The software is currently in active development and early release testing phase.
 
 
 #### Features
@@ -33,7 +33,7 @@ Download the following:
 
 * JS8Call
 * Fldigi
-* HRRM v1.0.10 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
+* HRRM v2.0.0 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
 * p2pnode binary from github.com/gh42lb/HRRM
 
 run the windows installer or create a folder on the desktop called HRRM and add the binary file
