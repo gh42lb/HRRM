@@ -1458,7 +1458,12 @@ def create_folders(instance_name):
 
       if(not os.path.exists(hrrm_appdata_folder)):
         os.chdir(appdata_folder)
-        os.mkdir(('HRRM' + "_" + instance_name))
+
+        if(instance_name != ''):
+          os.mkdir(('HRRM' + "_" + instance_name))
+        else:
+          os.mkdir(('HRRM'))
+
         os.chdir(hrrm_appdata_folder)
         os.mkdir('received_images')
         os.mkdir('received_files')
@@ -1475,7 +1480,12 @@ def create_folders(instance_name):
 
       if(not os.path.exists(hrrm_appdata_folder)):
         os.chdir(appdata_folder)
-        os.mkdir(('.HRRM' + "_" + instance_name))
+
+        if(instance_name != ''):
+          os.mkdir(('.HRRM' + "_" + instance_name))
+        else:
+          os.mkdir(('.HRRM'))
+
         os.chdir(hrrm_appdata_folder)
         os.mkdir('received_images')
         os.mkdir('received_files')

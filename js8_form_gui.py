@@ -2659,7 +2659,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v2.0.0 Beta \n\
+                                                Ham Radio Relay Messenger de WH6GGO v2.0.1 Alpha \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2025 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2715,6 +2715,9 @@ SOFTWARE.\n'
 
     combo_sequences = 'one,two,three'.split(',')
 
+    combo_data_flecs = '-None-,public ip,neighbor ips,discussion name,info flec,beac flec'.split(',')
+    combo_data_flec_types = '-None-,beacon,discussion,standby,cqcqcq,copy,rr73,73,propagation,qrt,reqm,notify,text,message'.split(',')
+
     params = js.get('params')
     sequences = params.get('Sequences')
     if(sequences != None):
@@ -2741,12 +2744,18 @@ SOFTWARE.\n'
                            sg.InputText(default_text=js.get("params").get('p2pVpnNodeAddress'), key='in_p2pipnode_ipaddr', size=(20, 1)),
                            sg.CBox('Auto Connect', key='cb_p2psettings_autoconnect', default = js.get("params").get('P2pVpnAutoConnect'))],
 
-                          [sg.Text('p2p ip Public Port: ', size=(22, 1) ) ,
-                             sg.InputText(default_text=js.get("params").get('P2pIpPublicPort'), key='in_p2pipudppublicserviceport', size=(20, 1))],
+                        [sg.Frame('p2pNode Service', [
 
                           [sg.Text('p2p ip Local Address : ', size=(22, 1) ) ,
-                             sg.InputText(default_text=js.get("params").get('P2pIpLocalAddress'), key='in_p2pipudpserviceaddress', size=(20, 1))],
+                             sg.InputText(default_text=js.get("params").get('P2pIpLocalAddress'), key='in_p2pipudpserviceaddress', size=(20, 1)),
 
+                           sg.Text('p2p ip Public Port: ', size=(22, 1) ) ,
+                             sg.InputText(default_text=js.get("params").get('P2pIpPublicPort'), key='in_p2pipudppublicserviceport', size=(20, 1))],
+
+                         ],expand_x = True )],
+
+
+                        [sg.Frame('Fortigate Firewall Settings', [
                           [sg.CBox('Fortigate Auto Retrieve', key='cb_p2pipfortigateautoretrieve', default = js.get("params").get('FortigateAutoRetrieve')),
                            sg.Text('Fortigate Lan Interface IP: ', size=(22, 1) ) ,
                            sg.InputText(default_text=js.get("params").get('FortigateLanIp'), key='in_p2pipfortigatelanip', size=(15, 1)),
@@ -2754,6 +2763,22 @@ SOFTWARE.\n'
                            sg.InputText(default_text=js.get("params").get('FortigateLoginUser'), key='in_p2pipfortigateloginuser', size=(15, 1)),
                            sg.Text('Fortigate Wan Interface name: ', size=(25, 1) ) ,
                            sg.InputText(default_text=js.get("params").get('FortigateWanInterfaceName'), key='in_p2pipfortigatewaninterfacename', size=(15, 1))],
+                         ],expand_x = True )],
+
+                        [sg.Frame('Data Flec Settings', [
+                          [
+                           sg.Text('Type:', size=(5, 1) ) ,
+                           sg.Combo(combo_data_flec_types, default_value=combo_data_flec_types[0], key='option_dataflec_selecttype', size=(11, 1), enable_events=True),
+                           sg.Text('Associated Data Flecs: ', size=(20, 1) ) ,
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_0', size=(10, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_1', size=(10, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_2', size=(10, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_3', size=(10, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_4', size=(10, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_5', size=(10, 1)),
+                           sg.Button('Update:', size=(11, 1), key='btn_data_flec_selections_update')],
+                         ],expand_x = True, visible = False )],
+
 
                           [sg.Button('Save',   key='btn_myinfo_save_sat', size=(6, 1) )], 
 
@@ -2871,20 +2896,20 @@ SOFTWARE.\n'
 
            [sg.Frame('p2p ip - Satellite', [
 
-              [sg.Button('get Msgs IP', size=(10, 1), key='btn_inbox_getmessages_ipp2p')],
+              [sg.Button('Get Messages', size=(10, 1), key='btn_inbox_getmessages_ipp2p')],
                                   ]),
 
             sg.Frame('Radio', [
 
               [
               
-              sg.Button('REQM', size=(10, 1), key='btn_inbox_sendreqm')],
+              sg.Button('Request Message', size=(15, 1), key='btn_inbox_sendreqm')],
                                   ], visible = not self.group_arq.listenonly),
 
               sg.Frame('General', [
 
           [ sg.Button('View', size=(10, 1), key='btn_inbox_viewmsg'),
-           sg.Button('Copy', size=(10, 1), key='btn_inbox_copyclipboard'),
+           sg.Button('Export', size=(10, 1), key='btn_inbox_copyclipboard'),
            #sg.Button('Paste', size=(10, 1), key='btn_inbox_pasteclipboard', disabled = True),
            sg.Button('Delete', size=(10, 1), key='btn_inbox_deleteselected'),
            sg.Button('Delete All', size=(10, 1), key='btn_inbox_deleteall'),
@@ -2931,7 +2956,7 @@ SOFTWARE.\n'
                             num_rows=5, key='table_relay_messages', expand_x=True)],
 
           [
-           sg.Button('Copy', size=(6, 1), key='btn_relay_copytoclipboard'),
+           sg.Button('Export', size=(6, 1), key='btn_relay_copytoclipboard'),
            #sg.Button('Paste', size=(6, 1), key='btn_relay_pastefromclipboard', disabled = True),
            sg.Button('Delete', size=(6, 1), key='btn_relaybox_deleteselected'),
            sg.Button('Delete All', size=(7, 1), key='btn_relaybox_deleteall'),
@@ -3065,15 +3090,15 @@ SOFTWARE.\n'
 
           ], visible = not self.group_arq.listenonly),
 
-          sg.Frame('P2P IP', [
-             [sg.Button('Send to IP', size=(10, 1), key='btn_outbox_sendmessages_ipp2p')],
+          sg.Frame('p2p ip - Satellite', [
+             [sg.Button('Send', size=(10, 1), key='btn_outbox_sendmessages_ipp2p')],
           ]),
 
           sg.Frame('General', [
 
           [
           sg.Button('View',   key='btn_outbox_viewform', size=(7, 1) ), 
-          sg.Button('Copy',   key='btn_outbox_copytoclipboard', size=(7, 1) ), 
+          sg.Button('Export',   key='btn_outbox_copytoclipboard', size=(7, 1) ), 
           #sg.Button('Paste',   key='btn_outbox_importfromclipboard', size=(12, 1) ), 
           sg.Button('Edit',   key='btn_outbox_editform', size=(7, 1) ), 
           sg.Button('Delete',   key='btn_outbox_deletemsg', size=(7, 1) ), 
@@ -3087,6 +3112,8 @@ SOFTWARE.\n'
 
           ],
 
+
+                            [sg.Frame('Radio Send Message Options', [
 
          [
           sg.CBox('Pre Message:',  key='cb_outbox_includepremsg', background_color=js.get("params").get('OutboxTabClr') ), 
@@ -3105,21 +3132,24 @@ SOFTWARE.\n'
           sg.CBox('Use Seq.', background_color=js.get("params").get('OutboxTabClr'), key='cb_outbox_useseq', enable_events=True ),
           sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_outbox_selectedseq', size=(22, 1), enable_events = True, disabled = True)],
 
+                                ], expand_x=True)
+                            ],
+
 
           [
            sg.InputText('', key='in_outbox_resendframes', size=(30, 1), visible = False),
            sg.InputText('', key='in_outbox_confirmcallsign', size=(30, 1), visible = False)],
-          [sg.Table(values=[], headings=[''],
-                            max_col_width=136,
-                            col_widths=[136],
+          [sg.Table(values=[], headings=['Preview'],
+                            max_col_width=126,
+                            col_widths=[126],
                             auto_size_columns=False,
                             text_color='black',
                             background_color='white',
                             justification='left',
                             enable_events=True,
-                            vertical_scroll_only=False,
+                            #vertical_scroll_only=False,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=cn.PREVIEW_NUM_ROWS_OUTBOX, key='table_outbox_preview', font=("Courier New", 10))],
+                            num_rows=cn.PREVIEW_NUM_ROWS_OUTBOX, key='table_outbox_preview', font=("Courier New", 10), expand_x=True)],
        ] 
 
     self.layout_sent = [
@@ -3277,12 +3307,32 @@ SOFTWARE.\n'
 
     self.layout_general = [
                             [sg.Frame('Automatic Forwarding', [
+
+
+                            [sg.Frame('Legacy Internet', [
+
                                 [sg.CBox('Emails:- ', size=(10, 1), default = js.get("params").get('EmailAutoForward'), key='cb_general_autoforward', enable_events=True),
                                  sg.Combo(combo_connection_options, key='option_general_forwardemailtype', default_value=js.get("params").get('EmailForwardType') ),
                                  sg.CBox('Forms:- ', size=(10, 1), default = js.get("params").get('FormsAutoForward'), key='cb_general_autoforward_forms', enable_events=True),
                                  sg.Combo(combo_connection_options, key='option_general_forwardformtype', default_value=js.get("params").get('FormForwardType'))],
                                 [sg.CBox('Re-write From as My Station Callsign', size=(33, 1), default = js.get("params").get('RewriteFrom'), key='cb_general_rewrite_from', enable_events=True),
                                  sg.CBox('Include HRRM Export Tag', size=(25, 1), default = js.get("params").get('IncludeHRRMExport'), key='cb_general_include_HRRM_export', enable_events=True)],
+
+                                ], expand_x=True)
+                            ],
+
+                            [sg.Frame('Distributed p2p Network', [
+
+                                [sg.CBox('Emails:- ', size=(10, 1), default = js.get("params").get('EmailAutoForwardP2p'), key='cb_general_autoforward_p2p', enable_events=True),
+                                 sg.Combo(combo_connection_options, key='option_general_forwardemailtype_p2p', default_value=js.get("params").get('EmailForwardTypeP2p') ),
+                                 sg.CBox('Forms:- ', size=(10, 1), default = js.get("params").get('FormsAutoForwardP2p'), key='cb_general_autoforward_forms_p2p', enable_events=True),
+                                 sg.Combo(combo_connection_options, key='option_general_forwardformtype_p2p', default_value=js.get("params").get('FormForwardTypeP2p'))],
+                                [sg.CBox('Re-write From as My Station Callsign', size=(33, 1), default = js.get("params").get('RewriteFromP2p'), key='cb_general_rewrite_from_p2p', enable_events=True),
+                                 sg.CBox('Include HRRM Export Tag', size=(25, 1), default = js.get("params").get('IncludeHRRMExportP2p'), key='cb_general_include_HRRM_export_p2p', enable_events=True)],
+
+                                ], expand_x=True)
+                            ],
+
 
                             [sg.Frame('HRRM Overrides', [
 
@@ -3347,7 +3397,7 @@ SOFTWARE.\n'
                                 ], expand_x=True)
                             ],
 
-                            [sg.Frame('Form Parameters', [
+                            [sg.Frame('Message Parameters', [
 
                               [sg.Text('Max Fragment Retransmits:' ), 
                                sg.InputText(js.get("params").get('GeneralRetries1'), key='input_general_retries_1', size=(25, 1)),
@@ -3677,9 +3727,7 @@ SOFTWARE.\n'
 
 
                         [
-
                          sg.Frame('Satellite & Internet Communication', [
-
                           [sg.Text('My Station VPN: ', size=(20, 1) ) ,
                            sg.Text('IP Address: ', size=(11, 1) ) ,
                            sg.InputText(default_text=js.get("params").get('p2pVpnNodeAddress'), key='in_p2pipnode_ipaddr', size=(15, 1)),
@@ -3699,13 +3747,11 @@ SOFTWARE.\n'
                            sg.InputText('1234', key='in_p2pipnode_ipport', size=(10, 1)),
                            sg.Button('Connect', size=(11, 1), key='btn_connectexternalvpnstation'),
                            sg.Button('Disconnect', size=(11, 1), key='btn_disconnectexternalvpnstation')],
-
-
-                           [
-
-                             sg.Button('Bootstrap',   key='btn_p2pipsettings_connectstation', size=(12, 1) ), 
-                           ],
                          ], )],
+
+
+
+
 
                         ] 
 
@@ -3714,7 +3760,7 @@ SOFTWARE.\n'
 
                             [sg.TabGroup([[
                                sg.Tab('Settings', self.layout_substation, title_color='Blue',border_width =10 ),
-                               sg.Tab('P2P IP Connections', self.layout_peer_p2pip_connections, title_color='Green', key='tab_compose', visible=False)]],
+                               sg.Tab('VPN Connections & Data Flecs', self.layout_peer_p2pip_connections, title_color='Green', key='tab_compose', visible=False)]],
 
                              tab_location='centertop',
                              selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', expand_x=True )],
@@ -3739,7 +3785,7 @@ SOFTWARE.\n'
                         sg.Button('Relay', size=(4, 1), key='btn_mainpanel_relay', visible = False),
 
 
-                        sg.Frame('P2P VPN Node', [
+                        sg.Frame('p2p ip - Node VPN', [
                            [
                            sg.Button('Connect', size=(8, 1), key='btn_connectvpnp2pnode'),
                            sg.Button('Disconnect', size=(8, 1), key='btn_disconnectvpnp2pnode', visible=False),
@@ -3748,7 +3794,7 @@ SOFTWARE.\n'
 
                          ], ),
 
-                        sg.Frame('P2P IP Network Service', [
+                        sg.Frame('p2p ip - Kademlia Network Service', [
                            [
                              sg.Text('Public IP: ', size=(8, 1) ) ,
                              sg.Button('Get', size=(3, 1), key='btn_p2pGetPublicIp'),
@@ -3764,7 +3810,7 @@ SOFTWARE.\n'
 
                            sg.Frame('Application Controls', [
                         [
-                        sg.Button('Paste',   key='btn_outbox_importfromclipboard', size=(9, 1) ), 
+                        sg.Button('Import',   key='btn_outbox_importfromclipboard', size=(9, 1) ), 
                         sg.Button('Reset', size=(4, 1), key='btn_mainarea_reset'),
                         sg.Button('Abort', size=(4, 1), key='btn_compose_abortsend', visible = not self.group_arq.listenonly),
                         sg.Button('Save & Exit', size=(9, 1), key='Exit')],
@@ -3772,7 +3818,7 @@ SOFTWARE.\n'
 
                          [
                          
-                           sg.Frame('P2P IP Bootstrap Nodes', [
+                           sg.Frame('p2p ip - Bootstrap Nodes', [
                             [sg.Table(values=js.get("params").get('p2pMyStationNeighbors'), headings=['IP Address', 'Port'],
                             max_col_width=25,
                             col_widths=[13, 8],
@@ -3918,7 +3964,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main', expand_x=True  )] ]  
 
-    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.0 Beta - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
+    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.1 Alpha - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
 
     return (self.window)
 
