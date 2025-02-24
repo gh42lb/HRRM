@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -291,11 +291,6 @@ class WinlinkImport(object):
   def writeHRRMWinlinkConvToFile(self, filename):
 
     self.debug.info_message("writeHRRMWinlinkConvToFile")
-   
-    #self.conversion_file_dictionary_data = { 'ICS213'  :  'Standard_Forms+ICS USA Forms+ICS213.txt,inc_name,To_Name,fm_name,Subjectline,Mdate,mtime,Message,Approved_Name,Approved_PosTitle',
-    #                                         'ICS205'  :  'Standard_Forms+ICS USA Forms+ICS205-10 Row.txt,inc_name,to_name,fm_name,subjectline,mdate,mtime,message,approved_name,approved_postitle'}
-    #self.conversion_file_dictionary_data = { 'ICS213'  :  'ICS USA Forms+ICS213.txt,inc_name,To_Name,fm_name,Subjectline,Mdate,mtime,Message,Approved_Name,Approved_PosTitle',
-    #                                         'ICS205'  :  'ICS USA Forms+ICS205-10 Row.txt,inc_name,to_name,fm_name,subjectline,mdate,mtime,message,approved_name,approved_postitle'}
 
     self.conversion_file_dictionary_data = { 'ICS213'  :  'ICS USA Forms+ICS213.txt,inc_name,To_Name,fm_name,Subjectline,Mdate,mtime,Message,Approved_Name,Approved_PosTitle'}
 
@@ -404,9 +399,6 @@ class WinlinkImport(object):
       else:
         os.system(winlink_binary + ' composeform --template \'ICS213 General Message.txt\' <fixed_params_file.txt')
 
-
-
-      #os.system('/home/pi/patvar2/pat/pat composeform --template \'ICS USA Forms/ICS213.txt\' <fixed_params_file.txt')
       dir_after = os.listdir(directory)
 
       self.debug.info_message("directory after is:" + str(dir_after))

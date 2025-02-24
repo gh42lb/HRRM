@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 
 import sys
 import JS8_Client
@@ -17,7 +17,7 @@ from datetime import time
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -54,10 +54,6 @@ class SaamParser(object):
     """ used in RTS_MSG and RTSRLY_MSG messages with the PEND data flec"""
     self.recent_data_flecs_pend = []
     self.recent_data_flecs_pend_timestamp = 0
-    #self.rts_calsign = ''
-    #self.rts_data = []
-    #self.rtsrly_calsign = ''
-    #self.rtsrly_data = []
 
     """ Used in PNDR data flec """
     self.dict_pend_rly_data = {}
@@ -101,6 +97,27 @@ class SaamParser(object):
       return False, text, '', ''
 
 
+  def discardData(self, data):
+    if self.group_arq.operating_mode == cn.FLDIGI:
+      self.fldigiclient.setReceiveString(data)
+    else:
+      self.group_arq.saamfram.setRcvString(self.group_arq.saamfram.active_rig, self.group_arq.saamfram.active_channel, data)
+
+
+  def getSNR(self):
+    snr = ''
+    if self.group_arq.operating_mode == cn.FLDIGI:
+      snr = self.saamfram.acquireSNR(self.fldigiclient)
+
+    return snr
+
+  def getCurrentMode(self):
+
+    if self.group_arq.operating_mode == cn.FLDIGI:
+      return self.fldigiclient.current_mode
+    else:
+      return 'JS8'
+
   """
   data formats for the new parser...
 
@@ -124,9 +141,8 @@ class SaamParser(object):
       remainder = text
       succeeded, remainder = self.testAndDecodePreMessage(remainder, modetype)         
 
-      #FIXME should not be fldigi specific!!
       if(succeeded):
-        self.fldigiclient.setReceiveString(remainder)
+        self.discardData(remainder)
 
       text = remainder
 
@@ -142,6 +158,8 @@ class SaamParser(object):
       if(msg_format == cn.MSG_FORMAT_TYPE_1):
 
         self.debug.info_message("newParser MSG_FORMAT_TYPE_1" )
+
+        self.debug.info_message("newParser remainder: " + str(remainder) )
 
         split_string   = remainder.split(command_str, 1)
         post_text      = split_string[1].split(' ', 1)
@@ -162,7 +180,8 @@ class SaamParser(object):
           remainder = post_text[1]
           self.debug.info_message("LOC2 ")
 
-          snr = self.saamfram.acquireSNR(self.fldigiclient)
+          snr = self.getSNR()
+
           self.debug.info_message("LOC3 ")
           self.group_arq.updateSelectedStationSNR(from_call_post, snr)
           self.debug.info_message("LOC4 ")
@@ -176,11 +195,11 @@ class SaamParser(object):
           if(len(from_call_pre) <= len(from_call_post)):
             text = post_text[1]
             self.debug.error_message("DISCARDING DATA LOC 3")
-            self.fldigiclient.setReceiveString(post_text[1])
+            self.discardData(post_text[1])
           elif(groupname != self.saamfram.getMyGroup()):
             text = post_text[1]
             self.debug.error_message("DISCARDING DATA LOC 4")
-            self.fldigiclient.setReceiveString(post_text[1])
+            self.discardData(post_text[1])
 
           return cn.COMMAND_NONE, text, '', ''
 
@@ -210,7 +229,7 @@ class SaamParser(object):
         if(from_call_pre == from_call_post):
           remainder = post_text[2]
 
-          snr = self.saamfram.acquireSNR(self.fldigiclient)
+          snr = self.getSNR()
           self.group_arq.updateSelectedStationSNR(from_call_post, snr)
 
           self.form_gui.refreshSelectedTables()
@@ -237,7 +256,6 @@ class SaamParser(object):
         from_call_pre  = pre_text[1].replace(':', '').strip()
 
         """ this may be groupname or dest_call depending on context"""
-        #groupname      = pre_text[2].strip()
         to_call        = pre_text[2].strip()
 
         self.debug.info_message("from_call_pre " + from_call_pre )
@@ -250,7 +268,7 @@ class SaamParser(object):
           remainder = post_text[1]
           self.debug.info_message("LOC2 ")
 
-          snr = self.saamfram.acquireSNR(self.fldigiclient)
+          snr = self.getSNR()
           self.debug.info_message("LOC3 ")
           self.group_arq.updateSelectedStationSNR(from_call_post, snr)
           self.debug.info_message("LOC4 ")
@@ -266,11 +284,7 @@ class SaamParser(object):
           if(len(from_call_pre) <= len(from_call_post)):
             text = post_text[1]
             self.debug.error_message("DISCARDING DATA LOC 3")
-            self.fldigiclient.setReceiveString(post_text[1])
-          #elif(groupname != self.saamfram.getMyGroup()):
-          #  text = post_text[1]
-          #  self.debug.error_message("DISCARDING DATA LOC 4")
-          #  self.fldigiclient.setReceiveString(post_text[1])
+            self.discardData(post_text[1])
 
           return cn.COMMAND_NONE, text, '', ''
 
@@ -279,6 +293,10 @@ class SaamParser(object):
 
     except:
       self.debug.error_message("method: newParser. " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+      """ discard it all as received junk"""
+      if self.group_arq.operating_mode == cn.JS8CALL:
+        self.group_arq.saamfram.setRcvString(self.group_arq.saamfram.active_rig, self.group_arq.saamfram.active_channel, '')
 
 
   """ This method is the top level method to decode commands"""
@@ -315,12 +333,8 @@ class SaamParser(object):
         if(self.recent_data_flecs_pend_timestamp + 60 > timestamp):
           self.form_dictionary.dataFlecCache_addRtsPeer(from_call_pre, self.recent_data_flecs_pend)
           self.debug.info_message("RTS_MSG LOC2" )
-          #self.rts_calsign = from_call_pre
-          #self.rts_data = self.recent_data_flecs_pend
         else:
           self.debug.info_message("RTS_MSG LOC3" )
-          #self.rts_calsign = ''
-          #self.rts_data = []
           self.form_dictionary.dataFlecCache_addRtsPeer(from_call_pre, [])
 
         self.debug.info_message("RTS_MSG LOC4" )
@@ -331,22 +345,14 @@ class SaamParser(object):
         command, remainder, from_call_pre, groupname = self.newParser(text, cn.COMM_RTSRLY_MSG, cn.COMMAND_RTSRLY, cn.MSG_FORMAT_TYPE_1, modetype)
 
         self.debug.info_message("RTSRLY_MSG LOC1" )
-        #timestamp = datetime.utcnow().strftime('%y%m%d%H%M%S')
         timestamp = int(round(datetime.utcnow().timestamp()))
 
         if(self.recent_data_flecs_pend_timestamp + 60 > timestamp):
 
-          #???????????
-          #self.form_dictionary.dataFlecCache_addRtsRelay(from_call_pre, self.dict_pend_rly_data)
-
           self.form_dictionary.dataFlecCache_addRtsRelay(from_call_pre, self.recent_data_flecs_pend)
           self.debug.info_message("RTSRLY_MSG LOC2" )
-          #self.rtsrly_calsign = from_call_pre
-          #self.rtsrly_data = self.recent_data_flecs_pend
         else:
           self.debug.info_message("RTSRLY_MSG LOC3" )
-          #self.rtsrly_calsign = ''
-          #self.rtsrly_data = []
           self.form_dictionary.dataFlecCache_addRtsRelay(from_call_pre, [])
 
         self.debug.info_message("RTSRLY_MSG LOC4" )
@@ -384,25 +390,6 @@ class SaamParser(object):
           return cn.COMMAND_REQM, remainder, from_call_pre, msgid
         else:
           return cn.COMMAND_NONE, text, '', ''
-
-      #elif( self.compareStrings(cn.COMM_REQMRLY_MSG, text, modetype) ):
-      #  remainder = text.replace('  ', ' ')
-      #  split_string = remainder.split(cn.COMM_REQMRLY_MSG, 1)
-      #  before_text = split_string[0][-15:]
-      #  after_text = split_string[1]
-      #  pre_split = before_text.split(' ')
-      #  post_split = after_text.split(' ')
-      #  from_call_pre = pre_split[len(pre_split)-2][:-1]
-      #  msgid = post_split[0]
-      #  from_call_post = post_split[1]
-      #  self.debug.info_message("from_call_pre : " + from_call_pre )
-      #  self.debug.info_message("from_call_post : " + from_call_post )
-
-      #  if(from_call_pre == from_call_post):
-      #    remainder = text.split(cn.COMM_REQMRLY_MSG,1)[1]
-      #    return cn.COMMAND_REQMRLY, remainder, from_call_pre, msgid
-      #  else:
-      #    return cn.COMMAND_NONE, text, '', ''
 
       elif( self.compareStrings(cn.COMM_QRYSAAM_MSG, text, modetype) ):
         remainder = text.replace('  ', ' ')
@@ -554,7 +541,6 @@ class SaamParser(object):
       if(self.validateChecksum(content_2, checksum)):
         self.debug.info_message("pre msg checksum validated OK!")
         split3  = content_2.split(',')
-        #split3  = content.split(',')
         if(numparams == 1):
           param1  = split3[0]
           return True, remainder, param1
@@ -591,7 +577,7 @@ class SaamParser(object):
         self.debug.info_message("pre msg checksum Failed Validation!")
         text = remainder
         self.debug.error_message("DISCARDING DATA LOC 1")
-        self.fldigiclient.setReceiveString(remainder)
+        self.discardData(remainder)
 
     except:
       self.debug.info_message("exception decoding pre message"  + str(sys.exc_info()[0]) + str(sys.exc_info()[1]) )
@@ -619,6 +605,73 @@ class SaamParser(object):
 
   def decodePreMsgRelay(self, text, end_of_premsg):
     return self.decodePreMsgCommonN(text, end_of_premsg, ' RELAY(', 2)
+
+  def decodePreMsgDisc(self, text, end_of_premsg, searchstr, numargs):
+    self.debug.info_message("DECODING PRE MSG DISC(")
+
+    succeeded = False
+    remainder = ''
+    msgid=''
+
+    try:
+      if(numargs == 3):
+        succeeded, remainder, msgid, disc_name, group_name = self.decodePreMsgCommonN(text, end_of_premsg, searchstr, numargs)
+        self.debug.info_message("DISC msgid: " + str(msgid))
+        self.debug.info_message("DISC discussion name: " + str(disc_name))
+        self.debug.info_message("DISC group name: " + str(group_name))
+
+      if(succeeded):
+        self.debug.info_message("success")
+
+        self.form_gui.form_events.discussion_cache.append(str(disc_name) + ':' + str(group_name), [str(disc_name), str(group_name)])
+        table = self.form_gui.form_events.discussion_cache.getTable()
+        self.form_gui.window['table_chat_satellitediscussionname_plus_group'].update(values = table)
+
+    except:
+      self.debug.error_message("Exception in decodePreMsgBoot: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      split_string = text.split(searchstr, 1)
+      split2 = split_string[1].split(end_of_premsg, 1)
+      remainder = split_string[0] + ' ' + split2[1]
+      self.debug.error_message("DISCARDING DATA LOC 2")
+      self.discardData(remainder)
+
+    return succeeded, remainder
+
+
+
+  def decodePreMsgBoot(self, text, end_of_premsg, searchstr, numargs):
+    self.debug.info_message("DECODING PRE MSG BOOT(")
+
+    succeeded = False
+    remainder = ''
+    msgid=''
+
+    try:
+      if(numargs == 2):
+        succeeded, remainder, msgid, ip_address = self.decodePreMsgCommonN(text, end_of_premsg, searchstr, numargs)
+        self.debug.info_message("BOOT msgid: " + str(msgid))
+        self.debug.info_message("BOOT ip address: " + str(ip_address))
+
+      if(succeeded):
+        self.debug.info_message("success")
+
+        table = self.form_gui.form_events.neighbors_cache.getTable()
+        address = ip_address.split('+')[0]
+        port    = ip_address.split('+')[1]
+
+        table = self.form_gui.form_events.neighbors_cache.append(str(address) + ':' + str(port), [str(address), str(port)])
+        self.form_gui.window['tbl_selectedconnectionsp2pip'].update(values=table)
+    except:
+      self.debug.error_message("Exception in decodePreMsgBoot: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      split_string = text.split(searchstr, 1)
+      split2 = split_string[1].split(end_of_premsg, 1)
+      remainder = split_string[0] + ' ' + split2[1]
+      self.debug.error_message("DISCARDING DATA LOC 2")
+      self.discardData(remainder)
+
+    return succeeded, remainder
+
+
 
   def decodePreMsgPend(self, text, end_of_premsg, searchstr, numargs):
     self.debug.info_message("DECODING PRE MSG PEND(")
@@ -687,13 +740,11 @@ class SaamParser(object):
         self.debug.info_message("LOC7")
     except:
       self.debug.error_message("Exception in decodePreMsgPend: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
-      #def decodePreMsgCommonN(self, text, end_of_premsg, findstr, numparams):
       split_string = text.split(searchstr, 1)
       split2 = split_string[1].split(end_of_premsg, 1)
       remainder = split_string[0] + ' ' + split2[1]
       self.debug.error_message("DISCARDING DATA LOC 2")
-      self.fldigiclient.setReceiveString(remainder)
-      #content = split2[0]
+      self.discardData(remainder)
 
     return succeeded, remainder
 
@@ -766,9 +817,6 @@ class SaamParser(object):
 
   def decodePreMsgInfoGrid(self, text, end_of_premsg):
 
-    #succeeded, remainder, command_type, gridsquare, msgid = self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 3)
-    #from_call = self.getDecodeCallsignFromUniqueId(msgid)
-    #self.group_arq.addSelectedStation(from_call, '', '', '', '', '', '', msgid)
 
     return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 3)
 
@@ -777,7 +825,6 @@ class SaamParser(object):
     succeeded, remainder, command_type, sigrep = self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
     self.context_dependent_sigrepdata = sigrep
     return succeeded, remainder, sigrep
-    #return self.decodePreMsgCommonN(text, end_of_premsg, ' INFO(', 2)
 
   def decodePreMsgMemo(self, text, end_of_premsg):
     self.debug.info_message("DECODING PRE MSG MEMO(")
@@ -814,11 +861,13 @@ class SaamParser(object):
     from_call = remainder.rsplit(':',1)[0].rsplit(' ',1)[1]
     self.debug.info_message("from call = " + from_call)
 
-    newMode = self.fldigiclient.current_mode
+    newMode = self.getCurrentMode()
 
     if(succeeded and int(hop_count) == 1):
       self.group_arq.addSelectedStation(decoded_call, '', grid_square, '', '', newMode, '', msgid)
-#  def addSelectedStation(self, station, num, grid, connect, rig, modulation, snr, ID):
+      table = self.group_arq.getSelectedStations()
+      self.form_gui.window['tbl_compose_selectedstations'].update(values=table )
+
 
     if(succeeded and int(hop_count) > 1 and from_call != decoded_call and decoded_call != self.saamfram.getMyCall() ):
       self.group_arq.addSelectedRelayStation(decoded_call, '', grid_square, from_call, '', hop_count, msgid)
@@ -873,6 +922,18 @@ class SaamParser(object):
         succeeded, remainder = self.decodePreMsgPend(text, end_of_premsg,' PEND(', 2)
         return succeeded, remainder
 
+      end_of_premsg = self.testPreMsgStartEnd(text, ' BOOT(', modetype)
+      if( end_of_premsg != ''):
+        self.debug.info_message("decode BOOT")
+        succeeded, remainder = self.decodePreMsgBoot(text, end_of_premsg,' BOOT(', 2)
+        return succeeded, remainder
+
+      end_of_premsg = self.testPreMsgStartEnd(text, ' DISC(', modetype)
+      if( end_of_premsg != ''):
+        self.debug.info_message("decode DISC")
+        succeeded, remainder = self.decodePreMsgDisc(text, end_of_premsg,' DISC(', 3)
+        return succeeded, remainder
+
       end_of_premsg = self.testPreMsgStartEnd(text, ' MEMO(', modetype)
       if( end_of_premsg != ''):
         self.debug.info_message("decode MEMO")
@@ -892,10 +953,8 @@ class SaamParser(object):
         self.debug.info_message("success. text-: " + text)
 
         decoded_call = self.saamfram.getDecodeCallsignFromUniqueId(msgid)
-        #self.group_arq.updateSelectedStationMemo(decoded_call, text)
         self.last_chat_text = text
         self.last_chat_msgid = msgid
-        #self.form_gui.refreshSelectedTables()
 
         return succeeded, remainder
 
@@ -905,12 +964,6 @@ class SaamParser(object):
         self.debug.info_message("decode PNDR")
         succeeded, remainder = self.decodePreMsgPend(text, end_of_premsg,' PNDR(', 5)
         return succeeded, remainder
-
-      #end_of_premsg = self.testPreMsgStartEnd(text, ' RMSG(', modetype)
-      #if( end_of_premsg != ''):
-      #  self.debug.info_message("decode PEND")
-      #  succeeded, remainder = self.decodePreMsgRequestMsg(text, end_of_premsg)
-      #  return succeeded, remainder
 
       end_of_premsg = self.testPreMsgStartEnd(text, ' QMSG(', modetype)
       if( end_of_premsg != ''):
@@ -942,11 +995,6 @@ class SaamParser(object):
         self.debug.info_message("decode INFO SNR")
         succeeded, remainder, sigrep = self.decodePreMsgInfoSNR(text, end_of_premsg)
 
-      #end_of_premsg = self.testPreMsgStartEnd(text, ' INFO(', modetype)
-      #if( end_of_premsg != ''):
-      #  self.debug.info_message("decode INFO")
-      #  succeeded, remainder = self.decodePreMsgInfo(text, end_of_premsg)
-
       end_of_premsg = self.testPreMsgStartEnd(text, ' BEAC(', modetype)
       if( end_of_premsg != ''):
         self.debug.info_message("decode BEAC")
@@ -963,12 +1011,6 @@ class SaamParser(object):
         succeeded, remainder = self.decodePreMsgReqm(text, end_of_premsg)
 
       """ discard erroneous flec"""
-      #if(succeeded == False):
-      #  flec = self.testPreMsgStartEnd(text, '(', modetype)
-      #  if(flec != ''):
-      #    remainder = text.split(')')[1]
-      #    self.debug.info_message("DISCARDING ERRONEOUS FLEC: ")
-
 
     except:
       self.debug.error_message("method: decodeCommands. " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))

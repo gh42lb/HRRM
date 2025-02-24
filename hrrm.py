@@ -4,10 +4,7 @@ import constant as cn
 import string
 import struct
 
-try:
-  import PySimpleGUI as sg
-except:
-  import PySimpleGUI27 as sg
+import FreeSimpleGUI as sg
 
 import json
 import threading
@@ -25,18 +22,18 @@ import js8_form_events
 import js8_form_dictionary
 import saamfram
 from app_pipes import AppPipes
-
 from gps import *
-
 from datetime import datetime, timedelta
 from datetime import time
-
 from uuid import uuid4
+from JSONPipeVPNhrrm import JSONPipeVPNhrrm
+from saamfram_js8 import SAAMFRAM_js8
+from saamfram_fldigi import SAAMFRAM_fldigi
 
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -79,14 +76,13 @@ class NetGarq(object):
     self.categories = []
     self.garq_stations = []
     self.selected_stations = []
+    self.selected_p2pip_stations = []
     self.selected_relay_stations = []
     self.chat_data = []
     self.chat_data_colors = []
     self.selected_template = 'General Message'
     self.debug = debug
 
-    #self.active_station_checklist = []
-    
     self.form_gui = None
     self.form_events = None
     self.form_dictionary = None
@@ -104,6 +100,13 @@ class NetGarq(object):
     #FIXME THIS SHOULD NOT BE HARDCODED
     self.send_mode_rig1 = cn.SEND_JS8CALL
     self.send_mode_rig1 = cn.SEND_FLDIGI
+
+    self.display_winlink = False
+    self.include_templates = False
+    self.include_experimental = False
+    self.listenonly = False
+
+    self.p2p_online = False
     
     return
 
@@ -177,6 +180,11 @@ class NetGarq(object):
   def getDisplayLineFromIndex(self, line_index):
     return
 
+
+
+  """
+  peer stations section
+  """
   def clearSelectedStations(self):
     self.selected_stations = []	  
     return
@@ -204,10 +212,7 @@ class NetGarq(object):
         self.debug.error_message("addSelectedStation this timestamp: " + timestamp_string)
 
         """ if prev station timestamp is more recent then ignore add...best guess within limitation of encoding!"""
-        if(True):#(prev_inttime > inttime):
-          #self.debug.error_message("addSelectedStation discarding")
-          #return self.selected_stations
-        #else:
+        if(True):
           num        = lineitem[1]
           previous_grid = lineitem[2]
           memo       = lineitem[3]
@@ -217,7 +222,6 @@ class NetGarq(object):
           snr        = lineitem[7]
           last_heard = lineitem[8]
           signal_report = lineitem[9]
-          #self.selected_stations[x] = [callsign, num, grid, memo, connect, rig, modulation, snr, ID, signal_report]
 
           new_grid = ''
           if (grid.strip() != ''):
@@ -227,8 +231,6 @@ class NetGarq(object):
           self.debug.error_message("addSelectedStation update grid to " + new_grid)
           self.selected_stations[x] = [callsign, num, new_grid, memo, connect, rig, modulation, snr, ID, signal_report]
 
-          #self.selected_stations.remove(lineitem)
-          #self.selected_stations.append([station, num, grid, memo, connect, rig, modulation, snr, ID, signal_report])
           return self.selected_stations
 
     self.selected_stations.append([station, num, grid, memo, connect, rig, modulation, snr, ID, signal_report])
@@ -260,7 +262,6 @@ class NetGarq(object):
 
         num        = lineitem[1]
         grid       = lineitem[2]
-        #memo       = lineitem[3]
         connect    = lineitem[4]
         rig        = lineitem[5]
         modulation = lineitem[6]
@@ -424,6 +425,127 @@ class NetGarq(object):
 
 
 
+  """
+  p2pip stations section
+  headings=['Callsign', 'Nickname', 'City', 'State', 'Country', 'Selected', 'ID', 'Timestamp']
+  """
+
+  def clearSelectedP2pipStations(self):
+    self.selected_p2pip_stations = []	  
+    return
+
+
+  def addSelectedP2pipStation(self, callsign, nickname, city, state, country, selected, ID, timestamp):
+
+    self.debug.info_message("addSelectedP2pipStation" )
+
+    for x in range (len(self.selected_p2pip_stations)):
+      lineitem    = self.selected_p2pip_stations[x]
+      station_ID      = lineitem[6]
+      prev_timestamp  = lineitem[7]
+      if(station_ID == ID):
+        """ test timestamp in here"""
+        prev_timestamp_string = prev_timestamp
+        prev_inttime = ((int(prev_timestamp_string,36))/100.0)
+        self.debug.error_message("addSelectedP2pipStation previous timestamp: " + prev_timestamp_string)
+
+        timestamp_string = timestamp
+        inttime = ((int(timestamp_string,36))/100.0)
+        self.debug.error_message("addSelectedP2pipStation this timestamp: " + timestamp_string)
+
+        """ if prev station timestamp is more recent then ignore add...best guess within limitation of encoding!"""
+
+        if(prev_inttime >= inttime):
+          self.debug.error_message("addSelectedP2pipStation discarding")
+          return self.selected_p2pip_stations
+        else:
+          callsign      = lineitem[0]
+          nickname      = lineitem[1]
+          city          = lineitem[2]
+          state         = lineitem[3]
+          country       = lineitem[4]
+          selected      = lineitem[5]
+          ID            = lineitem[6]
+          timestamp     = lineitem[7]
+          self.selected_p2pip_stations[x] = [callsign, nickname, city, state, country, selected, ID, timestamp]
+
+          return self.selected_p2pip_stations
+
+    self.selected_p2pip_stations.append([callsign, nickname, city, state, country, selected, ID, timestamp])
+    return self.selected_p2pip_stations
+
+
+  def getSelectedP2pipStationIndex(self, station_ID):
+    self.debug.info_message("getSelectedP2pipStationIndex " )
+
+    for x in range (len(self.selected_p2pip_stations)):
+      lineitem = self.selected_p2pip_stations[x]
+      ID = lineitem[6]
+      if(ID == station_ID):
+        return x
+
+    return -1
+ 
+  def getSelectedP2pipStations(self):
+    return self.selected_p2pip_stations
+
+  def getSelectedP2pipStationsColors(self):
+    selected_colors = []
+
+    for x in range (len(self.selected_p2pip_stations)):
+      lineitem = self.selected_p2pip_stations[x]
+      selected = lineitem[5]
+      if(selected == 'X'):
+        selected_colors.append([x, 'green1'])
+      else:
+        selected_colors.append([x, 'ivory2'])
+
+    return selected_colors 
+
+
+  def setSelectedP2pipStations(self, selectedstations):
+    self.selected_p2pip_stations = selectedstations
+    return
+
+  def toggleSelectedP2pipStations(self, index):
+
+    lineitem   = self.selected_p2pip_stations[index]
+    callsign      = lineitem[0]
+    nickname      = lineitem[1]
+    city          = lineitem[2]
+    state         = lineitem[3]
+    country       = lineitem[4]
+    selected      = lineitem[5]
+    ID            = lineitem[6]
+    timestamp     = lineitem[7]
+
+    if(selected == 'X'):
+      selected = ' '
+    else:
+      selected = 'X'
+    self.selected_p2pip_stations[index] = [callsign, nickname, city, state, country, selected, ID, timestamp]
+
+
+  def selectSelectedP2pipStations(self, index):
+
+    lineitem   = self.selected_p2pip_stations[index]
+    callsign      = lineitem[0]
+    nickname      = lineitem[1]
+    city          = lineitem[2]
+    state         = lineitem[3]
+    country       = lineitem[4]
+    selected      = lineitem[5]
+    ID            = lineitem[6]
+    timestamp     = lineitem[7]
+
+    selected = 'X'
+    self.selected_p2pip_stations[index] = [callsign, nickname, city, state, country, selected, ID, timestamp]
+
+
+
+  """
+  relay stations section
+  """
   def clearSelectedRelayStations(self):
     self.selected_relay_stations = []	  
     return
@@ -828,21 +950,6 @@ class NetGarq(object):
       selected = lineitem[9]
 
       """ check if the message recipients are in the active station list"""
-      #msgto = lineitem[1].split(';')
-      #for z in range (len(msgto)):
-      #  if(msgto[z] in self.group_arq.active_station_checklist):
-      #    msgconf = lineitem[7].split(';')
-      #    found = False
-      #    for y in range (len(msgconf)):
-      #      if(msgconf[y] in self.group_arq.active_station_checklist):
-      #        found = True
-      #    if(found == False):
-      #      selected_colors.append([x, 'green1'])
-      #      flash_relay_button = True
-      #      self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_relay', True)
-      #      break
-      #self.messages_relaybox[x] = [msgfrom, msgto, subject, timestamp, priority, msgtype, msgid, conf_rcvd, frag_size, verified]
-
 
       if(selected == 'Verified'):
         selected_colors.append([x, 'green1'])
@@ -989,8 +1096,6 @@ class NetGarq(object):
     data = ''
     if(self.operating_mode == cn.FLDIGI or self.operating_mode == cn.JSDIGI):
       data = self.fldigiclient.getMsg()
-    #elif(self.operating_mode == cn.JS8CALL or self.operating_mode == cn.JSDIGI):
-    #  data = self.js8client.getMsg()
     return data
 
   def testReceiveStringRig1(self, teststr):
@@ -1167,21 +1272,193 @@ class NetGarq(object):
       else:
         self.debug.warning_message("my_new_callback. unhandled type: " + str(type) )
    
+
+
+class JSONPipeVPNhrrmCallback(object):
+
+  pipeServer = None
+  form_gui = None
+
+  def __init__(self, ps, form_gui):  
+    self.pipeServer = ps
+    self.form_gui = form_gui
+
+
+  """
+  callback function used by processing thread
+  """
+  def json_client_callback(self, json_string, txrcv, rigname, js8riginstance):
+
+    sys.stdout.write("hrrm.py: json_client_callback\n")
+    sys.stdout.write("hrrm.py: Data Received at Client: " + str(json_string) + "\n")
+
+    try:
+      dict_obj = json.loads(json_string)
+      vartype     = dict_obj.get("type")
+      varsubtype  = dict_obj.get("subtype")
+      if(vartype == cn.P2P_IP_QUERY_NEIGHBORS_RESULT):
+        if(varsubtype == cn.P2P_IP_FOUND):
+          sys.stdout.write("hrrm.py: data returned by query neighbors\n")
+
+          self.form_gui.neighbors_active_dict = {}
+          the_list = dict_obj.get('params').get('result')
+
+          if len(the_list) > 0 :
+            self.form_gui.group_arq.p2p_online = True
+            self.form_gui.window['btn_p2pipsatellite_getneighbors'].update(button_color=('black', 'green1'))
+          else:
+            self.form_gui.group_arq.p2p_online = False
+            self.form_gui.window['btn_p2pipsatellite_getneighbors'].update(button_color=('black', 'red'))
+
+          self.form_gui.form_events.neighbors_cache.appendTable(the_list, 2)
+          neighbors_table = self.form_gui.form_events.neighbors_cache.getTable()
+
+          self.form_gui.window['tbl_selectedconnectionsp2pip'].update(values=neighbors_table)
+
+          colors_table = []
+          for list_item in the_list:
+            sys.stdout.write("item = " + str(list_item[0]) + ":" + str(list_item[1]) + "\n")
+            self.form_gui.neighbors_active_dict[str(list_item[0]) + ":" + str(list_item[1])] = True
+          table = the_list 
+          num_items = len(table)
+          for line_index in range(num_items):
+            ip_address = table[line_index][0]
+            port       = int(table[line_index][1])
+            key = (str(ip_address) + ":" + str(port))
+            if key in self.form_gui.neighbors_active_dict:
+              if self.form_gui.neighbors_active_dict[key] == True:
+                colors_table.append((line_index, 'black', 'green1'))
+              elif self.form_gui.neighbors_active_dict[key] == False:
+                colors_table.append((line_index, 'black', 'red'))
+          self.form_gui.window['tbl_selectedconnectionsp2pip'].update(row_colors=colors_table)
+        else:
+          sys.stdout.write("hrrm.py: no data returned by query neighbors\n")
+          self.form_gui.group_arq.p2p_online = False
+          self.form_gui.window['btn_p2pipsatellite_getneighbors'].update(button_color=('black', 'red'))
+
+
+      if(vartype == cn.P2P_IP_QUERY_PING_RESULT):
+        ping_address = dict_obj.get('params').get('ping_address')
+        table = self.form_gui.getTable(self.form_gui.window['tbl_selectedconnectionsp2pip'], 2)
+        num_items = len(table)
+        sys.stdout.write("num items is: " + str(num_items) + "\n")
+        colors_table = []
+        for line_index in range(num_items):
+          ip_address = table[line_index][0]
+          port       = int(table[line_index][1])
+          if(ip_address == ping_address[0] and str(port) == str(ping_address[1])):
+            if(varsubtype == cn.P2P_IP_FOUND):
+              self.form_gui.neighbors_active_dict[str(ip_address) + ":" + str(port)] = True
+              colors_table.append((line_index, 'black', 'green1'))
+            elif(varsubtype == cn.P2P_IP_NOT_FOUND):
+              self.form_gui.neighbors_active_dict[str(ip_address) + ":" + str(port)] = False
+              colors_table.append((line_index, 'black', 'red'))
+          else:
+            key = (str(ip_address) + ":" + str(port))
+            if key in self.form_gui.neighbors_active_dict:
+              if self.form_gui.neighbors_active_dict[key] == True:
+                colors_table.append((line_index, 'black', 'green1'))
+              elif self.form_gui.neighbors_active_dict[key] == False:
+                colors_table.append((line_index, 'black', 'red'))
+ 
+
+        sys.stdout.write("colors table: " + str(colors_table) + "\n")
+
+        self.form_gui.window['tbl_selectedconnectionsp2pip'].update(values=table )
+        self.form_gui.window['tbl_selectedconnectionsp2pip'].update(row_colors=colors_table)
+
+
+        sys.stdout.write("hrrm: P2P_IP_QUERY_PING_RESULT\n")
+
+      if(vartype == cn.P2P_IP_CONNECT_UDP):
+        if(varsubtype == cn.P2P_IP_SUCCESS):
+          sys.stdout.write("UDP Listen started successfully\n")
+          self.form_gui.window['text_mainarea_p2pservicestarted'].Update(text_color='green1')
+
+          self.form_gui.form_events.event_p2pCommandCommon(cn.P2P_IP_QUERY_NEIGHBORS, {})
+          self.form_gui.form_events.event_p2pipsettings_connectstationmulti()
+
+        elif(varsubtype == cn.P2P_IP_STOPPED):
+          sys.stdout.write("UDP Service Stopped successfully\n")
+          self.form_gui.window['text_mainarea_p2pservicestarted'].Update(text_color='red')
+
+      if(vartype == cn.P2P_IP_QUERY_RESULT):
+        if(varsubtype == cn.P2P_IP_FOUND):
+          sys.stdout.write("QUERY RESULT received data\n")
+          result_dict_obj = dict_obj.get('params').get('result')
+
+          if(result_dict_obj != None and 'mailbox' in result_dict_obj ):
+            for key in result_dict_obj['mailbox'].keys():
+              sys.stdout.write("Retrieving message from id: " + str(result_dict_obj['mailbox'][key]) + "\n")
+
+              exists = False
+              address = self.form_gui.window['in_p2pipnode_ipaddr'].get()
+              ID = key
+              if( ID in self.form_gui.form_dictionary.inbox_file_dictionary_data):
+                pages = self.form_gui.form_dictionary.inbox_file_dictionary_data.get(ID)
+                page_zero = pages.get('0')
+                get_verified  = page_zero.get('verified')
+                if(get_verified == 'Verified'):
+                  self.form_gui.debug.info_message("item exists in inbox")
+                  exists = True
+                else:
+                  self.form_gui.debug.info_message("item does not exist in inbox")
+
+              if(exists == False):
+                mypipeclient = self.form_gui.getClientPipe()
+                mypipeclient.p2pNodeCommand(cn.P2P_IP_GET_MSG, address, {'key':ID})
+
+          elif(result_dict_obj != None and 'message' in result_dict_obj ):
+            self.form_gui.debug.info_message("YAY message received")
+            for key in result_dict_obj['message'].keys():
+              sys.stdout.write("Retrieving message from id: " + str(result_dict_obj['message'][key]) + "\n")
+              message = result_dict_obj['message'][key][1]['data']
+              sys.stdout.write("Retrieved message: " + str(message) + "\n")
+
+              self.form_gui.group_arq.saamfram.processIncomingMessage(message)
+              self.form_gui.window['table_inbox_messages'].update(values=self.form_gui.group_arq.getMessageInbox() )
+              self.form_gui.window['table_inbox_messages'].update(row_colors=self.form_gui.group_arq.getMessageInboxColors())
+          elif(result_dict_obj != None and 'text' in result_dict_obj ):
+            self.form_gui.debug.info_message("YAY text received")
+            for key in result_dict_obj['text'].keys():
+              sys.stdout.write("Retrieving text from id: " + str(result_dict_obj['text'][key]) + "\n")
+              text = result_dict_obj['text'][key][1]['text']
+              sys.stdout.write("Retrieved message: " + str(text) + "\n")
+              self.form_gui.group_arq.saamfram.processIncomingMessageCommonExtended(text, cn.UNKNOWN_BOX, cn.P2PIP)
+
+    except:
+      sys.stdout.write("Exception in runReceive: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) + "\n")
+
+    self.form_gui.window['debug_window'].update(str(json_string) + "\n", append=True)
+    return
+
  
 def usage():
   sys.exit(2)
- 
- 
-def main():
 
-    debug = db.Debug(cn.DEBUG_INFO)
+
+def guiThings(pipe, group_arq,dispatcher):
+    dispatcher.setSaamfram(group_arq.saamfram)
+    group_arq.form_events = dispatcher
+    group_arq.form_dictionary.setFormEvents(dispatcher)
+    group_arq.form_gui.setFormEvents(dispatcher)
+    group_arq.form_gui.runReceive(group_arq, dispatcher)
+
+    group_arq.form_gui.setVpnPipe_p2pNode(pipe)
+
+def create_folders(instance_name):
 
     if (platform.system() == 'Windows'):
       appdata_folder = os.getenv('LOCALAPPDATA') 
-      hrrm_appdata_folder = appdata_folder + '\HRRM'
+
+      if(instance_name != ''):
+        hrrm_appdata_folder = appdata_folder + '\HRRM' + "_" + instance_name
+      else:
+        hrrm_appdata_folder = appdata_folder + '\HRRM' 
+
       if(not os.path.exists(hrrm_appdata_folder)):
         os.chdir(appdata_folder)
-        os.mkdir('HRRM')
+        os.mkdir(('HRRM' + "_" + instance_name))
         os.chdir(hrrm_appdata_folder)
         os.mkdir('received_images')
         os.mkdir('received_files')
@@ -1190,16 +1467,27 @@ def main():
         os.chdir(hrrm_appdata_folder)
     else:
       appdata_folder = os.getenv('HOME') 
-      hrrm_appdata_folder = appdata_folder + '/.HRRM'
+
+      if(instance_name != ''):
+        hrrm_appdata_folder = appdata_folder + '/.HRRM' + "_" + instance_name
+      else:
+        hrrm_appdata_folder = appdata_folder + '/.HRRM'
+
       if(not os.path.exists(hrrm_appdata_folder)):
         os.chdir(appdata_folder)
-        os.mkdir('.HRRM')
+        os.mkdir(('.HRRM' + "_" + instance_name))
         os.chdir(hrrm_appdata_folder)
         os.mkdir('received_images')
         os.mkdir('received_files')
         os.mkdir('hrrm_files')
       else:
         os.chdir(hrrm_appdata_folder)
+ 
+def main():
+
+    instance_name = ''
+
+    debug = db.Debug(cn.DEBUG_INFO)
 
     group_arq = NetGarq(debug)
     group_arq.form_gui = js8_form_gui.FormGui(group_arq, debug)
@@ -1219,13 +1507,15 @@ def main():
     group_arq.include_gps = False
     group_arq.operating_mode = cn.FLDIGI
 
+    group_arq.display_winlink = False
+
     fldigi_address  = '127.0.0.1'
     fldigi_port     = 7362
     js8call_address = '127.0.0.1'
     js8call_port    = 2442
     
-    (opts, args) = getopt.getopt(sys.argv[1:], "h:g:f:o:d:j",
-      ["help", "gps", "formdesigner", "opmode=", "fldigi=","js8call="])
+    (opts, args) = getopt.getopt(sys.argv[1:], "h:g:f:o:d:j:i:s:e:l",
+      ["help", "gps", "formdesigner", "opmode=", "fldigi=","js8call=", "instance=", "show=", "experimental=", 'listenonly='])
     rosterFile, macroFile = None, None
     for option, argval in opts:
       if (option in ("-h", "--help")):
@@ -1246,8 +1536,6 @@ def main():
           group_arq.operating_mode = cn.FLDIGI
         elif(argval == "js8call"):
           group_arq.operating_mode = cn.JS8CALL
-        elif(argval == "jsdigi"):
-          group_arq.operating_mode = cn.JSDIGI
 
       elif (option in ("-d", "--fldigi")):
         split_string = argval.split(':')
@@ -1261,6 +1549,28 @@ def main():
         js8call_port = int(split_string[1])
         debug.info_message("js8 call address:port = " + js8call_address + ":" + str(js8call_port) )
 
+      elif (option in ("-i", "--instance")):
+        debug.info_message("instance = " + argval)
+        instance_name = argval
+
+      elif (option in ("-s", "--show")):
+        debug.info_message("show = " + argval)
+        if(argval == "winlink"):
+          group_arq.display_winlink = True
+
+      elif (option in ("-e", "--experimental")):
+        debug.info_message("experimental = " + argval)
+        if(argval == "include_template"):
+          group_arq.include_templates = True
+
+      elif (option in ("-l", "--listenonly")):
+        debug.info_message("listenonly = " + argval)
+        if(argval == "true"):
+          group_arq.listenonly = True
+
+    group_arq.include_experimental = False
+
+    create_folders(instance_name)
     
     if(group_arq.include_gps == True):
       try:
@@ -1282,7 +1592,10 @@ def main():
     group_arq.form_gui.numbered_section_text_clr = params.get('NumberedSectionTextClr')
     group_arq.form_gui.table_header_text_clr     = params.get('TableHeaderTextClr')
 
-    if(group_arq.operating_mode == cn.FLDIGI or group_arq.operating_mode == cn.JSDIGI):
+    debug.info_message("operating mode is: " + str(group_arq.operating_mode))
+
+    if(group_arq.operating_mode == cn.FLDIGI):
+      debug.info_message("processing for fldigi")
       try:
         group_arq.setDebug(debug)
         """ create the rig 1 fldigi instance and give it a name """
@@ -1293,7 +1606,10 @@ def main():
         t1 = threading.Thread(target=fldigiClient.run, args=())
         t1.start()
 
-        sfram = saamfram.SAAMFRAM(debug, group_arq, group_arq.form_dictionary, 'kenwood', '', group_arq.js8client, None, group_arq.fldigiclient, None, group_arq.form_gui, js)
+        sfram = SAAMFRAM_fldigi(debug, group_arq, group_arq.form_dictionary, 'kenwood', '', group_arq.js8client, None, group_arq.fldigiclient, None, group_arq.form_gui, js)
+
+        debug.info_message("sfram is :" + str(sfram))
+
         group_arq.saamfram = sfram
         fldigiClient.setCallback(sfram.fldigi_callback)
         group_arq.saamfram.setTxRig('Rig 1 - Fldigi')
@@ -1306,7 +1622,8 @@ def main():
         debug.error_message("Exception in main. FLDIGI unable to connect:" + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
 
-    if(group_arq.operating_mode == cn.JS8CALL or group_arq.operating_mode == cn.JSDIGI):
+    if(group_arq.operating_mode == cn.JS8CALL):
+      debug.info_message("processing for js8call")
       try:
         group_arq.setDebug(debug)
         js8Client = JS8_Client.JS8_Client(debug)
@@ -1316,7 +1633,7 @@ def main():
         t1 = threading.Thread(target=js8Client.run, args=())
         t1.start()
 
-        sfram = saamfram.SAAMFRAM(debug, group_arq, group_arq.form_dictionary, 'kenwood', '', group_arq.js8client, None, group_arq.fldigiclient, None, group_arq.form_gui, js)
+        sfram = SAAMFRAM_js8(debug, group_arq, group_arq.form_dictionary, 'kenwood', '', group_arq.js8client, None, group_arq.fldigiclient, None, group_arq.form_gui, js)
         group_arq.saamfram = sfram
         js8Client.setCallback(sfram.js8_callback)
         js8Client.setRigName('Rig1')
@@ -1342,19 +1659,26 @@ def main():
 
     group_arq.form_dictionary.readPeerstnDictFromFile('peerstn.sav')
     group_arq.form_dictionary.readRelaystnDictFromFile('relaystn.sav')
+    group_arq.form_dictionary.readPeerstnDictFromFile('p2pipstn.sav')
 
     window = group_arq.form_gui.createMainTabbedWindow(mylongstring, js)
 
     """ create the main gui controls event handler """
     dispatcher = js8_form_events.ReceiveControlsProc(group_arq, group_arq.form_gui, group_arq.form_dictionary, debug)
 
-    dispatcher.setSaamfram(group_arq.saamfram)
 
-    group_arq.form_events = dispatcher
-    group_arq.form_dictionary.setFormEvents(dispatcher)
-    group_arq.form_gui.setFormEvents(dispatcher)
+    mypipeClient = JSONPipeVPNhrrm('yaesu_radio', ('127.0.0.1', 2598), cn.JSON_PIPE_CLIENT, group_arq.form_gui)
+    t2 = threading.Thread(target=guiThings, args=(mypipeClient,group_arq,dispatcher,))
+    t2.start()
 
-    group_arq.form_gui.runReceive(group_arq, dispatcher)
+    group_arq.form_gui.setClientPipe(mypipeClient)
+
+    t1 = threading.Thread(target=mypipeClient.run, args=())
+    t1.start()
+    mycallbackClient = JSONPipeVPNhrrmCallback(mypipeClient, group_arq.form_gui)
+    mypipeClient.setCallback(mycallbackClient.json_client_callback)
+
+
 
 if __name__ == '__main__':
     main()

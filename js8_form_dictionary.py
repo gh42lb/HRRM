@@ -3,12 +3,7 @@ import sys
 import constant as cn
 import string
 import struct
-
-try:
-  import PySimpleGUI as sg
-except:
-  import PySimpleGUI27 as sg
-
+import FreeSimpleGUI as sg
 import json
 import threading
 import os
@@ -16,20 +11,18 @@ import platform
 import calendar
 import xmlrpc.client
 import random
-
 import hrrm
 import js8_form_gui
 import js8_form_events
 
 from datetime import datetime, timedelta
 from datetime import time
-
 from uuid import uuid4
 
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -64,19 +57,12 @@ class FormDictionary(object):
     self.sentbox_file_dictionary_data = {}
     self.peerstn_file_dictionary_data = {}
     self.relaystn_file_dictionary_data = {}
-#    self.conversion_file_dictionary_data = {}
+    self.p2pip_stn_file_dictionary_data = {}
+
     self.form_events = None
     self.group_arq = None
     self.debug = debug
 
-    #self.recent_data_flecs_pend = []
-    #self.recent_data_flecs_pend_timestamp = 0
-    #self.rts_calsign = ''
-    #self.rts_data = []
-    #self.rtsrly_calsign = ''
-    #self.rtsrly_data = []
-    #self.dict_pend_rly_data = {}
-    #self.dict_reqm_rly_data = {}
 
     self.dataFlecCache = {}
     self.dataFlecCache_clearAll()
@@ -193,7 +179,6 @@ class FormDictionary(object):
     timestamp = list_item[0]
     data_flecs = list_item[1]
     data_flecs.remove(rts_msgid)
-    #timestamp = int(round(datetime.utcnow().timestamp()))
     current_dict[station] = [timestamp, data_flecs]
 
     self.debug.info_message("dataFlecCache_removeItemRtsPeer completed" )
@@ -387,10 +372,8 @@ class FormDictionary(object):
     else:
       for key in current_dict:
         list_two.append(key)
-      #list_two = list_one
 
     for count in range(0, len(list_two) ):
-      #key, val = current_dict.get(list_two[count])
       val = current_dict.get(list_two[count])
       selected_item = val.get('item')
       to_list  = selected_item[1]
@@ -439,26 +422,6 @@ class FormDictionary(object):
     """
 
     self.dataFlecCache_clearAll()
-
-
-    #if(dest_call not in self.dict_pend_rly_data):
-    #  self.dict_pend_rly_data[dest_call] = []
-
-    #items = self.dict_pend_rly_data.get(dest_call)
-    #items.append(str(msgid) + ',' + str(total_hops) + ',' + str(hops_from_source) + ',' + str(conf_required))
-    #self.dict_pend_rly_data[dest_call] = items
-
-    #self.debug.info_message("pend dictionary is: " + str(self.dict_pend_rly_data))
-    #    timestamp_now = int(round(datetime.utcnow().timestamp()))
-    #    self.debug.info_message("success")
-    #    if(self.recent_data_flecs_pend_timestamp == 0):
-    #      self.debug.info_message("LOC5")
-    #      self.recent_data_flecs_pend_timestamp = timestamp_now
-    #    elif(self.recent_data_flecs_pend_timestamp + 60 < timestamp_now):
-    #      self.debug.info_message("LOC6")
-    #      self.recent_data_flecs_pend_timestamp = timestamp_now
-    #      self.recent_data_flecs_pend = []
-
 
 
     return
@@ -575,8 +538,6 @@ class FormDictionary(object):
                 'description' : 'my test forms' }
     """
 
-  #FIXME add reply form to the format for a template
-  #def createNewTemplateInDictionary(self, filename, category, formname, version, description, data, reply_formname):
   def createNewTemplateInDictionary(self, filename, category, formname, version, description, data):
 
     self.debug.info_message("createNewTemplateInDictionary 1 \n")
@@ -1043,6 +1004,21 @@ class FormDictionary(object):
     return (self.peerstn_file_dictionary_data)
 
 
+
+
+  def getDisplayFriendly(self, cols):
+
+    col_names = cols.split(':')
+    compiled_list = []
+    row = []
+    for key in self.peerstn_file_dictionary_data.keys():
+      row.append(key)
+      for subkey in col_names:
+        row.append(self.peerstn_file_dictionary_data[key][subkey])
+      compiled_list.append(row)
+      row = []
+    return compiled_list
+
   def getItemsForPeerstnDictItem(self, station):
 
     for x in range (len(self.group_arq.selected_stations)):
@@ -1190,8 +1166,6 @@ class FormDictionary(object):
           self.group_arq.addSelectedStation(station, num, grid, connect, rig, modulation, snr, ID)
 
           self.dataFlecCache_addActivePeer(station)
-          #if(station not in self.group_arq.active_station_checklist):
-          #  self.group_arq.active_station_checklist.append(station)
 
     except:
       self.debug.error_message("Exception in selectRecentFromPeerstnDicttionaryItems: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
@@ -1330,12 +1304,159 @@ class FormDictionary(object):
         self.group_arq.addSelectedRelayStation(station, num, grid, relay_callsign, connect, hops, ID)
 
         self.dataFlecCache_addActiveRelay(station)
-        #if(station not in self.group_arq.active_station_checklist):
-        #  self.group_arq.active_station_checklist.append(station)
-
 
     self.debug.info_message("selectRecentFromRelaystnDicttionaryItems. completed" )
    
+    return 
+
+
+
+
+
+  """
+  MainPanel P2P IP Station 
+  """
+  def createP2pipStnDictionaryItem(self, callsign, nickname, city, state, country, selected, ID, timestamp):
+
+    self.p2pip_stn_file_dictionary_data[ID] = {'callsign'         : callsign,
+                                               'nickname'         : nickname,
+                                               'city'             : city,
+                                               'state'            : state,
+                                               'country'          : country,
+                                               'selected'         : selected,
+                                               'timestamp'        : timestamp}
+
+    return (self.p2pip_stn_file_dictionary_data)
+
+
+  def getItemsForP2pipStnDictItem(self, station_ID):
+
+    for x in range (len(self.group_arq.selected_p2pip_stations)):
+      lineitem = self.group_arq.selected_p2pip_stations[x]
+      ID = lineitem[6]
+      if(ID == station_ID):
+        callsign      = lineitem[0]
+        nickname      = lineitem[1]
+        city          = lineitem[2]
+        state         = lineitem[3]
+        country       = lineitem[4]
+        selected      = lineitem[5]
+        timestamp     = lineitem[7]
+
+        return callsign, nickname, city, state, country, selected, ID, timestamp
+
+    return '','','','','','','',''
+
+  def writeP2pipStnDictToFile(self, filename):
+   
+    filename = 'p2pipstn.sav'
+
+    """ clear out all the data from the dictionary then recreate it from the main panel view """ 
+
+    for x in range (len(self.group_arq.selected_p2pip_stations)):
+      lineitem = self.group_arq.selected_p2pip_stations[x]
+      callsign      = lineitem[0]
+      nickname      = lineitem[1]
+      city          = lineitem[2]
+      state         = lineitem[3]
+      country       = lineitem[4]
+      selected      = lineitem[5]
+      ID            = lineitem[6]
+      timestamp     = lineitem[7]
+
+      self.createP2pipStnDictionaryItem(callsign, nickname, city, state, country, selected, ID, timestamp)
+  
+    with open(filename, 'w') as convert_file:
+              convert_file.write(json.dumps(self.p2pip_stn_file_dictionary_data))
+    return()
+
+  def readP2pipStnDictFromFile(self, filename):
+
+    filename = 'p2pipstn.sav'
+
+    try:
+      with open(filename) as f:
+        data = f.read()
+  
+      self.p2pip_stn_file_dictionary_data = json.loads(data)
+
+    except:
+      self.debug.error_message("Exception in readP2pipStnDictFromFile: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      self.p2pip_stn_file_dictionary_data = {}
+
+    self.group_arq.clearSelectedP2pipStations()
+
+    for key in self.p2pip_stn_file_dictionary_data:
+      ID         = key
+      message    = self.p2pip_stn_file_dictionary_data.get(key)
+      callsign   = message.get('callsign')
+      nickname   = message.get('nickname')
+      city       = message.get('city')
+      state      = message.get('state')
+      country    = message.get('country')
+      selected   = message.get('selected')
+      timestamp  = message.get('timestamp')
+
+      self.group_arq.addSelectedP2pipStation(callsign, nickname, city, state, country, selected, ID, timestamp)
+   
+    return 
+
+
+  def selectRecentFromP2pipStnDicttionaryItems(self, how_recent):
+
+    self.debug.info_message("selectRecentFromP2pipStnDicttionaryItems" )
+
+    """ write them back first """
+    for x in range (len(self.group_arq.selected_p2pip_stations)):
+      lineitem   = self.group_arq.selected_p2pip_stations[x]
+      callsign      = lineitem[0]
+      nickname      = lineitem[1]
+      city          = lineitem[2]
+      state         = lineitem[3]
+      country       = lineitem[4]
+      selected      = lineitem[5]
+      ID            = lineitem[6]
+      timestamp     = lineitem[7]
+
+      self.createP2pipStnDictionaryItem(callsign, nickname, city, state, country, selected, ID, timestamp)
+
+    timenow = int(round(datetime.utcnow().timestamp()*100))
+
+    self.group_arq.clearSelectedP2pipStations()
+
+    try:
+
+      for key in self.p2pip_stn_file_dictionary_data:
+        message    = self.p2pip_stn_file_dictionary_data.get(key)
+        timestamp  = message.get('timestamp')
+
+        timestamp_string = timestamp
+        inttime = int(timestamp_string,36)
+        difference = timenow - inttime
+
+        self.debug.info_message("Station is : " + str(key) )
+        self.debug.info_message("Difference is : " + str(difference) )
+        self.debug.info_message("How recent is: " + str(how_recent) )
+
+        if(difference < how_recent):
+
+          self.debug.info_message("ADDING stn : " + str(key) )
+          station    = key
+          callsign   = message.get('callsign')
+          nickname   = message.get('nickname')
+          city       = message.get('city')
+          state      = message.get('state')
+          country    = message.get('country')
+          selected   = message.get('selected')
+          timestamp  = message.get('timestamp')
+
+          self.group_arq.addSelectedP2pipStation(callsign, nickname, city, state, country, selected, ID, timestamp)
+
+    except:
+      self.debug.error_message("Exception in selectRecentFromP2pipStnDicttionaryItems: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    self.debug.info_message("selectRecentFromP2pipStnDicttionaryItems: completed" )
+
     return 
 
 
@@ -1448,7 +1569,6 @@ class FormDictionary(object):
 
     verified = dictionary.get('verified')		  
 
-    #verified = 'yes'
     return verified
 
   def getOutboxDictionaryItem(self, msgid):
@@ -1900,6 +2020,21 @@ class FormDictionary(object):
                            'WinlinkDefaultMode'   : 'Vara',
                            'WinlinkDefaultStation'   : '',
 
+                           'p2pMyStationName'        : '',
+
+                           'p2pMyStationNeighbors'   : [],
+                           'FortigateAutoRetrieve'   : False,
+                           'FortigateLanIp'          : '192.168.1.99',
+                           'FortigateLoginUser'      : 'admin',
+                           'FortigateWanInterfaceName'  : 'wan',
+
+                           'p2pVpnNodeAddress'       : '127.0.0.1:2598',
+                           'P2pIpPublicPort'         : '5222',
+                           'P2pIpLocalAddress'       : '127.0.0.1:3000',
+                           'P2pVpnAutoConnect'       : False,
+
+                           'PublicIp'                : '',
+
                            'ExtAppsJs8Net'           : '',
                            'ExtAppsJs8NetBinary'     : '' if (platform.system() == 'Linux') else 'c:\\Program Files (x86)\\HRRM\\js8_net_client.exe',
 
@@ -1921,7 +2056,7 @@ class FormDictionary(object):
                            'EmailForwardType'        : 'Internet',
                            'FormForwardType'         : 'None',
 
-                           'DisplayTheme'            : 'DarkBlue14',
+                           'DisplayTheme'            : 'DarkGrey8',
                            'EmailAutoForward'        : True,
                            'FormsAutoForward'        : True,
 
@@ -1995,7 +2130,7 @@ class FormDictionary(object):
                            'Rig2Modem'           : 'JS8CALL',
                            'Rig2Mode'            : 'Turbo',
                            'Rig2FragmSize'       : '30',
-                           'CallSign'            : 'WH6TEST',
+                           'CallSign'            : '',
                            'GroupName'           : '@HRRM',
                            'OperatorName'        : '<enter operator name here>',
                            'OperatorTitle'       : '<enter operator title here>',
@@ -2006,7 +2141,11 @@ class FormDictionary(object):
                            'Position'            : '<enter position here>',
                            'GPSLat'              : '<enter GPS latitude here>',
                            'GPSLong'             : '<enter GPS longitude here>',
-                           'GridSquare'          : 'BK34ZZ',
+                           'GridSquare'          : '',
+                           'Nickname'            : '',
+                           'City'                : '',
+                           'State'               : '',
+                           'Country'             : '',
                            'Location'            : '<enter QTH name here>',} }
 
     return js
@@ -2079,6 +2218,21 @@ class FormDictionary(object):
                            'WinlinkDefaultMode'   : values['option_general_patmode'],
                            'WinlinkDefaultStation'   : values['input_general_patstation'],
 
+                           'p2pMyStationName'        : values['in_mystationname'].split('GUID: ')[1],
+                           'p2pMyStationNeighbors'   : self.group_arq.form_gui.form_events.neighbors_cache.getTable(),
+
+                           'FortigateAutoRetrieve'   : values['cb_p2pipfortigateautoretrieve'],
+                           'FortigateLanIp'          : values['in_p2pipfortigatelanip'],
+                           'FortigateLoginUser'      : values['in_p2pipfortigateloginuser'],
+                           'FortigateWanInterfaceName'  : values['in_p2pipfortigatewaninterfacename'],
+
+                           'p2pVpnNodeAddress'       : values['in_p2pipnode_ipaddr'],
+                           'P2pIpPublicPort'         : values['in_p2pipudppublicserviceport'],
+                           'P2pIpLocalAddress'       : values['in_p2pipudpserviceaddress'],
+                           'P2pVpnAutoConnect'       : values['cb_p2psettings_autoconnect'],
+
+                           'PublicIp'                : values['in_p2pippublicudpserviceaddress'],
+
                            'ExtAppsJs8Net'           : values['cb_general_extappsjs8net'],
                            'ExtAppsJs8NetBinary'     : values['input_general_extappsjs8netbinary'],
 
@@ -2139,20 +2293,20 @@ class FormDictionary(object):
                            'ColorsTabClr'       : values['option_colors_colors_tab'],
                            'SettingsTabClr'     : values['option_colors_settings_tab'],
 
-                           'FldigChannelClr'    : 'Red',  #values[''],
-                           'Js8CallChannelClr'  : 'Red',  #values[''],
+                           'FldigChannelClr'    : 'Red',  
+                           'Js8CallChannelClr'  : 'Red',  
                            'TxButtonClr'        : values['option_colors_tx_btns'],
                            'MessagesBtnClr'     : values['option_colors_msgmgmt_btns'],
                            'ClipboardBtnClr'    : values['option_colors_clipboard_btns'],
-                           'TabClr'             : 'Red',  #values[''],
-                           'TxRig'              : 'Red',  #values[''],
-                           'Flash1Clr'          : 'Red',  #values[''],
-                           'Flash2Clr'          : 'Red',  #values[''],
-                           'StubMsgClr'         : 'Red',  #values[''],
-                           'PartialMsgClr'      : 'Red',  #values[''],
-                           'CompleteMsgClr'     : 'Red',  #values[''], 
-                           'AllConfirmedMsgClr'       : 'Red',  #values[''],
-                           'NotAllConfirmedMsgClr'    : 'Red',  #values[''],
+                           'TabClr'             : 'Red',  
+                           'TxRig'              : 'Red',  
+                           'Flash1Clr'          : 'Red',  
+                           'Flash2Clr'          : 'Red',  
+                           'StubMsgClr'         : 'Red',  
+                           'PartialMsgClr'      : 'Red',  
+                           'CompleteMsgClr'     : 'Red',  
+                           'AllConfirmedMsgClr'       : 'Red',  
+                           'NotAllConfirmedMsgClr'    : 'Red',  
                            'FormHeadingClr'           : values['option_main_heading_background_clr'],
                            'FormSubHeadingClr'        : values['option_sub_heading_background_clr'],
                            'NumberedSectionClr'       : values['option_numbered_section_background_clr'],
@@ -2161,18 +2315,18 @@ class FormDictionary(object):
                            'FormSubHeadingTextClr'        : values['option_sub_heading_text_clr'],
                            'NumberedSectionTextClr'       : values['option_numbered_section_text_clr'],
                            'TableHeaderTextClr'           : values['option_table_header_text_clr'],
-                           'FormPreviewBackgroundClr' : 'Red',  #values[''],
+                           'FormPreviewBackgroundClr' : 'Red',  
 
-                           'TxRig'           : 'Red',  #values[''],
-                           'TxModeType'      : 'Red',  #values[''],
-                           'Rig1Name'        : 'Red',  #values[''],
-                           'Rig1Modem'       : 'Red',  #values[''],
-                           'Rig1Mode'        : 'Red',  #values[''],
-                           'Rig1FragmSize'   : 'Red',  #values[''],
-                           'Rig2Name'        : 'Red',  #values[''],
-                           'Rig2Modem'       : 'Red',  #values[''],
-                           'Rig2Mode'        : 'Red',  #values[''],
-                           'Rig2FragmSize'   : 'Red',  #values[''],
+                           'TxRig'           : 'Red',  
+                           'TxModeType'      : 'Red',  
+                           'Rig1Name'        : 'Red',  
+                           'Rig1Modem'       : 'Red',  
+                           'Rig1Mode'        : 'Red',  
+                           'Rig1FragmSize'   : 'Red',  
+                           'Rig2Name'        : 'Red',  
+                           'Rig2Modem'       : 'Red',  
+                           'Rig2Mode'        : 'Red',  
+                           'Rig2FragmSize'   : 'Red',  
                            'CallSign'        : values['input_myinfo_callsign'],
                            'GroupName'       : values['input_myinfo_group_name'],
                            'OperatorName'    : values['input_myinfo_operator_name'],
@@ -2181,10 +2335,14 @@ class FormDictionary(object):
                            'FirstName'       : values['input_myinfo_firstname'],
                            'LastName'        : values['input_myinfo_lastname'],
                            'Title'           : values['input_myinfo_title'],
-                           'Position'        : 'Red',  #values[''],
+                           'Position'        : 'Red',  
                            'GPSLat'          : values['input_myinfo_gpslat'],
                            'GPSLong'         : values['input_myinfo_gpslong'],
                            'GridSquare'      : values['input_myinfo_gridsquare'],
+                           'Nickname'        : values['input_myinfo_nickname'],
+                           'City'            : values['input_myinfo_city'],
+                           'State'           : values['input_myinfo_state'],
+                           'Country'         : values['input_myinfo_country'],
                            'Location'        : values['input_myinfo_location'],} }
 
  

@@ -4,10 +4,7 @@ import constant as cn
 import string
 import struct
 
-try:
-  import PySimpleGUI as sg
-except:
-  import PySimpleGUI27 as sg
+import FreeSimpleGUI as sg
 
 import json
 import threading
@@ -27,6 +24,9 @@ import hrrm
 import js8_form_gui
 import js8_form_dictionary
 import winlink_import
+import uuid
+import requests
+import debug as db
 
 from datetime import datetime, timedelta
 from datetime import time
@@ -43,7 +43,7 @@ from JSONPipe import JSONPipe
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -100,7 +100,13 @@ class ReceiveControlsProc(object):
     self.five_minute_timer = 0
     self.ten_minute_timer = 0
 
-    #FIXME REMOVE
+    self.p2pip_ten_minute_timer = 0
+
+    self.discussion_cache = DataCache()
+    self.neighbors_cache = DataCache()
+
+    self.beacon_trigger_time = None
+
     self.substationClient1 = None
 
     self.flash_timer_group1 = 0
@@ -119,6 +125,7 @@ class ReceiveControlsProc(object):
                                   'btn_compose_haverelaymsgs' : ['False', 'black,green1', 'white,slate gray', cn.STYLE_BUTTON, 'white,slate gray'],
                                   'in_inbox_listentostation' : ['False', 'red,green1', 'green1,red', cn.STYLE_INPUT, 'white,gray'],
                                   'text_mainarea_insession'  : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
+                                  'text_mainarea_receiving'  : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
 
                                   'in_mainpanel_saveasfilename'       : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
                                   'in_mainpanel_saveasimagefilename'  : ['False', 'red,green1', 'green1,red', cn.STYLE_TEXT, 'gray,white'],
@@ -182,6 +189,83 @@ class ReceiveControlsProc(object):
     self.group_arq = group_arq
     return
 
+  def setBeaconTriggerTime(self):
+    now = datetime.utcnow()
+    delta = timedelta(minutes=20)
+    self.beacon_trigger_time = now + delta
+
+  def setBeaconTriggerTimeDelta(self, interval):
+
+    delta = timedelta(hours=2,seconds=1)
+    if(interval == '1 Minute'):
+      delta = timedelta(minutes=1,seconds=1)
+    if(interval == '5 Minutes'):
+      delta = timedelta(minutes=5,seconds=1)
+    elif(interval == '10 Minutes'):
+      delta = timedelta(minutes=10,seconds=1)
+    elif(interval == '15 Minutes'):
+      delta = timedelta(minutes=15,seconds=1)
+    elif(interval == '30 Minutes'):
+      delta = timedelta(minutes=30,seconds=1)
+    elif(interval == '45 Minutes'):
+      delta = timedelta(minutes=45,seconds=1)
+    elif(interval == '1 Hour'):
+      delta = timedelta(hours=1,seconds=1)
+    elif(interval == '2 Hours'):
+      delta = timedelta(hours=2,seconds=1)
+
+    now = datetime.utcnow()
+    self.beacon_trigger_time = now + delta
+
+  """ method used to display beacon timer"""
+  def time_delta_string(self, values):
+    time_b = datetime.utcnow()
+
+    self.utc_time_now = time_b
+    self.time_now = datetime.now()
+
+    try:
+      start = '07:00:00'
+      starthour = int(start.split(':')[0])
+      startmin  = int(start.split(':')[1])
+      time_a = datetime(time_b.year, time_b.month, time_b.day, starthour, startmin, 0, 0) # net start in UTC
+
+    except:
+      """set as a default if time field not set correctly"""		
+      time_a = datetime(time_b.year, time_b.month, time_b.day, 4, 30, 0, 0) # net start in UTC
+
+    delta = self.beacon_trigger_time - time_b
+    tdSaved = tdSeconds = delta.seconds
+    tdMinutes, tdSeconds = divmod(abs(tdSeconds), 60)
+    tdHours, tdMinutes = divmod(tdMinutes, 60)
+
+    """
+    if(tdHours==0 and tdSeconds == 0):
+      if(tdMinutes == 30):
+        self.view.startFlashButtons(['button_qst'])
+      elif(tdMinutes == 10):
+        self.view.startFlashButtons(['button_qst'])
+      elif(tdMinutes == 2):
+        self.view.stopFlashingButtons(['button_qst'])
+        self.view.startFlashButtons(['button_open'])
+    """
+
+    if tdHours == 0 and tdMinutes == 0 and tdSeconds == 0:
+      interval = values['combo_settings_beacon_timer_interval']
+      self.setBeaconTriggerTimeDelta(interval)
+      if interval == '--Off--' :
+        return '--:--:--'
+      from_call = self.saamfram.getMyCall()
+      group_name = self.saamfram.getMyGroup()
+      self.saamfram.sendBeaconMessage(from_call, group_name)
+    
+    if values['combo_settings_beacon_timer_interval'] == '--Off--' :
+      return '--:--:--'
+
+    return "T-{hours:02d}:{minutes:02d}:{seconds:02d}".format(
+                 hours=tdHours,
+                 minutes=tdMinutes,
+                 seconds=tdSeconds)
    
   def event_catchall(self, values):
 
@@ -189,6 +273,16 @@ class ReceiveControlsProc(object):
       return
 
     if(self.window_initialized == False and self.form_gui.window != None):
+
+      js = self.saamfram.main_params
+      self.neighbors_cache.appendTable(js.get("params").get('p2pMyStationNeighbors'), 2)
+
+      station_guid = (self.saamfram.main_params.get("params").get('p2pMyStationName')).strip()
+      if(station_guid == None or station_guid == ''):
+        mac_address = self.group_arq.saamfram.getMacAddress()
+        int_from_mac = self.saamfram.macToInt(mac_address)
+        encoded_id = self.saamfram.getEncodeUniqueMacId(int_from_mac)
+        self.form_gui.window['in_mystationname'].update('GUID: ' + str(encoded_id))
 
       """ initialize the ten minute timer"""
       self.event_btnmainpanelupdaterecent(values)
@@ -199,51 +293,56 @@ class ReceiveControlsProc(object):
 
       self.debug.info_message("event_catchall Window Not Initialized")
 
-      self.winlink_import.noteExistingWinlinkFiles(self.saamfram)
-
       self.event_btnmainareareset(values)
       self.window_initialized = True		
 
-      winlink_folder_in  = self.form_gui.window['in_winlink_inboxfolder'].get().strip()
-      winlink_folder_out = self.form_gui.window['in_winlink_outboxfolder'].get().strip()
-      winlink_folder_rms = self.form_gui.window['in_winlink_rmsmsgfolder'].get().strip()
-      winlink_folder_templates  = self.form_gui.window['input_general_pattemplatesfolder'].get().strip()
+      interval = values['combo_settings_beacon_timer_interval']
+      self.setBeaconTriggerTimeDelta(interval)
+
       callsign = self.form_gui.window['input_myinfo_callsign'].get().strip()
 
-      if (platform.system() == 'Windows'):
-        username = os.getenv('USERNAME')
-        if(winlink_folder_rms =='' or winlink_folder_rms =='\\'):
-          if(os.path.exists('C:\\RMS Express\\' + callsign + '\\Messages\\')):
-            self.form_gui.window['in_winlink_rmsmsgfolder'].update('C:\\RMS Express\\' + callsign + '\\Messages\\')
-        if(os.path.exists('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign )):
-          if(winlink_folder_in =='' or winlink_folder_in =='\\'):
-            self.form_gui.window['in_winlink_inboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\in\\')
-          if(winlink_folder_out =='' or winlink_folder_out =='\\'):
-            self.form_gui.window['in_winlink_outboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\out\\')
+      if(self.group_arq.display_winlink):
+        self.winlink_import.noteExistingWinlinkFiles(self.saamfram)
 
-        if(os.path.exists('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\' )):
-          if(winlink_folder_templates ==''):
-            self.form_gui.window['input_general_pattemplatesfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\')
+        winlink_folder_in  = self.form_gui.window['in_winlink_inboxfolder'].get().strip()
+        winlink_folder_out = self.form_gui.window['in_winlink_outboxfolder'].get().strip()
+        winlink_folder_rms = self.form_gui.window['in_winlink_rmsmsgfolder'].get().strip()
+        winlink_folder_templates  = self.form_gui.window['input_general_pattemplatesfolder'].get().strip()
 
-        self.event_winlinklist(values)
+        if (platform.system() == 'Windows'):
+          username = os.getenv('USERNAME')
+          if(winlink_folder_rms =='' or winlink_folder_rms =='\\'):
+            if(os.path.exists('C:\\RMS Express\\' + callsign + '\\Messages\\')):
+              self.form_gui.window['in_winlink_rmsmsgfolder'].update('C:\\RMS Express\\' + callsign + '\\Messages\\')
+          if(os.path.exists('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign )):
+            if(winlink_folder_in =='' or winlink_folder_in =='\\'):
+              self.form_gui.window['in_winlink_inboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\in\\')
+            if(winlink_folder_out =='' or winlink_folder_out =='\\'):
+              self.form_gui.window['in_winlink_outboxfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\mailbox\\' + callsign + '\\out\\')
 
-      else:
-        username = os.getenv('USER')
-        if(winlink_folder_rms =='' or winlink_folder_rms =='/'):
-          if(os.path.exists('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')):
-            self.form_gui.window['in_winlink_rmsmsgfolder'].update('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')
-        if(os.path.exists('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/')):
-          if(winlink_folder_in =='' or winlink_folder_in =='/'):
-            self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'in/')
-          if(winlink_folder_out =='' or winlink_folder_out =='/'):
-            self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'out/')
+          if(os.path.exists('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\' )):
+            if(winlink_folder_templates ==''):
+              self.form_gui.window['input_general_pattemplatesfolder'].update('C:\\Users\\' + os.getenv('USERNAME') + '\\AppData\\Local\\pat\\')
 
-        """ set the templates folder"""
-        if(os.path.exists('/home/' + username + '/.wl2k/')):
-          if(winlink_folder_templates ==''):
-            self.form_gui.window['input_general_pattemplatesfolder'].update('/home/' + username + '/.wl2k/')
+          self.event_winlinklist(values)
 
-        self.event_winlinklist(values)
+        else:
+          username = os.getenv('USER')
+          if(winlink_folder_rms =='' or winlink_folder_rms =='/'):
+            if(os.path.exists('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')):
+              self.form_gui.window['in_winlink_rmsmsgfolder'].update('/home/' + username + '/.wine/drive_c/RMS Express/' + callsign + '/Messages/')
+          if(os.path.exists('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/')):
+            if(winlink_folder_in =='' or winlink_folder_in =='/'):
+              self.form_gui.window['in_winlink_inboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'in/')
+            if(winlink_folder_out =='' or winlink_folder_out =='/'):
+              self.form_gui.window['in_winlink_outboxfolder'].update('/home/' + username + '/.local/share/pat/mailbox/' + callsign + '/' + 'out/')
+
+          """ set the templates folder"""
+          if(os.path.exists('/home/' + username + '/.wl2k/')):
+            if(winlink_folder_templates ==''):
+              self.form_gui.window['input_general_pattemplatesfolder'].update('/home/' + username + '/.wl2k/')
+
+          self.event_winlinklist(values)
 
 
       if(self.group_arq.formdesigner_mode == False):
@@ -282,16 +381,28 @@ class ReceiveControlsProc(object):
     if(self.group_arq.formdesigner_mode == False):
 
       timestamp_now = int(round(datetime.utcnow().timestamp()))
-      #if( (self.five_minute_timer+(5*60)) <= timestamp_now and self.getSaamfram().inSession() == False):
-      #if( (self.one_minute_timer + 60) <= (timestamp_now - (self.one_minute_chunks * 60)) and self.getSaamfram().inSession() == False):
       if( (self.one_minute_timer + 60) <= timestamp_now and self.getSaamfram().inSession() == False):
         self.debug.info_message("1 minute timer triggered")
+
+        self.p2pip_ten_minute_timer = self.p2pip_ten_minute_timer + 1
+
+        """ do a 1 minute refresh of text messages when discussion is active."""
+
+        if self.p2pip_ten_minute_timer >= 10:
+          self.p2pip_ten_minute_timer = 0
+          if(self.group_arq.p2p_online == True):
+            self.form_gui.window['btn_p2pipsatellite_getneighbors'].update(button_color=('black', 'green1'))
+            self.event_inboxgetmessagesipp2p(values)
+          else:
+            self.form_gui.window['btn_p2pipsatellite_getneighbors'].update(button_color=('black', 'red'))
+          self.event_p2pCommandCommon(cn.P2P_IP_QUERY_NEIGHBORS, {})
+        elif self.group_arq.p2p_online == False:
+          self.event_p2pCommandCommon(cn.P2P_IP_QUERY_NEIGHBORS, {})
 
         self.one_minute_chunks = self.one_minute_chunks + 1
         self.one_minute_timer = timestamp_now
 
         selected_timescale = values['option_showactive']
-        #selected_timescale = self.form_gui.window['option_showactive']
         proceed = False
         if(selected_timescale == 'Minute'):
           self.one_minute_chunks = 0
@@ -333,7 +444,17 @@ class ReceiveControlsProc(object):
         self.debug.info_message("10 minute timer triggered")
         self.ten_minute_timer = timestamp_now
 
+      """ next timer section"""
 
+      current_time = self.time_delta_string(values) 
+   
+  
+      if(current_time == "ON AIR"):
+        self.form_gui.window['beacon_clock'].update(current_time, text_color='red')
+      else:  
+        self.form_gui.window['beacon_clock'].update(current_time, text_color='white')
+
+      """ next timer section """
       if(self.flash_timer_group1 <6):
         self.flash_timer_group1 = self.flash_timer_group1 + 1
       elif(self.flash_timer_group1 >=6):
@@ -341,8 +462,10 @@ class ReceiveControlsProc(object):
 
         if(self.getSaamfram().inSession() == True):
           self.changeFlashButtonState('text_mainarea_insession', True)
+          self.changeFlashButtonState('text_mainarea_receiving', True)
         else:
           self.changeFlashButtonState('text_mainarea_insession', False)
+          self.changeFlashButtonState('text_mainarea_receiving', False)
 
         if(self.flash_toggle_group1 == 0):
           self.flash_toggle_group1 = 1
@@ -1003,7 +1126,6 @@ class ReceiveControlsProc(object):
   """ RTS Peer"""
   def event_btncomposeareyoureadytoreceive(self, values):
     self.debug.info_message("event_btncomposeareyoureadytoreceive\n")
-    #self.saamfram.sendQryReady()
     from_call = self.saamfram.getMyCall()
     group_name = self.saamfram.getMyGroup()
     self.saamfram.sendRTSPeer(from_call, group_name)
@@ -1052,9 +1174,6 @@ class ReceiveControlsProc(object):
         content[0] = new_content[0]
         self.debug.info_message("Found HRRM_EXPORT string in message content...removing")
  
-      #if(formname == 'EMAIL'):
-      #  msgto = msgto.replace('@','+')
-      #self.debug.info_message("event_prevposttooutbox msgto: " + str(msgto) )
 
       dictionary = self.form_dictionary.createOutboxDictionaryItem(ID, msgto, msgfrom, subject, priority, timestamp, formname, content)
       message_dictionary = dictionary.get(ID)		  
@@ -1079,6 +1198,90 @@ class ReceiveControlsProc(object):
 
     return()
 
+
+  def event_p2pipchatpostandsend(self, values):
+    self.debug.info_message("event_p2pipchatpostandsend\n")
+
+    try:
+
+      self.group_arq.saamfram.setTransmitType(cn.FORMAT_CONTENT)
+
+      """ loop thru the dictionary to populate outbox display """
+
+      from_call = self.saamfram.getMyCall()
+      ID = self.group_arq.saamfram.getEncodeUniqueId(from_call)
+      timestamp = self.group_arq.saamfram.getDecodeTimestampFromUniqueId(ID)
+      msgfrom   = self.group_arq.saamfram.getDecodeCallsignFromUniqueId(ID)
+
+      """ clean up the data pulled from the form. remove whitespace and uppercase it"""
+
+      msgto = values['in_inbox_listentostation'].strip().upper()
+
+      subject = '' 
+      """ priority None indicates the message is not to be saved anywhere """
+      priority = 'None' 
+      formname = 'QUICKMSG' 
+
+      content = []
+      content.append('')
+      content.append('')
+      content.append('')
+      content.append('')
+      content.append('')
+
+      the_message = values['ml_chat_sendtext_p2pip']	  
+      content.append(the_message)
+
+      dictionary = self.form_dictionary.createOutboxDictionaryItem(ID, msgto, msgfrom, subject, priority, timestamp, formname, content)
+
+      msgid = ID 
+
+      tolist = str(values['in_chat_p2pip_discussiongroup']) + str(self.saamfram.getMyGroup().replace('@', '#'))
+      frag_size = 20
+      
+      sender_callsign = self.group_arq.saamfram.getMyCall()
+      tagfile = 'ICS'
+      version  = '1.3'
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
+
+      self.form_dictionary.removeOutboxDictionaryItem(ID)
+    
+      sender_callsign = self.group_arq.saamfram.getMyCall()
+      fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
+
+      """ put the relay stations on the front end of the list. """
+ 
+      timenow = int(round(datetime.utcnow().timestamp()*100))
+      self.event_p2pCommandCommon(cn.P2P_IP_SEND_TEXT, {'msgid':msgid , 'tolist':tolist, 'timestamp':timenow, 'text':fragtagmsg.strip()})
+
+      self.group_arq.addChatData(sender_callsign, the_message, ID)
+      self.form_gui.window['table_chat_received_messages_p2pip'].update(values=self.group_arq.getChatData())
+      self.form_gui.window['table_chat_received_messages_p2pip'].update(row_colors=self.group_arq.getChatDataColors())
+
+    except:
+      self.debug.error_message("Exception in event_prevchatpostandsend: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return()
+
+
+  def event_checkfordiscussiongroupmessages(self, values):
+    self.debug.info_message("event_checkfordiscussiongroupmessages\n")
+
+    try:
+      table = self.discussion_cache.getTable()
+      line_index = int(values['table_chat_satellitediscussionname_plus_group'][0])
+      discussion_name     = (table[line_index])[0]
+      group_name          = (table[line_index])[1]
+
+      address = self.form_gui.window['in_p2pipnode_ipaddr'].get()
+      tolist = str(discussion_name + group_name.replace('@', '#') )
+
+      self.debug.info_message("getting message for: " + str(tolist))
+
+      mypipeclient = self.form_gui.getClientPipe()
+      mypipeclient.p2pNodeCommand(cn.P2P_IP_GET_TEXT, address, {'disc_group':tolist})
+    except:
+      self.debug.error_message("Exception in event_checkfordiscussiongroupmessages: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
 
   def event_prevchatpostandsend(self, values):
@@ -1175,6 +1378,25 @@ class ReceiveControlsProc(object):
 
     return()
 
+  def event_tablerelayboxmessages(self, values):
+    self.debug.info_message("TABLE RELAYBOX MESSAGES\n")
+
+    line_index = int(values['table_relay_messages'][0])
+    msgid = (self.group_arq.getMessageRelaybox()[line_index])[6]
+    formname = self.form_dictionary.getFormnameFromRelayboxDictionary(msgid)
+
+    self.debug.info_message("MESSAGE ID AND FORMNAME = " + str(msgid) + "," + formname)
+
+    form_content = self.form_dictionary.getContentFromRelayboxDictionary(msgid)
+
+    mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(formname)
+    use_dynamic_content_macro = False
+    text_render, table_data, actual_render = self.form_gui.renderPage(mytemplate, use_dynamic_content_macro, form_content)
+   
+    self.form_gui.window['table_relaybox_preview'].update(values=table_data )
+
+    return
+
 
   def event_tableoutboxmessages(self, values):
     self.debug.info_message("TABLE OUTBOX MESSAGES\n")
@@ -1190,10 +1412,6 @@ class ReceiveControlsProc(object):
     mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(formname)
     use_dynamic_content_macro = False
     text_render, table_data, actual_render = self.form_gui.renderPage(mytemplate, use_dynamic_content_macro, form_content)
-
-    self.form_gui.form_events.changeFlashButtonState('btn_outbox_sendselected', True)
-    self.form_gui.form_events.changeFlashButtonState('btn_compose_areyoureadytoreceive', True)
-
 
     self.form_gui.window['table_outbox_preview'].update(values=table_data )
     return
@@ -1212,37 +1430,11 @@ class ReceiveControlsProc(object):
     mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(formname)
     use_dynamic_content_macro = False
     text_render, table_data, actual_render = self.form_gui.renderPage(mytemplate, use_dynamic_content_macro, form_content)
-    
-    self.form_gui.form_events.changeFlashButtonState('btn_inbox_sendreqm', True)
-    self.form_gui.form_events.changeFlashButtonState('btn_inbox_viewmsg', True)
-
 
     self.form_gui.window['table_inbox_preview'].update(values=table_data )
 
     return
 
-  def event_tablerelayboxmessages(self, values):
-    self.debug.info_message("TABLE RELAYBOX MESSAGES\n")
-
-    line_index = int(values['table_relay_messages'][0])
-    msgid = (self.group_arq.getMessageRelaybox()[line_index])[6]
-    formname = self.form_dictionary.getFormnameFromRelayboxDictionary(msgid)
-
-    self.debug.info_message("MESSAGE ID AND FORMNAME = " + str(msgid) + "," + formname)
-
-    form_content = self.form_dictionary.getContentFromRelayboxDictionary(msgid)
-
-    mytemplate = self.form_dictionary.getTemplateByFormFromTemplateDictionary(formname)
-    use_dynamic_content_macro = False
-    text_render, table_data, actual_render = self.form_gui.renderPage(mytemplate, use_dynamic_content_macro, form_content)
-    
-    self.form_gui.form_events.changeFlashButtonState('btn_relay_copytooutbox', True)
-    self.form_gui.form_events.changeFlashButtonState('btn_relay_sendreqm', True)
-
-
-    self.form_gui.window['table_relaybox_preview'].update(values=table_data )
-
-    return
 
 
 
@@ -1433,7 +1625,14 @@ class ReceiveControlsProc(object):
     text = values['in_mainwindow_stationtext']
     if(len(text) > 20):
       self.form_gui.window['in_mainwindow_stationtext'].update(text[:20])
-       
+
+
+  def event_mainwindow_stationname(self, values):
+    self.debug.info_message("event_mainwindow_stationname")
+
+    saved_value = self.saamfram.main_params.get("params").get('p2pMyStationName')
+    self.form_gui.window['in_mystationname'].update(str(saved_value))
+        
 
   def event_mainpanelsendimagefile(self, values):
     self.debug.info_message("event_mainpanelsendimagefile")
@@ -1458,7 +1657,7 @@ class ReceiveControlsProc(object):
 
     complete_send_string = ''
 
-    filename =  'compressed.jpg' #self.form_gui.window['in_mainpanel_sendfilename'].get()
+    filename =  'compressed.jpg' 
 
     self.debug.info_message("selected filename is : " + filename )
 
@@ -1537,9 +1736,6 @@ class ReceiveControlsProc(object):
     self.debug.info_message("event_outboxsendselectedasfile 2\n")
     
     frag_size = 50
-    #frag_string = values['option_framesize'].strip()
-    #if(frag_string != ''):
-    #  frag_size = int(values['option_framesize'])
       
     include_template = values['cb_outbox_includetmpl']
 
@@ -1581,7 +1777,6 @@ class ReceiveControlsProc(object):
     self.group_arq.sendFormRig1(fragtagmsg, tolist, msgid)
 
     self.form_dictionary.transferOutboxMsgToSentbox(msgid)
-    #self.form_dictionary.transferOutboxMsgToRelaybox(msgid)
 
     self.form_gui.window['table_relay_messages'].update(values=self.group_arq.getMessageRelaybox() )
     self.form_gui.window['table_sent_messages'].update(values=self.group_arq.getMessageSentbox() )
@@ -1598,10 +1793,10 @@ class ReceiveControlsProc(object):
 
     self.group_arq.saamfram.setTransmitType(cn.FORMAT_CONTENT)
 
-
-    selected_mode = values['option_outbox_fldigimode'].split(' - ')[1]
-    self.group_arq.fldigiclient.setMode(selected_mode)
-    self.debug.info_message("selected outbox mode is: " + selected_mode)
+    if self.group_arq.operating_mode == cn.FLDIGI:
+      selected_mode = values['option_outbox_fldigimode'].split(' - ')[1]
+      self.group_arq.fldigiclient.setMode(selected_mode)
+      self.debug.info_message("selected outbox mode is: " + selected_mode)
 
     line_index = int(values['table_outbox_messages'][0])
     msgid = (self.group_arq.getMessageOutbox()[line_index])[6]
@@ -2009,7 +2204,6 @@ class ReceiveControlsProc(object):
     version  = '1.3'
 
     complete_send_string = ''
-    #include_template = values['cb_outbox_includetmpl']
     include_template = False
     if(include_template):
       complete_send_string = self.group_arq.saamfram.getContentAndTemplateSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
@@ -2398,6 +2592,16 @@ class ReceiveControlsProc(object):
     saam.sendCQCQCQ(from_call, group_name)
     return
 
+
+  def event_send_discussiongroup(self, values):
+    self.debug.info_message("event_send_discussiongroup\n")
+
+    saam = self.getSaamfram()
+    from_call = self.saamfram.getMyCall()
+    group_name = self.saamfram.getMyGroup()
+    saam.sendDiscussionGroup(from_call, group_name)
+    return
+
   def event_btnmainpaneltestprop(self, values):
     self.debug.info_message("COMPOSE TEST PROPAGATION\n")
 
@@ -2444,6 +2648,21 @@ class ReceiveControlsProc(object):
     group_name = self.saamfram.getMyGroup()
     saam.sendCheckin(from_call, group_name)
     return
+
+
+  def event_sendbeaconmessage(self, values):
+    self.debug.info_message("event_sendbeaconmessage")
+
+    interval = values['combo_settings_beacon_timer_interval']
+    self.setBeaconTriggerTimeDelta(interval)
+
+    saam = self.getSaamfram()
+    from_call = self.saamfram.getMyCall()
+    group_name = self.saamfram.getMyGroup()
+    saam.sendBeaconMessage(from_call, group_name)
+    return
+
+
 
   def event_compose_standby(self, values):
     self.debug.info_message("COMPOSE STBY\n")
@@ -2515,8 +2734,6 @@ class ReceiveControlsProc(object):
     try:
       line_index = int(values['table_relay_messages'][0])
 
-      #self.messages_relaybox.append([msgfrom, msgto, subject, timestamp, priority, msgtype, msgid, conf_rcvd, frag_size, verified])
-
       msgid = (self.group_arq.getMessageRelaybox()[line_index])[6]
       formname = (self.group_arq.getMessageRelaybox()[line_index])[5]
       priority = (self.group_arq.getMessageRelaybox()[line_index])[4]
@@ -2525,7 +2742,6 @@ class ReceiveControlsProc(object):
       tolist   = self.group_arq.forwardMsgRemoveOwnCallsign( (self.group_arq.getMessageRelaybox()[line_index])[1] )
 
       frag_size = 20
-      #is_p2p = values['cb_relaybox_winlinkp2p']
       sender_callsign = self.group_arq.saamfram.getMyCall()
       tagfile = 'ICS'
       version  = '1.3'
@@ -2537,7 +2753,6 @@ class ReceiveControlsProc(object):
       items = modified_send_string2.split(cn.DELIMETER_CHAR)
 
       header_info = []
-      #for count in range(0, 8):
       for count in range(1, 9):
         header_info.append(items[count])
       self.debug.info_message("header info is:" + str(header_info))
@@ -2552,7 +2767,6 @@ class ReceiveControlsProc(object):
         self.debug.info_message("translating data")
 
         winlink_binary = self.winlink_import.getWinlinkBinary()
-        #winlink_binary  = self.form_gui.window['input_general_patbinary'].get().strip()
         os.system(winlink_binary + ' composeform --template \'' + return_data + '\' <parameters_file.txt')
       else:
         self.debug.info_message("no translation available. using general format")
@@ -2573,11 +2787,9 @@ class ReceiveControlsProc(object):
     formname = (self.group_arq.getMessageOutbox()[line_index])[5]
     priority = (self.group_arq.getMessageOutbox()[line_index])[4]
     subject  = (self.group_arq.getMessageOutbox()[line_index])[2]
-    #tolist   = (self.group_arq.getMessageOutbox()[line_index])[1]
     tolist   = self.group_arq.forwardMsgRemoveOwnCallsign( (self.group_arq.getMessageOutbox()[line_index])[1] )
 
     frag_size = 20
-    #is_p2p = values['cb_outbox_winlinkp2p']
     sender_callsign = self.group_arq.saamfram.getMyCall()
     tagfile = 'ICS'
     version  = '1.3'
@@ -2589,7 +2801,6 @@ class ReceiveControlsProc(object):
     items = modified_send_string2.split(cn.DELIMETER_CHAR)
 
     header_info = []
-    #for count in range(0, 8):
     for count in range(1, 9):
       header_info.append(items[count])
     self.debug.info_message("header info is:" + str(header_info))
@@ -2604,23 +2815,14 @@ class ReceiveControlsProc(object):
       self.debug.info_message("translating data")
 
       winlink_binary = self.winlink_import.getWinlinkBinary()
-      #winlink_binary  = self.form_gui.window['input_general_patbinary'].get().strip()
       os.system(winlink_binary + ' composeform --template \'' + return_data + '\' <parameters_file.txt')
 
-      #os.system(winlink_binary + ' composeform --template \'ICS USA Forms\\ICS213.txt\' <parameters_file.txt')
-      #os.system('/home/pi/patvar2/pat/pat composeform --template \'ICS USA Forms/ICS213.txt\' <parameters_file.txt')
     else:
       self.debug.info_message("no translation available. using general format")
       fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
       self.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self.group_arq.saamfram, fragtagmsg, self.form_gui.window['table_outbox_preview'].get())
 
-    #fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
-    #self.winlink_import.post_HRRM_to_pat_winlink(header_info, actual_data, self.saamfram, fragtagmsg, self.form_gui.window['table_outbox_preview'].get())
-
     self.event_winlinklist(values)
-
-
-
 
     return
 
@@ -2714,6 +2916,7 @@ class ReceiveControlsProc(object):
     self.form_dictionary.writeRelayboxDictToFile('relaybox.msg')
     self.form_dictionary.writePeerstnDictToFile('peerstn.sav')
     self.form_dictionary.writeRelaystnDictToFile('relaystn.sav')
+    self.form_dictionary.writePeerstnDictToFile('p2pipstn.sav')
 
 
   def event_btnmainpanelclearstations(self, values):
@@ -3007,11 +3210,8 @@ class ReceiveControlsProc(object):
       how_recent = 217728000000
 
 
-    #self.group_arq.active_station_checklist = []
     self.form_dictionary.dataFlecCache_clearActive()
     self.form_dictionary.dataFlecCache_rebuild(how_recent)
-    #self.form_dictionary.selectRecentFromPeerstnDicttionaryItems(how_recent)
-    #self.form_dictionary.selectRecentFromRelaystnDicttionaryItems(how_recent)
 
     self.form_gui.refreshSelectedTables()
 
@@ -3061,6 +3261,11 @@ class ReceiveControlsProc(object):
     self.saamfram.sendCancelHaveCopy()
 
 
+  def event_settingsbeacontimerinterval(self, values):
+    self.debug.info_message("event_settingsbeacontimerinterval\n")
+    interval = values['combo_settings_beacon_timer_interval']
+    self.debug.info_message("interval is: " + str(interval) )
+    self.setBeaconTriggerTimeDelta(interval)
 
   def event_combosettingschannels(self, values):
     self.debug.info_message("event_combosettingschannels\n")
@@ -3209,6 +3414,16 @@ class ReceiveControlsProc(object):
         self.group_arq.setSpeed(cn.JS8CALL_SPEED_TURBO)
 
 
+  def treeViewToTable(self, tree, col_count):
+    table_data = []
+    for item in tree.get_children():
+      values = []
+      for col_num in range(col_count):
+        values.append(tree.item(item)['values'][col_num])
+      table_data.append(values)
+    return table_data
+
+
   def editCell(self, window, table_key, row, col, values, istab):
 
     self.debug.info_message("editCell key: " + str(table_key))
@@ -3228,6 +3443,9 @@ class ReceiveControlsProc(object):
             split_metadata = metadata.split(',')
             max_num_rows = int(split_metadata[1])
             max_num_cols = int(split_metadata[2])
+
+            table = self.treeViewToTable(window[table_key].Widget, max_num_cols)
+
             new_row = []
             for col_count in range(max_num_cols):
               new_row.append('')
@@ -3340,20 +3558,21 @@ class ReceiveControlsProc(object):
 
 
       table = window[self.editing_table_key].Widget
-      #table = window[table_key].get()
       list_values = list(table.item(self.editing_table_row, 'values'))
       list_values[self.editing_table_col] = text
       table.item(self.editing_table_row, values=list_values)
 
       self.debug.info_message("editCell row is: " + str(self.editing_table_row))
       self.debug.info_message("editCell col is: " + str(self.editing_table_col))
-      psgtable = window[self.editing_table_key].get()
+
+      metadata = window[self.editing_table_key].metadata
+      split_metadata = metadata.split(',')
+      max_num_rows = int(split_metadata[1])
+      max_num_cols = int(split_metadata[2])
+      psgtable = self.treeViewToTable(window[self.editing_table_key].Widget, max_num_cols)
       psgtable_row = psgtable[self.editing_table_row-1]
       psgtable_row[self.editing_table_col] = text
       window[self.editing_table_key].update(values=psgtable)
-
-    #  if (istab == False):
-    #    return
 
 
     self.editing_table = True
@@ -3469,7 +3688,6 @@ class ReceiveControlsProc(object):
     return
 
   def hasWindowMovedDuringEdit(self, window):
-    #self.debug.info_message("hasWindowMovedDuringEdit")
     if(self.editing_table == True):
       table = window['popup_main_tab1'].Widget  
       widget_x1, widget_y1 = table.winfo_rootx(),table.winfo_rooty()
@@ -3523,7 +3741,6 @@ class ReceiveControlsProc(object):
     with open(folder + filename) as f:
       data = f.read()
       string_data = str(data)
-      #self.debug.info_message("data: " + string_data)
       data = string_data.split('\n')
       for x in range(len(data)):
         data_item = [str(data[x])]
@@ -3566,7 +3783,6 @@ class ReceiveControlsProc(object):
     self.debug.info_message("event_winlinklist")
 
     folder = self.form_gui.getWinlinkInboxFolder()
-    #folder = values['in_winlink_inboxfolder']
 
     self.debug.info_message("folder is " + folder)
 
@@ -3595,7 +3811,6 @@ class ReceiveControlsProc(object):
       self.form_gui.window['winlink_inbox_table'].update(values=self.group_arq.getWinlinkInboxFiles())
 
     folder = self.form_gui.getWinlinkOutboxFolder()
-    #folder = values['in_winlink_outboxfolder']
 
     if(folder != ''):
       extension = "*.b2f"
@@ -3610,9 +3825,7 @@ class ReceiveControlsProc(object):
         self.group_arq.addWinlinkOutboxFile(filename, msg_from, msg_to, subject, date, formname, message_id)
       self.form_gui.window['winlink_outbox_table'].update(values=self.group_arq.getWinlinkOutboxFiles())
 
-    #"""
     folder = self.form_gui.getWinlinkRmsmsgFolder()
-    #folder = values['in_winlink_rmsmsgfolder']
 
     if(folder != ''):
       extension = "*.mime"
@@ -3626,7 +3839,6 @@ class ReceiveControlsProc(object):
         filename, msg_from, msg_to, subject, date, formname, message_id = self.processFileData(folder, filename)
         self.group_arq.addWinlinkRMSMsgFile(filename, msg_from, msg_to, subject, date, formname, message_id)
       self.form_gui.window['winlink_rmsmsg_table'].update(values=self.group_arq.getWinlinkRMSMsgFiles())
-    #"""
 
     self.form_gui.window['winlink_outbox_table'].update(row_colors=self.group_arq.getWinlinkOutboxColors())
 
@@ -3650,7 +3862,6 @@ class ReceiveControlsProc(object):
 
 
     folder = self.form_gui.getWinlinkInboxFolder()
-    #folder = values['in_winlink_inboxfolder']
 
     self.debug.info_message("selected id: " + str(filename))
 
@@ -3701,7 +3912,6 @@ class ReceiveControlsProc(object):
       self.form_gui.window['btn_winlink_edit_selected'].update(disabled = True)
 
     folder = self.form_gui.getWinlinkOutboxFolder()
-    #folder = values['in_winlink_outboxfolder']
 
     tabledata = []
 
@@ -3770,7 +3980,6 @@ class ReceiveControlsProc(object):
       self.form_gui.window['btn_winlink_edit_selected'].update(disabled = True)
 
     folder = self.form_gui.getWinlinkRmsmsgFolder()
-    #folder = values['in_winlink_rmsmsgfolder']
 
     tabledata = []
 
@@ -3821,19 +4030,16 @@ class ReceiveControlsProc(object):
       filename = (self.group_arq.getWinlinkOutboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkOutboxFiles()[line_index])[5]
       folder = self.form_gui.getWinlinkOutboxFolder()
-      #folder = values['in_winlink_outboxfolder']
     elif(values['winlink_inbox_table'] != []):
       line_index = int(values['winlink_inbox_table'][0])
       filename = (self.group_arq.getWinlinkInboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkInboxFiles()[line_index])[5]
       folder = self.form_gui.getWinlinkInboxFolder()
-      #folder = values['in_winlink_inboxfolder']
     elif(values['winlink_rmsmsg_table'] != []):
       line_index = int(values['winlink_rmsmsg_table'][0])
       filename = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[5]
       folder = self.form_gui.getWinlinkRmsmsgFolder()
-      #folder = values['in_winlink_rmsmsgfolder']
 
 
     self.debug.info_message("selected id: " + str(filename))
@@ -3886,21 +4092,18 @@ class ReceiveControlsProc(object):
       filename = (self.group_arq.getWinlinkOutboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkOutboxFiles()[line_index])[5]
       folder = self.form_gui.getWinlinkOutboxFolder()
-      #folder = values['in_winlink_outboxfolder']
       self.winlink_import.winlink_outbox_folder_files.append(filename)
     elif(values['winlink_inbox_table'] != []):
       line_index = int(values['winlink_inbox_table'][0])
       filename = (self.group_arq.getWinlinkInboxFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkInboxFiles()[line_index])[5]
       folder = self.form_gui.getWinlinkInboxFolder()
-      #folder = values['in_winlink_inboxfolder']
       self.winlink_import.winlink_inbox_folder_files.append(filename)
     elif(values['winlink_rmsmsg_table'] != []):
       line_index = int(values['winlink_rmsmsg_table'][0])
       filename = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[0]
       formname = (self.group_arq.getWinlinkRMSMsgFiles()[line_index])[5]
       folder = self.form_gui.getWinlinkRmsmsgFolder()
-      #folder = values['in_winlink_rmsmsgfolder']
 
 
     self.debug.info_message("selected id: " + str(filename))
@@ -4041,7 +4244,6 @@ class ReceiveControlsProc(object):
       self.group_arq.pipes.connectClient(pipe)
 
       speed = 50
-      #client = self.group_arq.pipes.getClient()
       client = self.group_arq.pipes.getPipe(name, ip_address, port )
       client.sendMsg("MODE.SET_SPEED", "", params={"SPEED":int(speed), "_ID":-1} )
 
@@ -4070,14 +4272,7 @@ class ReceiveControlsProc(object):
   def event_btnlaunchnet(self, values):
     self.debug.info_message("event_btnlaunchnet")
 
-    #net_control = values['cb_chat_netcontrol']
-
-    #js8_net_binary = values['input_general_extappsjs8netbinary'].strip()
-
-    #if(net_control):
     self.startinnewthread(values)
-    #else:
-    #  self.startinnewthread(values)
 
 
   def startinnewthread(self, values):
@@ -4104,6 +4299,222 @@ class ReceiveControlsProc(object):
       self.debug.info_message("clicked on express" )
       self.form_gui.window['btn_winlink_connect'].update(disabled = True)
       self.form_gui.window['btn_winlink_send_selected'].update(disabled = True)
+
+
+  def event_disconnectvpnp2pnode(self, values):
+    self.debug.info_message("event_disconnectvpnp2pnode"  )
+
+    try:
+      mypipeclient = self.form_gui.getClientPipe()
+      mypipeclient.setClientRequestStop(True)
+    except:
+      debug.error_message("Exception in event_disconnectvpnp2pnode:" + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+  def event_connectVpn_p2pNode(self, values):
+    self.debug.info_message("event_connectVpn_p2pNode"  )
+
+    try:
+      address = self.form_gui.window['in_p2pipnode_ipaddr'].get()
+      ipaddr = address.split(':')[0]
+      port = int(address.split(':')[1])
+      self.debug.info_message("ipaddr" + str(ipaddr) + " " + str(port) + "\n")
+      mypipeclient = self.form_gui.getClientPipe()
+      mypipeclient.setClientAddress(ipaddr, port)
+      mypipeclient.setClientRequestConnect(True)
+
+    except:
+      debug.error_message("Exception in event_connectVpn_p2pNode:" + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+  def event_p2pCommandCommon(self, command, params):
+    self.debug.info_message("event_p2pCommandCommon"  )
+    try:
+      address = self.form_gui.window['in_p2pipnode_ipaddr'].get()
+      self.debug.info_message("address" + str(address) + "\n")
+      mypipeclient = self.form_gui.getClientPipe()
+      mypipeclient.p2pNodeCommand(command, address, params)
+    except:
+      debug.error_message("Exception in event_connectVpn_p2pNode:" + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+  def event_p2pCommandStart(self, values):
+    self.debug.info_message("event_p2pCommandStart"  )
+
+    try:
+      address = self.form_gui.window['in_p2pipudpserviceaddress'].get()
+      ipaddr = address.split(':')[0]
+      port = int(address.split(':')[1])
+
+      self.event_p2pCommandCommon(cn.P2P_IP_START, {'address':(ipaddr, port)})
+    except:
+      debug.error_message("Exception in event_p2pCommandStart:" + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+  def event_p2pCommandStop(self, values):
+    self.debug.info_message("event_p2pCommandStop"  )
+    self.event_p2pCommandCommon(cn.P2P_IP_STOP, {})
+
+  def event_p2pCommandRestart(self, values):
+    self.debug.info_message("event_p2pCommandRestart"  )
+    self.event_p2pCommandCommon(cn.P2P_IP_RESTART, {})
+
+  def event_inboxgetmessagesipp2p(self, values):
+    self.debug.info_message("event_inboxgetmessagesipp2p"  )
+    my_callsign = self.form_gui.window['input_myinfo_callsign'].get()
+    self.event_p2pCommandCommon(cn.P2P_IP_GET_MSG, {'key':my_callsign})
+
+    my_stationid = self.form_gui.window['in_mystationname'].get()
+    self.event_p2pCommandCommon(cn.P2P_IP_GET_MSG, {'key':my_stationid})
+
+  def event_p2pipsatellitegetneighbors(self, values):
+    self.debug.info_message("event_p2pipsatellitegetneighbors"  )
+    self.event_p2pCommandCommon(cn.P2P_IP_QUERY_NEIGHBORS, {})
+
+  def event_p2pipsettingspingstation(self, values):
+    self.debug.info_message("event_p2pipsettingspingstation"  )
+    try:
+      line_index = int(values['tbl_selectedconnectionsp2pip'][0])
+
+      table = self.neighbors_cache.getTable()
+
+      ip_address = table[line_index][0]
+      port       = int(table[line_index][1])
+      self.event_p2pCommandCommon(cn.P2P_IP_QUERY_PING, {'ping_address':(ip_address,port)})
+    except:
+      self.debug.error_message("Exception in runReceive: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+  def event_p2pipsettingsconnectstation(self, values):
+    self.debug.info_message("event_p2pipsettingsconnectstation"  )
+
+    table = self.neighbors_cache.getTable()
+
+    line_index = int(values['tbl_selectedconnectionsp2pip'][0])
+    ip_address = table[line_index][0]
+    port       = int(table[line_index][1])
+
+    self.event_p2pCommandCommon(cn.P2P_IP_CONNECT_UDP, {'address':(ip_address,port)})
+    
+
+  def event_debugdumplocalstorage(self, values):
+    self.debug.info_message("event_debugdumplocalstorage"  )
+    self.event_p2pCommandCommon(cn.P2P_IP_DUMP_LOCAL_STORAGE, {})
+
+
+  def event_p2pipcreatediscussiongroup(self, values):
+    self.debug.info_message("event_p2pipcreatediscussiongroup"  )
+
+    try:
+      discussion_name = self.form_gui.window['in_chat_p2pip_discussiongroup'].get()
+      group_name = self.saamfram.getMyGroup()
+      self.discussion_cache.append(str(discussion_name + ':' + group_name), [discussion_name, group_name])
+      table = self.discussion_cache.getTable()
+      self.debug.info_message("created table is: " + str(table))
+      self.form_gui.window['table_chat_satellitediscussionname_plus_group'].update(values = table)
+    except:
+      self.debug.error_message("Exception in event_p2pipcreatediscussiongroup: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+
+  def event_p2pipsettings_connectstationmulti(self):
+    self.debug.info_message("event_p2pipsettings_connectstationmulti"  )
+
+    try:
+      table = self.neighbors_cache.getTable()
+      addresses = []
+      for item in table:
+        addresses.append([item[0], int(item[1])])
+
+      self.event_p2pCommandCommon(cn.P2P_IP_CONNECT_UDP_MULTI, {'addresses':addresses})
+    except:
+      self.debug.error_message("Exception in event_p2pipsettings_connectstationmulti: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+
+  def event_p2pGetPublicIp(self, values):
+    self.debug.info_message("event_p2pGetPublicIp"  )
+    password = sg.popup_get_text('Enter Password', password_char='*')
+    self.debug.info_message("password = " + str(password) )
+
+    if(password != None):
+
+      fortigate_ip = self.form_gui.window['in_p2pipfortigatelanip'].get()
+      username = self.form_gui.window['in_p2pipfortigateloginuser'].get()  
+      interface_name = self.form_gui.window['in_p2pipfortigatewaninterfacename'].get()   
+
+      try:
+        session = requests.Session()
+        session.verify = False
+        login_url = f"https://{fortigate_ip}/logincheck"
+        login_data = f"username={username}&secretkey={password}"
+        session.post(login_url, data=login_data, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        interface_url = f"https://{fortigate_ip}/api/v2/cmdb/system/interface"
+        response = session.get(interface_url)
+        response.raise_for_status()
+      except requests.exceptions.RequestException as e:
+        debug.error_message("Exception in event_p2pGetPublicIp:" + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      except json.JSONDecodeError:
+        debug.error_message("Exception in event_p2pGetPublicIp:" + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+      interface_ip = None
+      interface_data = response.json()
+      for interface in interface_data['results']:
+        if interface['name'] == interface_name:
+          interface_ip = interface['ip'].split(' ')[0]
+          break
+
+      if interface_ip:
+        public_port = self.form_gui.window['in_p2pipudppublicserviceport'].get()
+        sys.stdout.write("interface ip = " + str(interface_ip) + "\n")
+        self.form_gui.window['in_p2pippublicudpserviceaddress'].update(str(interface_ip) + ':' + str(public_port))
+        self.form_gui.window['in_p2pippublicudpserviceaddress'].update(text_color='green1')
+
+
+  def event_p2pipsettingscreateguid(self, values):
+    self.debug.info_message("event_p2pipsettingscreateguid"  )
+    mac_address = self.group_arq.saamfram.getMacAddress()
+    self.debug.info_message("entered_mac_address: " + str(mac_address) )
+    int_from_mac = self.saamfram.macToInt(mac_address)
+    self.debug.info_message("int_from_mac: " + str(int_from_mac) )
+    encoded_id = self.saamfram.getEncodeUniqueMacId(int_from_mac)
+    self.debug.info_message("encoded_id : " + str(encoded_id)  )
+    self.form_gui.window['in_mystationname'].update('GUID: ' + str(encoded_id))
+
+  def event_outboxsendmessagesipp2p(self, values):
+    self.debug.info_message("event_outboxsendmessagesipp2p"  )
+
+    line_index = int(values['table_outbox_messages'][0])
+    msgid = (self.group_arq.getMessageOutbox()[line_index])[6]
+    formname = (self.group_arq.getMessageOutbox()[line_index])[5]
+    priority = (self.group_arq.getMessageOutbox()[line_index])[4]
+    subject  = (self.group_arq.getMessageOutbox()[line_index])[2]
+    tolist   = (self.group_arq.getMessageOutbox()[line_index])[1]
+
+    frag_size = 20
+    frag_string = values['option_framesize'].strip()
+    if(frag_string != ''):
+      frag_size = int(values['option_framesize'])
+      
+    include_template = values['cb_outbox_includetmpl']
+    sender_callsign = self.group_arq.saamfram.getMyCall()
+    tagfile = 'ICS'
+    version  = '1.3'
+    complete_send_string = ''
+    if(include_template):
+      complete_send_string = self.group_arq.saamfram.getContentAndTemplateSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign)
+    else:  
+      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
+    
+    sender_callsign = self.group_arq.saamfram.getMyCall()
+    fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), '')
+
+    """ FIXME THIS SHOULD BE THE DESTINATION STATION NAME. USING THIS FOR TESTING ONLY"""
+    destid = self.form_gui.window['in_mystationname'].get()
+
+    """
+    self.multiValueStorage = { 'mailbox'     :       {<Message ID>      :  {'tolist'            : [],
+                                                                            'timestamp'         : <timestamp>,
+                                                                            'message'           : <message>,
+                                                                           },
+    """
+
+
+    timenow = int(round(datetime.utcnow().timestamp()*100))
+    self.event_p2pCommandCommon(cn.P2P_IP_SEND_MSG, {'msgid':msgid , 'tolist':tolist, 'timestamp':timenow, 'message':fragtagmsg.strip()})
 
 
   def event_comboelement1(self, values):
@@ -4195,6 +4606,7 @@ class ReceiveControlsProc(object):
 
       self.form_dictionary.writePeerstnDictToFile('peerstn.sav')
       self.form_dictionary.writeRelaystnDictToFile('relaystn.sav')
+      self.form_dictionary.writePeerstnDictToFile('p2pipstn.sav')
    
       self.debug.info_message("COMPLETED WRITING DICTIONARIES TO FILE\n")
 
@@ -4236,6 +4648,11 @@ class ReceiveControlsProc(object):
       'btn_cmpse_compose'         : event_composemsg,
       'btn_prev_post_to_outbox'   : event_prevposttooutbox,
       'btn_prev_chat_post_and_send'  : event_prevchatpostandsend,
+
+      'btn_p2pipchatpostandsend'     : event_p2pipchatpostandsend,
+
+      'btn_p2pipchatcheckformessages'  :  event_checkfordiscussiongroupmessages,
+
       'table_outbox_messages'     : event_tableoutboxmessages,
       'table_inbox_messages'      : event_tableinboxmessages,
       'table_relay_messages'   : event_tablerelayboxmessages,
@@ -4276,7 +4693,6 @@ class ReceiveControlsProc(object):
       'btn_tmplt_copytoclip'      : event_tmpltcopytoclip,
       'btn_tmplt_pastefromclip'   : event_tmpltpastefromclip,
       'option_outbox_txrig'       : event_outboxtxrig,
-      #'btn_compose_qrysaam'       : event_compose_qrysaam,
       'btn_mainpanel_cqcqcq'      : event_compose_cqcqcq,
       'btn_mainpanel_copycopy'    : event_compose_copycopy,
       'btn_mainpanel_rr73'        : event_compose_rr73,
@@ -4308,6 +4724,7 @@ class ReceiveControlsProc(object):
       'btn_mainarea_reset'        : event_btnmainareareset,
 
       'btn_mainpanel_updaterecent' : event_btnmainpanelupdaterecent,
+      'option_showactive'          : event_btnmainpanelupdaterecent,
 
        'btn_relay_copytooutbox'   : event_btnrelaycopytooutbox,
 
@@ -4341,9 +4758,10 @@ class ReceiveControlsProc(object):
 
       'in_mainwindow_stationtext' : event_mainwindow_stationtext,
 
+      'in_mystationname'          : event_mainwindow_stationname,
+
       'btn_mainpanel_sendimagefile'   : event_mainpanelsendimagefile,
 
-      #'btn_mainpanel_saveasfile'  : event_mainpanelsaveasfile,
       'in_mainpanel_saveasfilename'  : event_mainpanelsaveasfile,
       'in_mainpanel_saveasimagefilename'  : event_mainpanelsaveasimagefile,
 
@@ -4380,6 +4798,39 @@ class ReceiveControlsProc(object):
       'btn_compose_ics309'        : event_btncomposeics309,
       'btn_compose_bulletin'      : event_btncomposebulletin,
       'btn_relay_RTS'             : event_btnrelayRTS,
+
+      'btn_connectvpnp2pnode'     : event_connectVpn_p2pNode, 
+
+      'btn_p2pCommandStart'       : event_p2pCommandStart,
+      'btn_p2pCommandStop'        : event_p2pCommandStop,
+      'btn_p2pCommandRestart'     : event_p2pCommandRestart,
+
+      'btn_inbox_getmessages_ipp2p'   :  event_inboxgetmessagesipp2p,
+      'btn_outbox_sendmessages_ipp2p' :  event_outboxsendmessagesipp2p,
+
+      'btn_p2pipsatellite_getneighbors' :  event_p2pipsatellitegetneighbors,
+
+       'btn_p2pipsettings_pingstation'  :  event_p2pipsettingspingstation,
+
+      'btn_p2pipsettings_connectstation' :  event_p2pipsettingsconnectstation,
+
+      'btn_p2pipsettings_connectstationmulti'   : event_p2pipsettings_connectstationmulti,
+
+      'btn_announcediscussiongroup'     :    event_send_discussiongroup,
+
+      'btn_p2pGetPublicIp'             :    event_p2pGetPublicIp,
+
+      'combo_settings_beacon_timer_interval'  :  event_settingsbeacontimerinterval,
+
+      'btn_send_beacon_message'     :   event_sendbeaconmessage,
+
+      'btn_p2pipcreatediscussiongroup'   :   event_p2pipcreatediscussiongroup,
+
+      'btn_debugdumplocalstorage'    :   event_debugdumplocalstorage,
+
+      'btn_disconnectvpnp2pnode'     :   event_disconnectvpnp2pnode,
+
+      'btn_p2pipsettingscreateguid'    :   event_p2pipsettingscreateguid,
 
       'combo_element1'            : event_comboelement1,
       'combo_element2'            : event_comboelement2,
@@ -4433,4 +4884,64 @@ class NewProcessClass(object):
       os.system('"' + js8_net_binary + '"' + ' --interface=participant')
 
 
+class DataCache(object):
+
+  debug = db.Debug(cn.DEBUG_INFO)
+
+  def __init__(self):  
+    self.cache_table = []
+    self.cache_dict = {}
+    return
+
+
+  def appendTable(self, table, numcols):
+
+    self.debug.info_message("DataCache.appendTable existing table is : " + str(self.cache_table) )
+    self.debug.info_message("DataCache.appendTable table to add is : " + str(table) )
+    try:
+      for row in table:
+        new_row = []
+        key = row[0]
+        new_row.append(str(row[0]))
+        for col in range(1, numcols):
+          key = key + ':' + str(row[col]) 
+          new_row.append(str(row[col]))
+        self.debug.error_message("key is: " + str(key) )
+        self.append(key, new_row)
+
+        self.debug.info_message("table is : " + str(self.cache_table) )
+
+    except:
+      self.debug.error_message("Exception in DataCache.appendTable: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    self.debug.info_message("DataCache.appendTable new table is : " + str(self.cache_table) )
+    return self.cache_table
+
+  def append(self, key, values):
+
+    try:
+      self.cache_dict[key] = {'values' : values}
+
+      self.cache_table = []
+      for iter_key in self.cache_dict.keys():
+        table_row = []
+        self.debug.error_message("table row is: " + str(table_row) )
+        item_values = self.cache_dict[iter_key].get('values')
+        for item in item_values:
+          self.debug.info_message("appending to row")
+          table_row.append(item)
+        self.debug.info_message("appending row to table")
+        self.cache_table.append(table_row)
+
+        self.debug.info_message("table is : " + str(self.cache_table) )
+
+    except:
+      self.debug.error_message("Exception in DataCache.append: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return self.cache_table
+
+  def getTable(self):
+    return self.cache_table
+    
+    
 

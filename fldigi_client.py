@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 """
 MIT License
 
-Copyright (c) 2022-2023 Lawrence Byng
+Copyright (c) 2022-2025 Lawrence Byng
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -139,23 +139,6 @@ class FLDIGI_Client(object):
                            'OLIVIA-4/1K' : '1,300,6,4000,12,8000,750,NSG',              #89   512 = 42s     yes CONTROL MODE!!
                            'DOMX16'      : '1,500,6,6000,12,6000,280,Weak',              #101  512 = 42s     yes CONTROL MODE!!  YES BEST FOR WEAK SIGNAL
 
-#                           'THOR25x4'    : '1,300,6,4000,16,12000,1800,MODE 30 - THOR25x4',       #512 = 55s    no 
-#                           'MT63-500L'   : '1,300,6,4000,16,12000,500,MODE 30 - MT63-500L',       #512 = 68s    no 
-#                           'MT63-500S'   : '1,300,6,4000,16,12000,500,MODE 30 - MT63-500S',       #512 = 68s    no 
-#                           'PSK1000C2'    : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           'PSK500C4'     : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           'PSK500C2'     : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           'PSK250C6'     : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           'PSK125C12'    : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           '8PSK1200F'    : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           '8PSK1000F'    : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           '8PSK500F'     : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           '8PSK1000'     : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           'BPSK1000'     : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 =     no
-#                           'OFDM3500'    : '1,300,6,4000,16,12000,3500,MODE 31 - OFDM3500',  
-                           #'PSK800C2'    : '1,300,6,4000,12,8000,2000,MODE 30 - PSK800C2',        #512 = 7s     no  no
-                           #'QPSK500'     : '1,500,5,3000,12,3000,500,MODE 5 - QPSK500',      #16   512 = 7s     no  no 
-                           #'PSK500RC4'   : '1,300,6,4000,12,8000,2600,MODE 2 - PSK500RC4',   #13   512 = 8s     no  no
                           }
 
   def getSelectionList(self, selected_width):
@@ -178,8 +161,6 @@ class FLDIGI_Client(object):
       width = 2000
     elif(selected_width == 'Span 2800Hz'):
       width = 2800
-    #elif(selected_width == 'VHF/UHF - 3500'):
-    #  width = 3500
 
     for key in self.timing_lookup: 
       value = self.timing_lookup.get(key)
@@ -251,13 +232,10 @@ class FLDIGI_Client(object):
 
   def testLastTwenty(self, msg):
 
-    #self.debug.info_message("testLastTwenty. set to: " + str(self.last_twenty_chars) )
-
     if(msg in self.last_twenty_chars):
       return True
     else:
       return False  		
-
 
 
   def setModeSelectionList(self, mode_list):
@@ -292,7 +270,6 @@ class FLDIGI_Client(object):
     if(self.connected == False):
       try:
         address, port = server
-        #if(self.server == None):
         self.server = xmlrpc.client.ServerProxy('http://' + address + ':' + str(port) )
         self.debug.info_message("method connect CONNECTING to " + 'http://' + address + ':' + str(port) )
         self.debug.info_message('server: ' + str(self.server))
@@ -303,7 +280,6 @@ class FLDIGI_Client(object):
         self.server.main.set_rsid(True)
         self.server.text.clear_rx()
         self.server.text.clear_tx()
-        #self.server.main.set_squelch(True)
         self.server.main.set_squelch(False)
         self.setTimings()
 
@@ -318,7 +294,6 @@ class FLDIGI_Client(object):
 
       except:
         self.debug.info_message("exception in method connect: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
-        #self.connected = False
         time.sleep(5)
 
   """
@@ -514,27 +489,11 @@ class FLDIGI_Client(object):
   def setChannel(self, channel):
     self.requested_channel = channel
     self.pending_change = True
-    """
-    if self.connected:
-      self.debug.info_message("SETTING FLDIGI MODE TO: " + mode )		
-      self.server.modem.set_by_name(mode)
-      data = self.timing_lookup[mode]
-      width = int(data.split(',')[6])
-      self.server.modem.set_carrier(1500 + int(width/2))
-    """
     return
 
   def setMode(self, mode):
     self.requested_mode = mode
     self.pending_change = True
-    """
-    if self.connected:
-      self.debug.info_message("SETTING FLDIGI MODE TO: " + mode )		
-      self.server.modem.set_by_name(mode)
-      data = self.timing_lookup[mode]
-      width = int(data.split(',')[6])
-      self.server.modem.set_carrier(1500 + int(width/2))
-    """
     return
 
 
@@ -623,6 +582,8 @@ class FLDIGI_Client(object):
       except:
         self.debug.info_message("except in fldigi getMsg: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
         self.debug.info_message("callback is: " + str(callback) )
+        time.sleep(10)
+
       """
       DominoEX-88 use 0.05 (must be at least 0.04)
       DominoEX-44 use 0.1  (must be at least 0.08)
