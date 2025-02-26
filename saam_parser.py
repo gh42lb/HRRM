@@ -628,7 +628,7 @@ class SaamParser(object):
         self.form_gui.window['table_chat_satellitediscussionname_plus_group'].update(values = table)
 
     except:
-      self.debug.error_message("Exception in decodePreMsgBoot: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      self.debug.error_message("Exception in decodePreMsgDisc: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
       split_string = text.split(searchstr, 1)
       split2 = split_string[1].split(end_of_premsg, 1)
       remainder = split_string[0] + ' ' + split2[1]
@@ -647,19 +647,20 @@ class SaamParser(object):
     msgid=''
 
     try:
-      if(numargs == 2):
-        succeeded, remainder, msgid, ip_address = self.decodePreMsgCommonN(text, end_of_premsg, searchstr, numargs)
+      if(numargs == 3):
+        succeeded, remainder, msgid, ip_address, port_num = self.decodePreMsgCommonN(text, end_of_premsg, searchstr, numargs)
         self.debug.info_message("BOOT msgid: " + str(msgid))
         self.debug.info_message("BOOT ip address: " + str(ip_address))
+        self.debug.info_message("BOOT port: " + str(port_num))
 
       if(succeeded):
         self.debug.info_message("success")
 
         table = self.form_gui.form_events.neighbors_cache.getTable()
-        address = ip_address.split('+')[0]
-        port    = ip_address.split('+')[1]
+        address = ip_address.replace('+', ':')
+        port    = port_num
 
-        table = self.form_gui.form_events.neighbors_cache.append(str(address) + ':' + str(port), [str(address), str(port)])
+        table = self.form_gui.form_events.neighbors_cache.append(str(address) + '+' + str(port), [str(address), str(port)])
         self.form_gui.window['tbl_selectedconnectionsp2pip'].update(values=table)
     except:
       self.debug.error_message("Exception in decodePreMsgBoot: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
@@ -925,7 +926,7 @@ class SaamParser(object):
       end_of_premsg = self.testPreMsgStartEnd(text, ' BOOT(', modetype)
       if( end_of_premsg != ''):
         self.debug.info_message("decode BOOT")
-        succeeded, remainder = self.decodePreMsgBoot(text, end_of_premsg,' BOOT(', 2)
+        succeeded, remainder = self.decodePreMsgBoot(text, end_of_premsg,' BOOT(', 3)
         return succeeded, remainder
 
       end_of_premsg = self.testPreMsgStartEnd(text, ' DISC(', modetype)

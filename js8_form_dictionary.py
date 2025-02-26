@@ -2032,8 +2032,9 @@ class FormDictionary(object):
 
                            'p2pVpnNodeAddress'       : '127.0.0.1:2598',
                            'P2pIpPublicPort'         : '5222',
-                           'P2pIpLocalAddress'       : '127.0.0.1:3000',
+                           'P2pIpLocalAddress'       : '127.0.0.1',
                            'P2pVpnAutoConnect'       : False,
+                           'P2pIpLocalPort'          : '3000',
 
                            'DataFlecsForMessages'    :  {},
 
@@ -2242,6 +2243,7 @@ class FormDictionary(object):
                            'P2pIpPublicPort'         : values['in_p2pipudppublicserviceport'],
                            'P2pIpLocalAddress'       : values['in_p2pipudpserviceaddress'],
                            'P2pVpnAutoConnect'       : values['cb_p2psettings_autoconnect'],
+                           'P2pIpLocalPort'          : values['in_p2pipudpserviceaddressport'],
 
                            'DataFlecsForMessages'    : self.data_flec_settings,
 
