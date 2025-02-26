@@ -59,6 +59,8 @@ class FormDictionary(object):
     self.relaystn_file_dictionary_data = {}
     self.p2pip_stn_file_dictionary_data = {}
 
+    self.data_flec_settings = {}
+
     self.form_events = None
     self.group_arq = None
     self.debug = debug
@@ -2033,6 +2035,8 @@ class FormDictionary(object):
                            'P2pIpLocalAddress'       : '127.0.0.1:3000',
                            'P2pVpnAutoConnect'       : False,
 
+                           'DataFlecsForMessages'    :  {},
+
                            'PublicIp'                : '',
 
                            'ExtAppsJs8Net'           : '',
@@ -2059,6 +2063,14 @@ class FormDictionary(object):
                            'DisplayTheme'            : 'DarkGrey8',
                            'EmailAutoForward'        : True,
                            'FormsAutoForward'        : True,
+
+                           'EmailAutoForwardP2p'     : False,
+                           'FormsAutoForwardP2p'     : False,
+                           'EmailForwardTypeP2p'     : 'None',
+                           'FormForwardTypeP2p'      : 'None',
+                           'RewriteFromP2p'          : False,
+                           'IncludeHRRMExportP2p'    : False,
+
 
                            'Sequences'               : self.createSequenceDefaults(),
 
@@ -2231,6 +2243,8 @@ class FormDictionary(object):
                            'P2pIpLocalAddress'       : values['in_p2pipudpserviceaddress'],
                            'P2pVpnAutoConnect'       : values['cb_p2psettings_autoconnect'],
 
+                           'DataFlecsForMessages'    : self.data_flec_settings,
+
                            'PublicIp'                : values['in_p2pippublicudpserviceaddress'],
 
                            'ExtAppsJs8Net'           : values['cb_general_extappsjs8net'],
@@ -2256,6 +2270,15 @@ class FormDictionary(object):
                            'DisplayTheme'            : values['listbox_theme_select'],
                            'EmailAutoForward'        : values['cb_general_autoforward'],
                            'FormsAutoForward'        : values['cb_general_autoforward_forms'],
+
+                           'EmailAutoForwardP2p'     : values['cb_general_autoforward_p2p'],
+                           'FormsAutoForwardP2p'     : values['cb_general_autoforward_forms_p2p'],
+                           'EmailForwardTypeP2p'     : values['option_general_forwardemailtype_p2p'],
+                           'FormForwardTypeP2p'      : values['option_general_forwardformtype_p2p'],
+                           'RewriteFromP2p'          : values['cb_general_rewrite_from_p2p'],
+                           'IncludeHRRMExportP2p'    : values['cb_general_include_HRRM_export_p2p'],
+
+
 
                            'Sequences'               : self.group_arq.saamfram.main_params.get('params').get('Sequences'),
 
@@ -2350,4 +2373,49 @@ class FormDictionary(object):
               convert_file.write(json.dumps(details))
     return()
 
+
+  def getDataFlecsForMessageType(self, messageType):
+    the_flecs = self.getDataFlecSettings()
+    return the_flecs[messageType]
+
+  def setDataFlecsForMessageType(self, selected_type, list_items):
+    self.data_flec_settings[selected_type] = list_items
+    return self.data_flec_settings
+
+
+  def getDataFlecSettings(self):
+    self.debug.info_message("getDataFlecSettings")
+
+    try:
+      if self.data_flec_settings == {}:
+        params = self.group_arq.saamfram.main_params.get("params")
+        if 'DataFlecsForMessages' in params:
+          self.debug.info_message("retrieved data_flec_parameters: " + str(params.get('DataFlecsForMessages')) )
+          self.data_flec_settings = params.get('DataFlecsForMessages')
+
+      if self.data_flec_settings == {}:
+        self.debug.info_message("setting data flecs to default values")
+
+        self.data_flec_settings = {'beacon'     :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'discussion'   :    ['discussion','public_ip','neighbor_ips','info','beacon'], 
+                                 'standby'      :    ['discussion','public_ip','neighbor_ips','info','beacon'], 
+                                 'cqcqcq'       :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'copy'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'rr73'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 '73'           :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'propagation'  :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'qrt'          :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'reqm'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'notify'       :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'text'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                 'message'      :    ['discussion','public_ip','neighbor_ips','info','beacon'],
+                                }
+
+    except:
+      self.debug.error_message("Exception in readMainDictionaryFromFile: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return self.data_flec_settings
+    
+    
+        
 

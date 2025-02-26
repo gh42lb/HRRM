@@ -277,12 +277,15 @@ class ReceiveControlsProc(object):
       js = self.saamfram.main_params
       self.neighbors_cache.appendTable(js.get("params").get('p2pMyStationNeighbors'), 2)
 
-      station_guid = (self.saamfram.main_params.get("params").get('p2pMyStationName')).strip()
-      if(station_guid == None or station_guid == ''):
-        mac_address = self.group_arq.saamfram.getMacAddress()
-        int_from_mac = self.saamfram.macToInt(mac_address)
-        encoded_id = self.saamfram.getEncodeUniqueMacId(int_from_mac)
-        self.form_gui.window['in_mystationname'].update('GUID: ' + str(encoded_id))
+      try:
+        station_guid = (self.saamfram.main_params.get("params").get('p2pMyStationName')).strip()
+        if(station_guid == None or station_guid == ''):
+          mac_address = self.group_arq.saamfram.getMacAddress()
+          int_from_mac = self.saamfram.macToInt(mac_address)
+          encoded_id = self.saamfram.getEncodeUniqueMacId(int_from_mac)
+          self.form_gui.window['in_mystationname'].update('GUID: ' + str(encoded_id))
+      except:
+        self.debug.info_message("Exception in event_catchall unable to get mac address for GUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
       """ initialize the ten minute timer"""
       self.event_btnmainpanelupdaterecent(values)
@@ -4397,6 +4400,36 @@ class ReceiveControlsProc(object):
     self.event_p2pCommandCommon(cn.P2P_IP_DUMP_LOCAL_STORAGE, {})
 
 
+  def event_dataflecselecttype(self, values):
+    self.debug.info_message("event_dataflecselecttype"  )
+
+    """ call to initialize the data """
+    self.form_dictionary.getDataFlecSettings()
+
+    selected_type = values['option_dataflec_selecttype']
+    self.debug.info_message("selected type: " + str(selected_type) )
+    list_items = self.form_dictionary.getDataFlecsForMessageType(selected_type)
+    self.debug.info_message("list_items: " + str(list_items) )
+    for count in range(6) :
+      self.form_gui.window[('option_dataflec_selectedflec_' + str(count))].update(list_items[count])    
+
+  def event_dataflecselectionsupdate(self, values):
+    self.debug.info_message("event_dataflecselectionsupdate"  )
+
+    try:
+      selected_type = values['option_dataflec_selecttype']
+      self.debug.info_message("selected type: " + str(selected_type) )
+      #list_items = self.form_dictionary.getDataFlecsForMessageType(selected_type)
+      list_items = []
+      for count in range(6) :
+        item_str = values[('option_dataflec_selectedflec_' + str(count))]
+        list_items.append(item_str)
+  
+      self.debug.info_message("list_items: " + str(list_items) )
+      self.form_dictionary.setDataFlecsForMessageType(selected_type, list_items)
+    except:
+      self.debug.error_message("Exception in event_dataflecselectionsupdate: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
   def event_p2pipcreatediscussiongroup(self, values):
     self.debug.info_message("event_p2pipcreatediscussiongroup"  )
 
@@ -4827,6 +4860,10 @@ class ReceiveControlsProc(object):
       'btn_p2pipcreatediscussiongroup'   :   event_p2pipcreatediscussiongroup,
 
       'btn_debugdumplocalstorage'    :   event_debugdumplocalstorage,
+
+      'option_dataflec_selecttype'   :   event_dataflecselecttype,
+
+      'btn_data_flec_selections_update'   :   event_dataflecselectionsupdate,
 
       'btn_disconnectvpnp2pnode'     :   event_disconnectvpnp2pnode,
 
