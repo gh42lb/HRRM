@@ -2538,7 +2538,7 @@ inbox dictionary items formatted as...
                             num_rows=5, key='tbl_compose_select_form', expand_x=True)],
 
          [
-          sg.Text('To: ', size=(5, 1), background_color=js.get("params").get('ComposeTabClr')),
+          sg.Text('To: ', size=(5, 1)),
           sg.InputText('', key='in_compose_selected_callsigns', size=(70, 1)),
 
           sg.Button('Compose Message', size=(15, 1), key='btn_cmpse_compose', disabled = True)],
@@ -2659,7 +2659,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v2.0.2 Alpha \n\
+                                                Ham Radio Relay Messenger de WH6GGO v2.0.3 Alpha \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2025 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2667,21 +2667,27 @@ please refer to https://github.com/gh42lb/\n\
 Contact Email: LarryByng@gmail.com\n\
 \n\
 Ham Radio Relay Messenger Main Features:\n\
+- De-Centralized Hybrid Peer to Peer Network: HRRM combines ham radio with distributed peer to peer ip (internet protocol) to create a distributed hybrid peer to peer network.\n\
+- DHTs and Kademlia: HRRM\'s peer to peer ip network layer utilizes distributed hash tables (DHTs) and Kademlia network routing overlay.\n\
+- Satellite: HRRM\'s hybrid peer to peer network can operate on ham radio (i.e. HF) and satellite (i.e. Starlink) simultaneously.\n\
+- Beacons: HRRM\'s user configurable beacons enable diverse and effective notification techniques.\n\
+- Listen Only Stations: HRRM\'s hybrid network can include non-ham-radio listen only stations as participants in peer to peer ip communications.\n\
+- Send forms over JS8Call: HRRM\'s included ICS forms and email can be sent over JS8 via JS8Call.\n\
 - Dynamic Routing: Builds routing information from active relay stations. Relay messages directed to relay station with fewest hops.\n\
 - Self Organizing Radio Mesh: HRRM allows active stations to form a Dynamic Self Organizing Radio Mesh for message transfer.\n\
 - Critical Messages: Enables transfer of fully verified, error-corrected chats/emails/forms/files/messages to ham radio stations in real time.\n\
-- File Transfer: Capable of sending files.\n\
+- File Transfer: Capable of sending files and images over radio.\n\
 - Winlink Messages: Capable of sending Winlink message files directly from winlink outbox of sending station to winlink inbox of receiving station.\n\
 - Group Communication: Capable of real time Peer to Peer, Peer to Group, Group to Peer** and Group to Group** mode communications.\n\
 - Resilience: Optimized data transfer protocol for increased performance and resilience to adverse band conditions.\n\
-- Integration: Integrates with Fldigi, Winlink and Pat Winlink applications.\n\
+- Integration: Integrates with JS8Call, Fldigi, Winlink and Pat Winlink applications as well as Fortigate routers and Starlink Satellite.\n\
 - Cross-Platform: Runs on Windows, Linux and any other platform supporting python + related libraries.\n\
 - Flexibility: Multiple message delivery techniques including push, pull, store and forward, relay, active session, passive mode.\n\
 - Mesh Node: Ad-hoc mesh node functionality provided out-of-the-box, including: relay, hub, gateway, RX or TX end node, \n\
 - Notifications: Stub messages provide notification to the group of any pending messages waiting to be sent.\n\
 - Data Compression: Uses a variety of data compression techniques inluding dictionary compression and run length encoding.\n\
 - Customized Interface: Email style interface with inbox, outbox, relay box and sent box, utilizing notebook style and customized GUI controls.\n\
-- 31 Modulation Modes: Supports a wide variety of underlying modulations including OFDM, PSK, QPSK, BPSK, DominoEX, 8PSK and Olivia.\n\
+- Many Modulation Modes: Supports a wide variety of underlying modulations including JS8, OFDM, PSK, QPSK, BPSK, DominoEX, 8PSK and Olivia.\n\
 - Extendable: Form designer built-in with many pre-built ICS form templates and standard templates included.\n\
 \n\
 ** Please note:- Group to Peer and Group to Group is currently available only with JS8Call\n\
@@ -2715,8 +2721,32 @@ SOFTWARE.\n'
 
     combo_sequences = 'one,two,three'.split(',')
 
-    combo_data_flecs = '-None-,public ip,neighbor ips,discussion name,info flec,beac flec'.split(',')
-    combo_data_flec_types = '-None-,beacon,discussion,standby,cqcqcq,copy,rr73,73,propagation,qrt,reqm,notify,text,message'.split(',')
+    combo_data_flecs = '-None-,BEAC-PeerStn,BEAC-MyStn,BEAC-RelayStn,MEMO,IP-MyStn,NEIGHBORS,DISC,INFO-SNR,PEND'.split(',')
+    combo_data_flec_types = '-None-,beacon-general,beacon-p2pip-node,beacon-p2pip-gateway,beacon-relay-msg-hub,discussion,standby,cqcqcq,copy,rr73,73,propagation,qrt,reqm,notify,text,pre-message'.split(',')
+    combo_beacon_type = 'General Beacon,p2pip Node,p2pip Gateway,Relay Message Hub'.split(',')
+    combo_expire_messages = '1 Hour,2 Hours,6 Hours,12 Hours,1 Day,2 Days,3 Days,1 Week,2 Weeks,3 Weeks,1 Month,2 Months,3 Months'.split(',')
+
+    """
+        self.data_flec_settings = {'discussion'             :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','NEIGHBORS','IP-MyStn','DISC','-None-'], 
+                                   'standby'                :    ['BEAC-PeerStn','PEND','BEAC-MyStn','MEMO','-None-','-None-','-None-'], 
+                                   'cqcqcq'                 :    ['BEAC-PeerStn','BEAC-RealyStn','BEAC-MyStn','MEMO','-None-','-None-','-None-'],
+                                   'copy'                   :    ['BEAC-PeerStn','BEAC-RealyStn','BEAC-MyStn','MEMO','-None-','-None-','-None-'],
+                                   'rr73'                   :    ['INFO-SNR','BEAC-MyStn','-None-','-None-','-None-','-None-','-None-'],
+                                   '73'                     :    ['INFO-SNR','BEAC-MyStn','-None-','-None-','-None-','-None-','-None-'],
+                                   'propagation'            :    ['BEAC-PeerStn','PEND','BEAC-MyStn','-None-','-None-','-None-','-None-'],
+                                   'qrt'                    :    ['-None-','-None-','-None-','-None-','-None-','-None-','-None-'],
+                                   'reqm'                   :    ['-None-','-None-','-None-','-None-','-None-','-None-','-None-'],
+                                   'notify'                 :    ['-None-','-None-','-None-','-None-','-None-','-None-','-None-'],
+                                   'text'                   :    ['BEAC-PeerStn','PEND','BEAC-MyStn','-None-','-None-','-None-','-None-'],
+                                   'pre-message'            :    ['PEND','BEAC-MyStn','-None-','-None-','-None-','-None-','-None-'],
+                                   'beacon-general'         :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                                   'beacon-p2pip-node'      :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                                   'beacon-p2pip-gateway'   :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                                   'beacon-relay-msg-hub'   :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                                }
+
+      
+    """
 
     params = js.get('params')
     sequences = params.get('Sequences')
@@ -2740,20 +2770,26 @@ SOFTWARE.\n'
                           [
                            sg.InputText(default_text='GUID: ' + js.get("params").get('p2pMyStationName'), justification ='center', key='in_mystationname', font=("Helvetica", 15), size=(40, 1), enable_events = True, text_color='white', background_color='black', expand_x=True)],
 
-                          [sg.Text('P2P VPN Node Address: ', size=(22, 1) ) ,
+
+                        [sg.Frame('p2p ip - p2pNode VPN', [
+
+                          [sg.Text('ip address & port - ip:port ', size=(22, 1) ) ,
                            sg.InputText(default_text=js.get("params").get('p2pVpnNodeAddress'), key='in_p2pipnode_ipaddr', size=(20, 1)),
-                           sg.CBox('Auto Connect', key='cb_p2psettings_autoconnect', default = js.get("params").get('P2pVpnAutoConnect'))],
+                           sg.CBox('Auto Connect', key='cb_p2psettings_autoconnect', default = js.get("params").get('P2pVpnAutoConnect'), visible = False)],
 
-                        [sg.Frame('p2pNode Service', [
+                         ],expand_x = True )],
 
-                          [sg.Text('p2p ip Local Address : ', size=(22, 1) ) ,
+
+                        [sg.Frame('p2p ip - Kademlia Network Service', [
+
+                          [sg.Text('Local ip Address : ', size=(14, 1) ) ,
                              sg.InputText(default_text=js.get("params").get('P2pIpLocalAddress'), key='in_p2pipudpserviceaddress', size=(20, 1)),
 
-                           sg.Text('p2p ip Local Port : ', size=(22, 1) ) ,
-                             sg.InputText(default_text=js.get("params").get('P2pIpLocalPort'), key='in_p2pipudpserviceaddressport', size=(20, 1)),
+                           sg.Text('Local Port : ', size=(11, 1) ) ,
+                             sg.InputText(default_text=js.get("params").get('P2pIpLocalPort'), key='in_p2pipudpserviceaddressport', size=(10, 1)),
 
-                           sg.Text('p2p ip Public Port: ', size=(22, 1) ) ,
-                             sg.InputText(default_text=js.get("params").get('P2pIpPublicPort'), key='in_p2pipudppublicserviceport', size=(20, 1))],
+                           sg.Text('Public Port: ', size=(11, 1) ) ,
+                             sg.InputText(default_text=js.get("params").get('P2pIpPublicPort'), key='in_p2pipudppublicserviceport', size=(10, 1))],
 
                          ],expand_x = True )],
 
@@ -2768,19 +2804,6 @@ SOFTWARE.\n'
                            sg.InputText(default_text=js.get("params").get('FortigateWanInterfaceName'), key='in_p2pipfortigatewaninterfacename', size=(15, 1))],
                          ],expand_x = True )],
 
-                        [sg.Frame('Data Flec Settings', [
-                          [
-                           sg.Text('Type:', size=(5, 1) ) ,
-                           sg.Combo(combo_data_flec_types, default_value=combo_data_flec_types[0], key='option_dataflec_selecttype', size=(11, 1), enable_events=True),
-                           sg.Text('Associated Data Flecs: ', size=(20, 1) ) ,
-                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_0', size=(10, 1)),
-                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_1', size=(10, 1)),
-                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_2', size=(10, 1)),
-                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_3', size=(10, 1)),
-                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_4', size=(10, 1)),
-                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_5', size=(10, 1)),
-                           sg.Button('Update:', size=(11, 1), key='btn_data_flec_selections_update')],
-                         ],expand_x = True, visible = False )],
 
 
                           [sg.Button('Save',   key='btn_myinfo_save_sat', size=(6, 1) )], 
@@ -2803,7 +2826,7 @@ SOFTWARE.\n'
 
                            sg.Text('', expand_x = True ) ,
                            sg.Button('Launch JS8-Net', size=(11, 1), disabled = False if (js.get("params").get('ExtAppsJs8Net')==True) else True, key='button_launch_net' , visible = not self.group_arq.listenonly) ,
-                           sg.CBox('Net Control', key='cb_chat_netcontrol', background_color=js.get("params").get('ChatTabClr'), visible = not self.group_arq.listenonly)],
+                           sg.CBox('Net Control', key='cb_chat_netcontrol', visible = not self.group_arq.listenonly)],
 
 
                           [sg.Table(values=[], headings=['From Callsign', 'Message', 'MSGID'],
@@ -2836,7 +2859,7 @@ SOFTWARE.\n'
 
 
 
-                            [sg.Frame('IP - Satellite & Internet', [
+                            [sg.Frame('p2p ip - Satellite & Internet', [
 
                           [
                            sg.Button('Send', size=(5, 1), key='btn_p2pipchatpostandsend' ) ,
@@ -2850,7 +2873,7 @@ SOFTWARE.\n'
                              sg.Frame('Radio', [
                             [
                               sg.Button('Announce', size=(15, 1), key='btn_announcediscussiongroup' ) ,
-                              sg.CBox('Auto Beacon', key='cb_p2pipchat_autobeacon', background_color=js.get("params").get('ChatTabClr'))],
+                              sg.CBox('Auto Beacon', key='cb_p2pipchat_autobeacon' )],
                                 ], visible = not self.group_arq.listenonly), 
 
 
@@ -2876,7 +2899,7 @@ SOFTWARE.\n'
 
                             [sg.TabGroup([[
                                sg.Tab('Radio', self.layout_chat_radio, title_color='Black', key='tab_myinfo'),
-                               sg.Tab('IP - Satellite & Internet', self.layout_chat_satellite, title_color='Black')]] ,
+                               sg.Tab('p2p ip - Satellite & Internet', self.layout_chat_satellite, title_color='Black')]] ,
 
                              tab_location='centertop',
                              selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', expand_x=True, expand_y = True )],
@@ -2981,6 +3004,36 @@ SOFTWARE.\n'
                             enable_events=True,
                             select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
                             num_rows=cn.PREVIEW_NUM_ROWS_RELAYBOX, key='table_relaybox_preview', font=("Courier New", 10), expand_x=True)],
+
+    ]
+
+
+    self.layout_data_flecs = [
+
+                        [sg.Frame('Data Flec Settings', [
+                          [
+                           sg.Text('Type:', size=(5, 1) ) ,
+                           sg.Combo(combo_data_flec_types, default_value=combo_data_flec_types[0], key='option_dataflec_selecttype', size=(25, 1), enable_events=True),
+                           sg.Text('Associated Data Flecs:- ', size=(20, 1) ) ,
+                           sg.Button('Update', size=(11, 1), key='btn_data_flec_selections_update'),
+                           sg.Button('Reset', size=(11, 1), key='btn_data_flec_reset_selections')],
+                          [sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_0', size=(15, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_1', size=(15, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_2', size=(15, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_3', size=(15, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_4', size=(15, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_5', size=(15, 1)),
+                           sg.Combo(combo_data_flecs, default_value=combo_data_flecs[0], key='option_dataflec_selectedflec_6', size=(15, 1))],
+                          [sg.Text('Beacon Type:', size=(15, 1) ) ,
+                           sg.Combo(combo_beacon_type, default_value=js.get("params").get('BeaconType'), key='option_beacon_type', size=(20, 1))],
+                         ],expand_x = True, visible = True )],
+
+                        [sg.Frame('Outbox and Relay Box Message Expiration', [
+                          [
+                           sg.CBox('Expire Messages After:', key='cb_expire_messages_after' ),
+                           sg.Combo(combo_expire_messages, default_value=combo_expire_messages[0], key='option_expire_messages_timeframe', size=(15, 1))],
+                        ],expand_x = True, visible = True )],
+
 
     ]
 
@@ -3119,20 +3172,20 @@ SOFTWARE.\n'
                             [sg.Frame('Radio Send Message Options', [
 
          [
-          sg.CBox('Pre Message:',  key='cb_outbox_includepremsg', background_color=js.get("params").get('OutboxTabClr') ), 
+          sg.CBox('Pre Message:',  key='cb_outbox_includepremsg' ), 
           sg.OptionMenu(combo_premsg, default_value=combo_premsg[0], key='option_outbox_premessage', visible=False),
-          sg.CBox('Repeat Message',  key='cb_outbox_repeatmsg', background_color=js.get("params").get('OutboxTabClr') ), 
+          sg.CBox('Repeat Message',  key='cb_outbox_repeatmsg' ), 
           sg.Combo(combo_numtimes_msg, default_value=combo_numtimes_msg[0], key='option_repeatmessagetimes'),
           sg.CBox('Repeat Fragments',  key='cb_outbox_repeatfrag', visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False ), 
           sg.OptionMenu(combo_numtimes_frag, default_value=combo_numtimes_frag[0], key='option_repeatfragtimes', visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False),
           sg.CBox('Include Template', key='cb_outbox_includetmpl', visible = self.group_arq.include_templates),
-          sg.Text('Fragment Size:', background_color=js.get("params").get('OutboxTabClr') ), 
+          sg.Text('Fragment Size:' ), 
           sg.OptionMenu(combo_fragtypes, default_value=combo_fragtypes[2], key='option_framesize'),
 
-          sg.Text('Mode:', size=(5, 1), background_color=js.get("params").get('OutboxTabClr'), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
+          sg.Text('Mode:', size=(5, 1), visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False ), 
           sg.Combo(combo_mode2, default_value=combo_mode2[combo_mode2_default_1], key='option_outbox_fldigimode', enable_events = True, visible = True if (self.group_arq.send_mode_rig1 == cn.SEND_FLDIGI) else False),
 
-          sg.CBox('Use Seq.', background_color=js.get("params").get('OutboxTabClr'), key='cb_outbox_useseq', enable_events=True ),
+          sg.CBox('Use Seq.', key='cb_outbox_useseq', enable_events=True ),
           sg.Combo(combo_sequences, default_value=combo_sequences[0], key='option_outbox_selectedseq', size=(22, 1), enable_events = True, disabled = True)],
 
                                 ], expand_x=True)
@@ -3506,6 +3559,8 @@ SOFTWARE.\n'
                                sg.Tab('Colors', self.layout_colors, title_color='Black'),
                                sg.Tab('Templates', self.layout_templates, title_color='Black', visible=False) ,
                                sg.Tab('Sequence', self.layout_sequence, title_color='Blue', key='tab_sequence', visible = not self.group_arq.listenonly),
+                               sg.Tab('Data Flecs', self.layout_data_flecs, title_color='Black'),
+                               sg.Tab('Satelite & Internet', self.layout_substation, title_color='Black'),
                                sg.Tab('About', self.layout_about, title_color='Black')]] ,
 
                              tab_location='centertop',
@@ -3594,7 +3649,7 @@ SOFTWARE.\n'
                                sg.Tab('In Box', self.layout_inbox, title_color='Blue',border_width =10, key='tab_inbox' ),
                                sg.Tab('Out Box', self.layout_outbox, title_color='Blue', key='tab_outbox'),
                                sg.Tab('Relay - Store & Forward', self.layout_relay, title_color='Blue', key='tab_relaybox'),
-                               sg.Tab('Sent', self.layout_sent, title_color='Blue'),
+                               sg.Tab('Sent \\ Archive', self.layout_sent, title_color='Blue'),
                                sg.Tab('Compose', self.layout_compose, title_color='Green', key='tab_compose')]],
 
                              tab_location='centertop',
@@ -3762,8 +3817,8 @@ SOFTWARE.\n'
     self.layout_satellite_and_internet_tab = [
 
                             [sg.TabGroup([[
-                               sg.Tab('Settings', self.layout_substation, title_color='Blue',border_width =10 ),
-                               sg.Tab('VPN Connections & Data Flecs', self.layout_peer_p2pip_connections, title_color='Green', key='tab_compose', visible=False)]],
+                               #sg.Tab('Settings', self.layout_substation, title_color='Blue',border_width =10 ),
+                               sg.Tab('VPN Connections & Data Flecs', self.layout_peer_p2pip_connections, title_color='Green', key='tab_compose', visible=True)]],
 
                              tab_location='centertop',
                              selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', expand_x=True )],
@@ -3788,7 +3843,7 @@ SOFTWARE.\n'
                         sg.Button('Relay', size=(4, 1), key='btn_mainpanel_relay', visible = False),
 
 
-                        sg.Frame('p2p ip - Node VPN', [
+                        sg.Frame('p2p ip - p2pNode VPN', [
                            [
                            sg.Button('Connect', size=(8, 1), key='btn_connectvpnp2pnode'),
                            sg.Button('Disconnect', size=(8, 1), key='btn_disconnectvpnp2pnode', visible=False),
@@ -3848,7 +3903,7 @@ SOFTWARE.\n'
                              selected_title_color='Black', selected_background_color='White', key='tabgrp_winlink', enable_events=True, expand_x=True )],
 
                         [
-                        sg.Text('Active last:', size=(8, 1), visible = True), 
+                        sg.Text('Active last:', size=(9, 1), visible = True), 
                         sg.Combo(combo_showactive, default_value=combo_showactive[4], key='option_showactive', size=(10, 1), enable_events=True),
                         sg.Button('Update', size=(5, 1), key='btn_mainpanel_updaterecent'),
                         sg.Button('Clear', size=(4, 1), key='btn_mainpanel_clearstations'),
@@ -3856,7 +3911,7 @@ SOFTWARE.\n'
                         sg.Text('Connect To:', key='text_mainarea_connect_to'),
                         sg.InputText(js.get("params").get('ConnectTo'), key='in_inbox_listentostation', size=(20, 1), disabled=False),
 
-                         sg.Text('Group Name', size=(10, 1) ), 
+                         sg.Text('Group Name', size=(11, 1) ), 
                          sg.InputText(default_text=js.get("params").get('GroupName'), key='input_myinfo_group_name', size=(20, 1))],
                          
                          
@@ -3958,7 +4013,7 @@ SOFTWARE.\n'
                           [sg.TabGroup([[
                              sg.Tab('Chat - Peer & Group', self.layout_chat_tabs, title_color='Blue',border_width =10, key='tab_chat' ),
                              sg.Tab('HRRM Messages', self.layout_HRRM, title_color='Blue',border_width =10, key='tab_hrrm' ),
-                             sg.Tab('P2P IP - Satellite & Internet', self.layout_satellite_and_internet_tab, title_color='Blue',border_width =10 ),
+                             sg.Tab('Satellite & Internet', self.layout_satellite_and_internet_tab, title_color='Blue',border_width =10, visible = False ),
                              sg.Tab('Winlink Messages', self.layout_winlink, title_color='Blue',border_width =10, key='tab_winlink', visible = self.group_arq.display_winlink ),
                              sg.Tab('Files & Images', self.layout_filexfer, title_color='Blue', key='tab_filexfer'),
                              sg.Tab('Settings', self.layout_settings, title_color='Black'),
@@ -3967,7 +4022,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main', expand_x=True  )] ]  
 
-    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.2 Alpha - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
+    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.3 Alpha - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
 
     return (self.window)
 

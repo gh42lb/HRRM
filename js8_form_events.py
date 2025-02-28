@@ -105,6 +105,8 @@ class ReceiveControlsProc(object):
     self.discussion_cache = DataCache()
     self.neighbors_cache = DataCache()
 
+    self.p2pip_discussion_table_selected_row = 0
+
     self.beacon_trigger_time = None
 
     self.substationClient1 = None
@@ -390,6 +392,7 @@ class ReceiveControlsProc(object):
         self.p2pip_ten_minute_timer = self.p2pip_ten_minute_timer + 1
 
         """ do a 1 minute refresh of text messages when discussion is active."""
+        self.event_checkfordiscussiongroupmessages(values)
 
         if self.p2pip_ten_minute_timer >= 10:
           self.p2pip_ten_minute_timer = 0
@@ -1272,17 +1275,28 @@ class ReceiveControlsProc(object):
 
     try:
       table = self.discussion_cache.getTable()
-      line_index = int(values['table_chat_satellitediscussionname_plus_group'][0])
-      discussion_name     = (table[line_index])[0]
-      group_name          = (table[line_index])[1]
 
-      address = self.form_gui.window['in_p2pipnode_ipaddr'].get()
-      tolist = str(discussion_name + group_name.replace('@', '#') )
+      line_data = values['table_chat_satellitediscussionname_plus_group']
+      self.debug.info_message("line_data is: " + str(line_data))
 
-      self.debug.info_message("getting message for: " + str(tolist))
+      if line_data != [] :
+        line_index = int(values['table_chat_satellitediscussionname_plus_group'][0])
 
-      mypipeclient = self.form_gui.getClientPipe()
-      mypipeclient.p2pNodeCommand(cn.P2P_IP_GET_TEXT, address, {'disc_group':tolist})
+        self.debug.info_message("line_index is: " + str(line_index))
+
+        discussion_name     = (table[line_index])[0]
+        group_name          = (table[line_index])[1]
+
+        address = self.form_gui.window['in_p2pipnode_ipaddr'].get()
+        tolist = str(discussion_name + group_name.replace('@', '#') )
+
+        self.debug.info_message("getting message for: " + str(tolist))
+
+        mypipeclient = self.form_gui.getClientPipe()
+        mypipeclient.p2pNodeCommand(cn.P2P_IP_GET_TEXT, address, {'disc_group':tolist})
+      else:
+        self.debug.info_message("no discussion group selected")
+
     except:
       self.debug.error_message("Exception in event_checkfordiscussiongroupmessages: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
@@ -4418,8 +4432,17 @@ class ReceiveControlsProc(object):
     self.debug.info_message("selected type: " + str(selected_type) )
     list_items = self.form_dictionary.getDataFlecsForMessageType(selected_type)
     self.debug.info_message("list_items: " + str(list_items) )
-    for count in range(6) :
+    for count in range(7) :
       self.form_gui.window[('option_dataflec_selectedflec_' + str(count))].update(list_items[count])    
+
+
+  def event_dataflecresetselections(self, values):
+    self.debug.info_message("event_dataflecresetselections"  )
+    self.form_dictionary.resetDataFlecs()
+    self.form_gui.window['option_dataflec_selecttype'].update('-None-')    
+    for count in range(7) :
+      self.form_gui.window[('option_dataflec_selectedflec_' + str(count))].update('-None-')    
+
 
   def event_dataflecselectionsupdate(self, values):
     self.debug.info_message("event_dataflecselectionsupdate"  )
@@ -4429,7 +4452,7 @@ class ReceiveControlsProc(object):
       self.debug.info_message("selected type: " + str(selected_type) )
       #list_items = self.form_dictionary.getDataFlecsForMessageType(selected_type)
       list_items = []
-      for count in range(6) :
+      for count in range(7) :
         item_str = values[('option_dataflec_selectedflec_' + str(count))]
         list_items.append(item_str)
   
@@ -4444,10 +4467,15 @@ class ReceiveControlsProc(object):
     try:
       discussion_name = self.form_gui.window['in_chat_p2pip_discussiongroup'].get()
       group_name = self.saamfram.getMyGroup()
-      self.discussion_cache.append(str(discussion_name + ':' + group_name), [discussion_name, group_name])
+      new_key = str(discussion_name + ':' + group_name)
+      self.discussion_cache.append(new_key, [discussion_name, group_name])
       table = self.discussion_cache.getTable()
+      row_num = self.discussion_cache.getRowNum(new_key)
+
+      self.p2pip_discussion_table_selected_row = row_num
+
       self.debug.info_message("created table is: " + str(table))
-      self.form_gui.window['table_chat_satellitediscussionname_plus_group'].update(values = table)
+      self.form_gui.window['table_chat_satellitediscussionname_plus_group'].update(values = table, select_rows = [row_num])
     except:
       self.debug.error_message("Exception in event_p2pipcreatediscussiongroup: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
@@ -4873,6 +4901,9 @@ class ReceiveControlsProc(object):
 
       'btn_data_flec_selections_update'   :   event_dataflecselectionsupdate,
 
+      'btn_data_flec_reset_selections'   :   event_dataflecresetselections,
+
+
       'btn_disconnectvpnp2pnode'     :   event_disconnectvpnp2pnode,
 
       'btn_p2pipsettingscreateguid'    :   event_p2pipsettingscreateguid,
@@ -4987,6 +5018,21 @@ class DataCache(object):
 
   def getTable(self):
     return self.cache_table
+
+  def getRowNum(self, key):
+    self.debug.info_message("data cache getRowNum")
+    self.debug.info_message("key to match: " + str(key) )
+    table = self.getTable()
+    for item_num in range(len(table)):
+      self.debug.info_message("row item: " + str(table[item_num]) )
+      table_row_key = table[item_num][0] + ':' + table[item_num][1]
+      self.debug.info_message("row key: " + str(table_row_key) )
+      if table_row_key == key:
+        self.debug.info_message("found key match for row: " + str(item_num) )
+        return item_num
+
+    self.debug.info_message("no match found for key in data cache - returning 0" )
+    return 0
     
     
 

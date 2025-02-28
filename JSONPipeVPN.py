@@ -151,7 +151,7 @@ class JSONPipeVPN(object):
           if(connected == False):
             context = self.create_server_socket()
 
-          sys.stdout.write("Witing for connection\n")
+          sys.stdout.write("Waiting for connection\n")
           newconn, addr = self.sock.accept()
           sys.stdout.write("Server accepted connection\n")
           conn = context.wrap_socket(newconn, server_side=True)
