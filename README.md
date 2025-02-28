@@ -1,10 +1,10 @@
 ## Overview
 
-Ham Radio Relay Messenger v2.0.2 alpha release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v2.0.3 alpha release de WH6GGO. The software is currently in active development and early release testing phase.
 
 
 #### Features
-* Distributed Peer To Peer IP Layer: v2.0.2 includes a distributed peer to peer ip layer for decentralized IP communications via satellite and terrestrial internet.
+* Distributed Peer To Peer IP Layer: v2.0.3 includes a distributed peer to peer ip layer for decentralized IP communications via satellite and terrestrial internet.
 * Support for JS8: Send messages, email, forms and ICS forms via JS8 and JS8call
 * Dynamic Routing: Builds routing information from active relay stations. Relay messages directed to stations with fewest hops.
 * Self Organizing Radio Mesh: HRRM allows active stations to form a Dynamic Self Organizing Radio Mesh for message transfer either directly or via relay.
@@ -33,7 +33,7 @@ Download the following:
 
 * JS8Call
 * Fldigi
-* HRRM v2.0.2 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
+* HRRM v2.0.3 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
 * p2pnode binary from github.com/gh42lb/HRRM
 
 run the windows installer or create a folder on the desktop called HRRM and add the binary file
@@ -57,8 +57,11 @@ HRRM Grid Square: in HRRM, 'MyInfo' tab / Grid Square. Enter you grid square int
 JS8Call 
 File/Settings/Reporting tab
 under the API section:
+
 TCP Server Hostname: 127.0.0.1   Enable TCP Server API - checked
+
 TCP Server Port:     2442        Accept TCP Requests   - checked
+
 TCP Max Connections: 1 or 2
 
 on pi\linux, copy the hrrm.key and hrrm.crt files to the ~/.HRRM folder
