@@ -53,6 +53,7 @@ class pNode(object):
   pipe = {}
   mainloop = None
   server = None
+  fNodeStarted = False
 
   def setPipe(self, pipe, pipe_key):
     self.pipe[pipe_key] = pipe
@@ -87,7 +88,7 @@ class pNode(object):
     sys.stdout.write("STOP CALLED\n")
     self.mainloop.stop()
     message = json.dumps({'type': cn.P2P_IP_CONNECT_UDP, 'subtype': cn.P2P_IP_STOPPED, 'params': {}})
-    #self.pipe.conn.sendall((message + '\n').encode())
+    self.fNodeStarted = False
     pipe.conn.sendall((message + '\n').encode())
 
   def start(self, address, vpnpipe_address):
@@ -112,6 +113,7 @@ class pNode(object):
     loop.run_until_complete(self.server.listen(port, ip))
    
     try:
+      self.fNodeStarted = True
       message = json.dumps({'type': cn.P2P_IP_CONNECT_UDP, 'subtype': cn.P2P_IP_SUCCESS, 'params': {}})
       pipe = self.getPipe(vpnpipe_address)
       pipe.conn.sendall((message + '\n').encode())
@@ -257,6 +259,7 @@ class pNode(object):
     return dict_obj
 
   def create_bootstrap_node(self, args):
+    sys.stdout.write("create_bootstrap_node\n")
 
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
@@ -329,8 +332,12 @@ class JSONPipeVPNp2pnodeCallback(object):
           sys.stdout.write("COMMAND restart received\n")
           self.pnode.restart()
         elif(varsubtype == cn.P2P_IP_QUERY_NEIGHBORS):
-          sys.stdout.write("Getting Neighbors in pnode\n")
-          self.pnode.getNeighbors(vpnpipe_address)
+          if self.pnode.fNodeStarted == True:
+            sys.stdout.write("Getting Neighbors in pnode\n")
+            self.pnode.getNeighbors(vpnpipe_address)
+          else:
+            sys.stdout.write("Node Service not started...ignoring command\n")
+
         elif(varsubtype == cn.P2P_IP_QUERY_PING):
           sys.stdout.write("Pinging in pnode\n")
           address = dict_obj.get('params').get('ping_address')

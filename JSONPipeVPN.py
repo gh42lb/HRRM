@@ -130,6 +130,8 @@ class JSONPipeVPN(object):
       self.sock.listen(5)
       sys.stdout.write("Server listening on " + str(self.ip_port)+ "\n")
 
+    except FileNotFoundError:
+      sys.stdout.write("File not found error. Make sure hrrm.crt and hrrm.key are copied to ~/.HRRM folder...cp ./hrrm.crt ./hrrm.key ~/.HRRM\n")
     except:
       sys.stdout.write("Exception in create_server_socket: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) + "\n")
 

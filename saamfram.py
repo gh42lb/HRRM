@@ -241,10 +241,10 @@ class SAAMFRAM(SaamframCoreUtils):
     checksum = self.getChecksum(msgid + ',' + memo)
     return message + ',' + checksum +  ')'
 
-  def createPreMessageDataFlecBootstrap(self, msgid, bootstrap_ip):
+  def createPreMessageDataFlecBootstrap(self, msgid, bootstrap_ip, bootstrap_port):
     self.debug.info_message("createPreMessageDataFlecBootstrap. ip: " + str(bootstrap_ip) )
-    message = 'BOOT(' + msgid + ',' + bootstrap_ip 
-    checksum = self.getChecksum(msgid + ',' + bootstrap_ip)
+    message = 'BOOT(' + msgid + ',' + bootstrap_ip + ',' + bootstrap_port
+    checksum = self.getChecksum(msgid + ',' + bootstrap_ip + ',' + bootstrap_port)
     return message + ',' + checksum +  ')'
 
   def createPreMessageDataFlecDiscussion(self, msgid, disc_group, group_name):
@@ -2350,6 +2350,88 @@ outbox dictionary items formatted as...
     return sendstring
 
 
+  def buildPreMessageGeneral(self, from_callsign, group_name):
+    self.debug.info_message("buildPreMessageGeneral")
+
+    data_flec_setting = self.form_dictionary.getDataFlecsForMessageType('discussion')
+
+    sendstring = ''
+    delimeter = ''
+
+    if data_flec_setting['pub_ip_flec'] == True :
+      """ include my station public ip """
+      self.debug.info_message("including public ip")
+      self.debug.info_message("including public ip")
+      public_ip = self.form_gui.window['in_p2pippublicudpserviceaddress'].get().strip()
+      bootstrap_port = self.form_gui.window['in_p2pipudppublicserviceport'].get().strip()
+      bootstrap_ip = public_ip.replace(':', '+')
+      myStnID = self.getEncodeUniqueId(from_callsign)
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+
+    if data_flec_setting['neighbor_ips_flec'] == True :
+      """ include neighbors """
+      self.debug.info_message("including neighbors")
+      neighbors = self.form_gui.form_events.neighbors_cache.getTable()
+      random_rows = random.sample(neighbors, min(5, len(neighbors)))
+      for item in random_rows:
+        bootstrap_ip = str(item[0]).replace(':', '+')
+        bootstrap_port = str(item[1])
+        myStnID = self.getEncodeUniqueId(from_callsign)
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+
+    if data_flec_setting['beac_peers'] == True :
+      """ BEAC for my peer stations"""
+      ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
+      self.debug.info_message("getRandomPeerstnDictItem ID = " + str(ID))
+      if(ID != ''):  
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
+
+    if data_flec_setting['beac_mystn'] == True :
+      """ BEAC for my station """
+      from_callsign = self.getMyCall()
+      myStnID = self.getEncodeUniqueId(from_callsign)
+      mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
+      self.debug.info_message("buildPreMessageForDiscussionGroup MYGRID = " + mygrid)
+      myhops = '1'
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
+
+    if data_flec_setting['stn_memo'] == True :
+      """ memo for station """
+      checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
+      if(checked):
+        memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
+        myStnID = self.getEncodeUniqueId(self.getMyCall())
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
+
+    if data_flec_setting['disc_name'] == True :
+      """ selected discussion """
+      table = self.form_gui.form_events.discussion_cache.getTable()
+      line_index = int(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
+      self.debug.info_message("selected line index in discussion table is " + str(line_index))
+      discussion_name = table[line_index][0]
+      group_name      = table[line_index][1]
+      myStnID = self.getEncodeUniqueId(from_callsign)
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecDiscussion(myStnID, discussion_name, group_name) )
+
+    if data_flec_setting['info_snr'] == True :
+      """ INFO(SNR for station in QSO"""
+      talking_to_station = self.form_gui.window['in_inbox_listentostation'].get()
+      num, grid, connect, rig, modulation, snr, last_heard = self.form_dictionary.getItemsForPeerstnDictItem(talking_to_station)
+      mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
+      from_callsign = self.getMyCall()
+      myStnID = self.getEncodeUniqueId(from_callsign)
+      if(snr != ''):
+        part_msg = self.createPreMessageInfoSNRDataFlec(snr)
+        if(part_msg != ''):  
+          sendstring = sendstring + delimeter + part_msg
+          delimeter = ','
+
+    if data_flec_setting['beac_relay'] == True :
+      """ BEAC for my relay stations"""
+      relaycall, relayID, relaygrid, relayhops = self.form_dictionary.getRandomRelaystnDictItem()
+      if(relaycall != ''):  
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(relayID, relaygrid, relayhops))
+
 
   def buildPreMessageForDiscussionGroup(self, from_callsign, group_name):
     self.debug.info_message("buildPreMessageForDiscussionGroup")
@@ -2376,20 +2458,28 @@ outbox dictionary items formatted as...
       myStnID = self.getEncodeUniqueId(self.getMyCall())
       sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
 
+    """ include neighbors """
     self.debug.info_message("including neighbors")
-
     neighbors = self.form_gui.form_events.neighbors_cache.getTable()
-
     random_rows = random.sample(neighbors, min(5, len(neighbors)))
     for item in random_rows:
-      bootstrap_ip = item[0] + '+' + str(item[1])
+      bootstrap_ip = str(item[0]).replace(':', '+')
+      bootstrap_port = str(item[1])
       myStnID = self.getEncodeUniqueId(from_callsign)
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip) )
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+
+    """ include my station public ip """
+    self.debug.info_message("including public ip")
+    self.debug.info_message("including public ip")
+    public_ip = self.form_gui.window['in_p2pippublicudpserviceaddress'].get().strip()
+    bootstrap_port = self.form_gui.window['in_p2pipudppublicserviceport'].get().strip()
+    bootstrap_ip = public_ip.replace(':', '+')
+    myStnID = self.getEncodeUniqueId(from_callsign)
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+
 
     self.debug.info_message("getting line index for table: " + str(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()))
-
     table = self.form_gui.form_events.discussion_cache.getTable()
-
     line_index = int(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
     self.debug.info_message("selected line index in discussion table is " + str(line_index))
     discussion_name = table[line_index][0]
@@ -2430,25 +2520,22 @@ outbox dictionary items formatted as...
 
     """ include my station public ip """
     self.debug.info_message("including public ip")
+    self.debug.info_message("including public ip")
     public_ip = self.form_gui.window['in_p2pippublicudpserviceaddress'].get().strip()
-    if ':' in public_ip :
-      address = public_ip.split(':')[0]
-      bootstrap_ip = public_ip.replace(':', '+')
-    else:
-      address = public_ip
-      bootstrap_ip = public_ip + '+' + str(self.form_gui.window['in_p2pipudppublicserviceport'].get().strip())
-
+    bootstrap_port = self.form_gui.window['in_p2pipudppublicserviceport'].get().strip()
+    bootstrap_ip = public_ip.replace(':', '+')
     myStnID = self.getEncodeUniqueId(from_callsign)
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip) )
+    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
 
     """ include neighbors """
     self.debug.info_message("including neighbors")
     neighbors = self.form_gui.form_events.neighbors_cache.getTable()
     random_rows = random.sample(neighbors, min(5, len(neighbors)))
     for item in random_rows:
-      bootstrap_ip = item[0] + '+' + str(item[1])
+      bootstrap_ip = str(item[0]).replace(':', '+')
+      bootstrap_port = str(item[1])
       myStnID = self.getEncodeUniqueId(from_callsign)
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip) )
+      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
 
     """ include discussion group details if beacon checkbox checked"""
     checked = self.form_gui.window['cb_p2pipchat_autobeacon'].get()
@@ -3911,5 +3998,3 @@ outbox dictionary items formatted as...
       """ this was a command so we are done"""
       return
 
-
-    

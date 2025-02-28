@@ -4343,8 +4343,16 @@ class ReceiveControlsProc(object):
 
     try:
       address = self.form_gui.window['in_p2pipudpserviceaddress'].get()
-      ipaddr = address.split(':')[0]
-      port = int(address.split(':')[1])
+      port    = self.form_gui.window['in_p2pipudpserviceaddressport'].get()
+
+      # added for compatibility with earlier released version....force upgrade format for field
+      if(address.strip() == '127.0.0.1:3000'):
+        self.form_gui.window['in_p2pipudpserviceaddress'].update('127.0.0.1')
+        address = '127.0.0.1'
+
+      #ipaddr = address.split(':')[0]
+      ipaddr = address
+      port = int(port)
 
       self.event_p2pCommandCommon(cn.P2P_IP_START, {'address':(ipaddr, port)})
     except:

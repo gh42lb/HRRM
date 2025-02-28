@@ -2659,7 +2659,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v2.0.1 Alpha \n\
+                                                Ham Radio Relay Messenger de WH6GGO v2.0.2 Alpha \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2025 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2748,6 +2748,9 @@ SOFTWARE.\n'
 
                           [sg.Text('p2p ip Local Address : ', size=(22, 1) ) ,
                              sg.InputText(default_text=js.get("params").get('P2pIpLocalAddress'), key='in_p2pipudpserviceaddress', size=(20, 1)),
+
+                           sg.Text('p2p ip Local Port : ', size=(22, 1) ) ,
+                             sg.InputText(default_text=js.get("params").get('P2pIpLocalPort'), key='in_p2pipudpserviceaddressport', size=(20, 1)),
 
                            sg.Text('p2p ip Public Port: ', size=(22, 1) ) ,
                              sg.InputText(default_text=js.get("params").get('P2pIpPublicPort'), key='in_p2pipudppublicserviceport', size=(20, 1))],
@@ -3964,7 +3967,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main', expand_x=True  )] ]  
 
-    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.1 Alpha - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
+    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.2 Alpha - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
 
     return (self.window)
 
