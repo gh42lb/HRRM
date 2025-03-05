@@ -275,12 +275,11 @@ class FormDictionary(object):
         priority = selected_item[4]
         msgid    = selected_item[6]
 
-
-        for count in range(0,len(to_list)):
-          station = to_list[count]
-          if(station in current_list):
-            self.dataFlecCache_addMsgPendPeer(msgid, station, selected_item)
-
+        if '_' in msgid:
+          for count in range(0,len(to_list)):
+            station = to_list[count]
+            if(station in current_list):
+              self.dataFlecCache_addMsgPendPeer(msgid, station, selected_item)
 
     except:
       self.debug.error_message("Exception in dataFlecCache_rebuildMsgPendPeer: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
@@ -303,10 +302,11 @@ class FormDictionary(object):
       priority = selected_item[4]
       msgid    = selected_item[6]
 
-      for count in range(0,len(to_list)):
-        station = to_list[count]
-        if(station in current_list):
-          self.dataFlecCache_addMsgPendRelay(msgid, station, selected_item)
+      if '_' in msgid:
+        for count in range(0,len(to_list)):
+          station = to_list[count]
+          if(station in current_list):
+            self.dataFlecCache_addMsgPendRelay(msgid, station, selected_item)
 
     return          
 
@@ -1148,7 +1148,8 @@ class FormDictionary(object):
         message    = self.peerstn_file_dictionary_data.get(key)
         ID         = message.get('lastheard')
 
-        timestamp_string = ID.split('_',1)[1]
+        timestamp_string = self.group_arq.saamfram.extractTimestamp(ID)
+        #timestamp_string = ID.split('_',1)[1]
         inttime = int(timestamp_string,36)
         difference = timenow - inttime
 
@@ -1291,7 +1292,8 @@ class FormDictionary(object):
       message    = self.relaystn_file_dictionary_data.get(key)
       ID         = message.get('lastheard')
 
-      timestamp_string = ID.split('_',1)[1]
+      timestamp_string = self.group_arq.saamfram.extractTimestamp(ID)
+      #timestamp_string = ID.split('_',1)[1]
       inttime = int(timestamp_string,36)
       difference = timenow - inttime
 
@@ -2025,6 +2027,7 @@ class FormDictionary(object):
                            'WinlinkDefaultStation'   : '',
 
                            'p2pMyStationName'        : '',
+                           'p2pMyStationNameLUID'    : '',
 
                            'p2pMyStationNeighbors'   : [],
                            'FortigateAutoRetrieve'   : False,
@@ -2037,6 +2040,8 @@ class FormDictionary(object):
                            'P2pIpLocalAddress'       : '127.0.0.1',
                            'P2pVpnAutoConnect'       : False,
                            'P2pIpLocalPort'          : '3000',
+
+                           'p2pIdType'               : 'LUID',
 
                            'DataFlecsForMessages'    :  {},
                            'BeaconType'              : 'General Beacon',
@@ -2234,7 +2239,9 @@ class FormDictionary(object):
                            'WinlinkDefaultMode'   : values['option_general_patmode'],
                            'WinlinkDefaultStation'   : values['input_general_patstation'],
 
-                           'p2pMyStationName'        : values['in_mystationname'].split('GUID: ')[1],
+                           #'p2pMyStationName'        : values['in_mystationname'].split('GUID: ')[1],
+                           'p2pMyStationName'        : values['in_mystationname'],
+                           'p2pMyStationNameLUID'        : values['in_mystationnameluid'],
                            'p2pMyStationNeighbors'   : self.group_arq.form_gui.form_events.neighbors_cache.getTable(),
 
                            'FortigateAutoRetrieve'   : values['cb_p2pipfortigateautoretrieve'],
@@ -2247,6 +2254,8 @@ class FormDictionary(object):
                            'P2pIpLocalAddress'       : values['in_p2pipudpserviceaddress'],
                            'P2pVpnAutoConnect'       : values['cb_p2psettings_autoconnect'],
                            'P2pIpLocalPort'          : values['in_p2pipudpserviceaddressport'],
+
+                           'p2pIdType'               : values['option_idtype'],
 
                            'DataFlecsForMessages'    : self.data_flec_settings,
                            'BeaconType'              : values['option_beacon_type'],
