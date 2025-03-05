@@ -382,8 +382,10 @@ class FormDictionary(object):
       priority = selected_item[4]
       msgid    = selected_item[6]
 
-      #FIXME HARDCODED
-      dest_call = 'WH6TEST'
+      modified_to_list = to_list.split(';')
+      random_dest_call = random.choice(modified_to_list)
+
+      dest_call = random_dest_call
       total_hops = 0
       hops_from_source = 0
       conf_required = 0
@@ -2037,6 +2039,7 @@ class FormDictionary(object):
                            'P2pIpLocalPort'          : '3000',
 
                            'DataFlecsForMessages'    :  {},
+                           'BeaconType'              : 'General Beacon',
 
                            'PublicIp'                : '',
 
@@ -2246,6 +2249,7 @@ class FormDictionary(object):
                            'P2pIpLocalPort'          : values['in_p2pipudpserviceaddressport'],
 
                            'DataFlecsForMessages'    : self.data_flec_settings,
+                           'BeaconType'              : values['option_beacon_type'],
 
                            'PublicIp'                : values['in_p2pippublicudpserviceaddress'],
 
@@ -2395,29 +2399,37 @@ class FormDictionary(object):
           self.debug.info_message("retrieved data_flec_parameters: " + str(params.get('DataFlecsForMessages')) )
           self.data_flec_settings = params.get('DataFlecsForMessages')
 
-      if self.data_flec_settings == {}:
+      if self.data_flec_settings == {} or 'pre-message' not in self.data_flec_settings.keys():
         self.debug.info_message("setting data flecs to default values")
-
-        self.data_flec_settings = {'beacon'     :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'discussion'   :    ['discussion','public_ip','neighbor_ips','info','beacon'], 
-                                 'standby'      :    ['discussion','public_ip','neighbor_ips','info','beacon'], 
-                                 'cqcqcq'       :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'copy'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'rr73'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 '73'           :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'propagation'  :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'qrt'          :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'reqm'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'notify'       :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'text'         :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                 'message'      :    ['discussion','public_ip','neighbor_ips','info','beacon'],
-                                }
+        self.resetDataFlecs()
 
     except:
       self.debug.error_message("Exception in readMainDictionaryFromFile: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
     return self.data_flec_settings
     
+
+  def resetDataFlecs(self):
     
+    self.data_flec_settings = {'discussion'             :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','NEIGHBORS','IP-MyStn','DISC','-None-'], 
+                               'standby'                :    ['BEAC-PeerStn','PEND','BEAC-MyStn','MEMO','-None-','-None-','-None-'], 
+                               'cqcqcq'                 :    ['BEAC-PeerStn','BEAC-RealyStn','BEAC-MyStn','MEMO','-None-','-None-','-None-'],
+                               'copy'                   :    ['BEAC-PeerStn','BEAC-RealyStn','BEAC-MyStn','MEMO','-None-','-None-','-None-'],
+                               'rr73'                   :    ['INFO-SNR','BEAC-MyStn','-None-','-None-','-None-','-None-','-None-'],
+                               '73'                     :    ['INFO-SNR','BEAC-MyStn','-None-','-None-','-None-','-None-','-None-'],
+                               'propagation'            :    ['BEAC-PeerStn','PEND','BEAC-MyStn','-None-','-None-','-None-','-None-'],
+                               'qrt'                    :    ['-None-','-None-','-None-','-None-','-None-','-None-','-None-'],
+                               'reqm'                   :    ['-None-','-None-','-None-','-None-','-None-','-None-','-None-'],
+                               'reqm-relay'             :    ['-None-','-None-','-None-','-None-','-None-','-None-','-None-'],
+                               'rts-peer'               :    ['PEND','-None-','-None-','-None-','-None-','-None-','-None-'],
+                               'rts-relay'              :    ['PEND','PEND','PEND','-None-','-None-','-None-','-None-'],
+                               'notify'                 :    ['-None-','-None-','-None-','-None-','-None-','-None-','-None-'],
+                               'chat'                   :    ['BEAC-PeerStn','PEND','BEAC-MyStn','TEXT','-None-','-None-','-None-'],
+                               'pre-message'            :    ['PEND','BEAC-MyStn','-None-','-None-','-None-','-None-','-None-'],
+                               'beacon-general'         :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                               'beacon-p2pip-node'      :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                               'beacon-p2pip-gateway'   :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                               'beacon-relay-msg-hub'   :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','IP-MyStn','NEIGHBORS','DISC','-None-'],
+                              }
         
 

@@ -623,9 +623,23 @@ class SaamParser(object):
       if(succeeded):
         self.debug.info_message("success")
 
+        old_table = self.form_gui.form_events.discussion_cache.getTable()
+        selected_row_key = ''
+        row_num = self.p2pip_discussion_table_selected_row
+        if(len(old_table) > 0):
+          selected_row = self.form_gui.form_events.p2pip_discussion_table_selected_row
+          selected_row_key = old_table[selected_row][0] + ":" + old_table[selected_row][1]
+
         self.form_gui.form_events.discussion_cache.append(str(disc_name) + ':' + str(group_name), [str(disc_name), str(group_name)])
+
         table = self.form_gui.form_events.discussion_cache.getTable()
-        self.form_gui.window['table_chat_satellitediscussionname_plus_group'].update(values = table)
+
+        if selected_row_key != '':
+          row_num = self.discussion_cache.getRowNum(selected_row_key)
+          self.p2pip_discussion_table_selected_row = row_num
+
+        self.form_gui.window['table_chat_satellitediscussionname_plus_group'].update(values = table, select_rows = [row_num])
+
 
     except:
       self.debug.error_message("Exception in decodePreMsgDisc: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))

@@ -2313,280 +2313,124 @@ outbox dictionary items formatted as...
     return
 
 
-  """
-  creates three types of data flec for each CQ message...
-  BEAC for my station
-  BEAC for my peer stations
-  BEAC for my relay stations
-  """
-  def buildPreMessageForCQCOPYRR73_TYPE1(self, from_callsign, group_name):
-
-    """ BEAC for my peer stations"""
-    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
-    sendstring = ''
-    delimeter = ''
-    if(ID != ''):  
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
-
-    """ BEAC for my relay stations"""
-    relaycall, relayID, relaygrid, relayhops = self.form_dictionary.getRandomRelaystnDictItem()
-    if(relaycall != ''):  
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(relayID, relaygrid, relayhops))
-
-    """ BEAC for my station """
-    from_callsign = self.getMyCall()
-    myStnID = self.getEncodeUniqueId(from_callsign)
-    mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
-    self.debug.info_message("buildPreMessageForCQCOPYRR73_TYPE1 MYGRID = " + mygrid)
-    myhops = '1'
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
-
-    checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
-    if(checked):
-      memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
-      myStnID = self.getEncodeUniqueId(self.getMyCall())
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
-
-    return sendstring
-
-
-  def buildPreMessageGeneral(self, from_callsign, group_name):
+  def buildPreMessageGeneral(self, from_callsign, group_name, data_flec_type_name, param_1):
     self.debug.info_message("buildPreMessageGeneral")
 
-    data_flec_setting = self.form_dictionary.getDataFlecsForMessageType('discussion')
+    data_flec_setting = self.form_dictionary.getDataFlecsForMessageType(data_flec_type_name)
 
     sendstring = ''
     delimeter = ''
 
-    if data_flec_setting['pub_ip_flec'] == True :
-      """ include my station public ip """
-      self.debug.info_message("including public ip")
-      self.debug.info_message("including public ip")
-      public_ip = self.form_gui.window['in_p2pippublicudpserviceaddress'].get().strip()
-      bootstrap_port = self.form_gui.window['in_p2pipudppublicserviceport'].get().strip()
-      bootstrap_ip = public_ip.replace(':', '+')
-      myStnID = self.getEncodeUniqueId(from_callsign)
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+    for data_flec_item in data_flec_setting:
 
-    if data_flec_setting['neighbor_ips_flec'] == True :
-      """ include neighbors """
-      self.debug.info_message("including neighbors")
-      neighbors = self.form_gui.form_events.neighbors_cache.getTable()
-      random_rows = random.sample(neighbors, min(5, len(neighbors)))
-      for item in random_rows:
-        bootstrap_ip = str(item[0]).replace(':', '+')
-        bootstrap_port = str(item[1])
+      self.debug.info_message("data_flec_item is: " + str(data_flec_item))
+
+      if data_flec_item == 'IP-MyStn':
+        """ include my station public ip """
+        self.debug.info_message("including public ip")
+        self.debug.info_message("including public ip")
+        public_ip = self.form_gui.window['in_p2pippublicudpserviceaddress'].get().strip()
+        if public_ip != '':
+          bootstrap_port = self.form_gui.window['in_p2pipudppublicserviceport'].get().strip()
+          bootstrap_ip = public_ip.replace(':', '+')
+          myStnID = self.getEncodeUniqueId(from_callsign)
+          sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+
+      elif data_flec_item == 'NEIGHBORS':
+        """ include neighbors """
+        self.debug.info_message("including neighbors")
+        neighbors = self.form_gui.form_events.neighbors_cache.getTable()
+        random_rows = random.sample(neighbors, min(5, len(neighbors)))
+        for item in random_rows:
+          bootstrap_ip = str(item[0]).replace(':', '+')
+          bootstrap_port = str(item[1])
+          myStnID = self.getEncodeUniqueId(from_callsign)
+          sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+
+      elif data_flec_item == 'BEAC-PeerStn':
+        """ BEAC for my peer stations"""
+        ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
+        self.debug.info_message("getRandomPeerstnDictItem ID = " + str(ID))
+        if(ID != ''):  
+          sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
+
+      elif data_flec_item == 'BEAC-MyStn':
+        """ BEAC for my station """
+        from_callsign = self.getMyCall()
         myStnID = self.getEncodeUniqueId(from_callsign)
-        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+        mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
+        self.debug.info_message("buildPreMessageForBEAC-MyStn MYGRID = " + mygrid)
+        myhops = '1'
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
 
-    if data_flec_setting['beac_peers'] == True :
-      """ BEAC for my peer stations"""
-      ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
-      self.debug.info_message("getRandomPeerstnDictItem ID = " + str(ID))
-      if(ID != ''):  
-        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
+      elif data_flec_item == 'MEMO':
+        """ memo for station """
+        checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
+        if(checked):
+          memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
+          myStnID = self.getEncodeUniqueId(self.getMyCall())
+          sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
 
-    if data_flec_setting['beac_mystn'] == True :
-      """ BEAC for my station """
-      from_callsign = self.getMyCall()
-      myStnID = self.getEncodeUniqueId(from_callsign)
-      mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
-      self.debug.info_message("buildPreMessageForDiscussionGroup MYGRID = " + mygrid)
-      myhops = '1'
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
+      elif data_flec_item == 'DISC':
+        """ selected discussion """
+        table = self.form_gui.form_events.discussion_cache.getTable()
+        line_index = int(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
+        self.debug.info_message("selected line index in discussion table is " + str(line_index))
+        discussion_name = table[line_index][0]
+        group_name      = table[line_index][1]
+        myStnID = self.getEncodeUniqueId(from_callsign)
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecDiscussion(myStnID, discussion_name, group_name) )
 
-    if data_flec_setting['stn_memo'] == True :
-      """ memo for station """
-      checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
-      if(checked):
-        memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
-        myStnID = self.getEncodeUniqueId(self.getMyCall())
-        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
+      elif data_flec_item == 'INFO-SNR':
+        """ INFO(SNR for station in QSO"""
+        talking_to_station = self.form_gui.window['in_inbox_listentostation'].get()
+        num, grid, connect, rig, modulation, snr, last_heard = self.form_dictionary.getItemsForPeerstnDictItem(talking_to_station)
+        mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
+        from_callsign = self.getMyCall()
+        myStnID = self.getEncodeUniqueId(from_callsign)
+        if(snr != ''):
+          part_msg = self.createPreMessageInfoSNRDataFlec(snr)
+          if(part_msg != ''):  
+            sendstring = sendstring + delimeter + part_msg
+            delimeter = ','
 
-    if data_flec_setting['disc_name'] == True :
-      """ selected discussion """
-      table = self.form_gui.form_events.discussion_cache.getTable()
-      line_index = int(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
-      self.debug.info_message("selected line index in discussion table is " + str(line_index))
-      discussion_name = table[line_index][0]
-      group_name      = table[line_index][1]
-      myStnID = self.getEncodeUniqueId(from_callsign)
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecDiscussion(myStnID, discussion_name, group_name) )
-
-    if data_flec_setting['info_snr'] == True :
-      """ INFO(SNR for station in QSO"""
-      talking_to_station = self.form_gui.window['in_inbox_listentostation'].get()
-      num, grid, connect, rig, modulation, snr, last_heard = self.form_dictionary.getItemsForPeerstnDictItem(talking_to_station)
-      mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
-      from_callsign = self.getMyCall()
-      myStnID = self.getEncodeUniqueId(from_callsign)
-      if(snr != ''):
-        part_msg = self.createPreMessageInfoSNRDataFlec(snr)
-        if(part_msg != ''):  
-          sendstring = sendstring + delimeter + part_msg
-          delimeter = ','
-
-    if data_flec_setting['beac_relay'] == True :
-      """ BEAC for my relay stations"""
-      relaycall, relayID, relaygrid, relayhops = self.form_dictionary.getRandomRelaystnDictItem()
-      if(relaycall != ''):  
-        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(relayID, relaygrid, relayhops))
+      elif data_flec_item == 'BEAC-RealyStn':
+        """ BEAC for my relay stations"""
+        relaycall, relayID, relaygrid, relayhops = self.form_dictionary.getRandomRelaystnDictItem()
+        if(relaycall != ''):  
+          sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(relayID, relaygrid, relayhops))
 
 
-  def buildPreMessageForDiscussionGroup(self, from_callsign, group_name):
-    self.debug.info_message("buildPreMessageForDiscussionGroup")
+      elif data_flec_item == 'PEND':
+        self.debug.info_message("including PEND")
+        """ PENDing messages to be sent"""
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessagePend())
 
-    """ BEAC for my peer stations"""
-    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
-    self.debug.info_message("getRandomPeerstnDictItem ID = " + str(ID))
-    sendstring = ''
-    delimeter = ''
-    if(ID != ''):  
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
+      elif data_flec_item == 'RELAY':
+        self.debug.info_message("including RELAY")
+        """ RELAY messages to be sent"""
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageRelay())
 
-    """ BEAC for my station """
-    from_callsign = self.getMyCall()
-    myStnID = self.getEncodeUniqueId(from_callsign)
-    mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
-    self.debug.info_message("buildPreMessageForDiscussionGroup MYGRID = " + mygrid)
-    myhops = '1'
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
-
-    checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
-    if(checked):
-      memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
-      myStnID = self.getEncodeUniqueId(self.getMyCall())
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
-
-    """ include neighbors """
-    self.debug.info_message("including neighbors")
-    neighbors = self.form_gui.form_events.neighbors_cache.getTable()
-    random_rows = random.sample(neighbors, min(5, len(neighbors)))
-    for item in random_rows:
-      bootstrap_ip = str(item[0]).replace(':', '+')
-      bootstrap_port = str(item[1])
-      myStnID = self.getEncodeUniqueId(from_callsign)
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
-
-    """ include my station public ip """
-    self.debug.info_message("including public ip")
-    self.debug.info_message("including public ip")
-    public_ip = self.form_gui.window['in_p2pippublicudpserviceaddress'].get().strip()
-    bootstrap_port = self.form_gui.window['in_p2pipudppublicserviceport'].get().strip()
-    bootstrap_ip = public_ip.replace(':', '+')
-    myStnID = self.getEncodeUniqueId(from_callsign)
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
+      elif data_flec_item == 'TEXT':
+        self.debug.info_message("including TEXT")
+        """ text """
+        from_callsign = self.getMyCall()
+        myStnID = self.getEncodeUniqueId(from_callsign)
+        the_message = param_1
+        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecText(myStnID, the_message) )
 
 
-    self.debug.info_message("getting line index for table: " + str(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()))
-    table = self.form_gui.form_events.discussion_cache.getTable()
-    line_index = int(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
-    self.debug.info_message("selected line index in discussion table is " + str(line_index))
-    discussion_name = table[line_index][0]
-    group_name      = table[line_index][1]
+    #if data_flec_setting['CONF'] == True :
+    #  self.debug.info_message("including CONF")
+    #  """ CONFirming message receipt """
+    #  sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageConf())
 
-    myStnID = self.getEncodeUniqueId(from_callsign)
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecDiscussion(myStnID, discussion_name, group_name) )
+    #if data_flec_setting['REQM'] == True :
+    #  self.debug.info_message("including REQM")
+    #  """ REQM request message """
+    #  sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageReqm())
 
-    return sendstring
-
-
-
-  def buildPreMessageForBeacon(self, from_callsign, group_name):
-    self.debug.info_message("buildPreMessageForBeacon")
-
-    """ BEAC for my peer stations"""
-    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
-    self.debug.info_message("getRandomPeerstnDictItem ID = " + str(ID))
-    sendstring = ''
-    delimeter = ''
-    if(ID != ''):  
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
-
-    """ BEAC for my station """
-    from_callsign = self.getMyCall()
-    myStnID = self.getEncodeUniqueId(from_callsign)
-    mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
-    self.debug.info_message("buildPreMessageForDiscussionGroup MYGRID = " + mygrid)
-    myhops = '1'
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
-
-    """ include memo if selected"""
-    checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
-    if(checked):
-      memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
-      myStnID = self.getEncodeUniqueId(self.getMyCall())
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
-
-    """ include my station public ip """
-    self.debug.info_message("including public ip")
-    self.debug.info_message("including public ip")
-    public_ip = self.form_gui.window['in_p2pippublicudpserviceaddress'].get().strip()
-    bootstrap_port = self.form_gui.window['in_p2pipudppublicserviceport'].get().strip()
-    bootstrap_ip = public_ip.replace(':', '+')
-    myStnID = self.getEncodeUniqueId(from_callsign)
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
-
-    """ include neighbors """
-    self.debug.info_message("including neighbors")
-    neighbors = self.form_gui.form_events.neighbors_cache.getTable()
-    random_rows = random.sample(neighbors, min(5, len(neighbors)))
-    for item in random_rows:
-      bootstrap_ip = str(item[0]).replace(':', '+')
-      bootstrap_port = str(item[1])
-      myStnID = self.getEncodeUniqueId(from_callsign)
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBootstrap(myStnID, bootstrap_ip, bootstrap_port) )
-
-    """ include discussion group details if beacon checkbox checked"""
-    checked = self.form_gui.window['cb_p2pipchat_autobeacon'].get()
-    if(checked):
-      self.debug.info_message("getting line index for table: " + str(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()))
-      table = self.form_gui.form_events.discussion_cache.getTable()
-      line_index = int(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
-      self.debug.info_message("selected line index in discussion table is " + str(line_index))
-      discussion_name = table[line_index][0]
-      group_name      = table[line_index][1]
-      myStnID = self.getEncodeUniqueId(from_callsign)
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecDiscussion(myStnID, discussion_name, group_name) )
-
-    return sendstring
-
-
-
-  """
-  sends grid square info
-  INFO(GRID   for my station
-  INFO(SNR    for station in QSO
-  """
-  def buildPreMessageForCQCOPYRR73_TYPE2(self, from_callsign, group_name):
-
-    talking_to_station = self.form_gui.window['in_inbox_listentostation'].get()
-
-    num, grid, connect, rig, modulation, snr, last_heard = self.form_dictionary.getItemsForPeerstnDictItem(talking_to_station)
-
-    mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
-    from_callsign = self.getMyCall()
-    myStnID = self.getEncodeUniqueId(from_callsign)
-
-    sendstring = ''
-    delimeter = ''
-
-    """ INFO(GRID for my station"""
-
-    """ INFO(SNR for station in QSO"""
-    if(snr != ''):
-      part_msg = self.createPreMessageInfoSNRDataFlec(snr)
-      if(part_msg != ''):  
-        sendstring = sendstring + delimeter + part_msg
-        delimeter = ','
-
-    """ BEAC for my station """
-    from_callsign = self.getMyCall()
-    myStnID = self.getEncodeUniqueId(from_callsign)
-    mygrid = self.form_gui.window['input_myinfo_gridsquare'].get()
-    self.debug.info_message("buildPreMessageForCQCOPYRR73_TYPE2 MYGRID = " + mygrid)
-    myhops = '1'
-    sendstring = sendstring + delimeter + self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops)
+    #self.pre_message = self.createPreMessageBeac() + ',' + self.createPreMessagePend() + ',' + self.createPreMessageConf() + ',' + self.createPreMessageReqm()
 
     return sendstring
 
@@ -2599,18 +2443,9 @@ outbox dictionary items formatted as...
       self.fldigiclient.setMode(selected_mode)
       self.debug.info_message("selected main mode is: " + selected_mode)
 
-    myStnID = self.getEncodeUniqueId(self.getMyCall())
-    sendstring = ''
-    delimeter = ''
-
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecText(myStnID, the_message) )
-    self.pre_message = sendstring
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'chat', the_message)
     message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_CHAT + from_callsign + ' '
 
-
-    """
-    set the Txid on for CQ messages
-    """
     self.group_arq.sendTheMessage(message, True)
     return
 
@@ -2623,13 +2458,12 @@ outbox dictionary items formatted as...
       self.debug.info_message("selected main mode is: " + selected_mode)
 
     message = ''
-    self.pre_message = self.buildPreMessageForCQCOPYRR73_TYPE1(from_callsign, group_name)
+
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'cqcqcq', None)
+
     self.debug.info_message("sendstring is " + self.pre_message)
     message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_CQCQCQ + from_callsign + ' '
 
-    """
-    set the Txid on for CQ messages
-    """
     self.group_arq.sendTheMessage(message, True)
     return
 
@@ -2645,13 +2479,12 @@ outbox dictionary items formatted as...
         self.debug.info_message("selected main mode is: " + selected_mode)
 
       message = ''
-      self.pre_message = self.buildPreMessageForDiscussionGroup(from_callsign, group_name)
+
+      self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'discussion', None)
+
       self.debug.info_message("sendstring is " + self.pre_message)
       message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_NOTIFY + from_callsign + ' '
 
-      """
-      set the Txid on for CQ messages
-      """
       self.group_arq.sendTheMessage(message, True)
 
     except:
@@ -2668,29 +2501,27 @@ outbox dictionary items formatted as...
   def sendCopy(self, from_callsign, group_name):
     message = '' 
     send_to = self.form_gui.window['in_inbox_listentostation'].get().strip()
-    self.pre_message = self.buildPreMessageForCQCOPYRR73_TYPE1(from_callsign, group_name)
+
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'copy', None)
+
     self.debug.info_message("sendstring is " + self.pre_message)
 
     message = ' ' + from_callsign + ': ' + send_to + ' ' + self.getPreMessage() + cn.COMM_COPY + from_callsign + ' '
 
-    """
-    set the Txid on for CQ messages
-    """
     self.group_arq.sendTheMessage(message, True)
     return
 
   def sendRR73(self, from_callsign, group_name):
     message = ''
     send_to = self.form_gui.window['in_inbox_listentostation'].get().strip()
-    self.pre_message = self.buildPreMessageForCQCOPYRR73_TYPE2(from_callsign, group_name)
+
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'rr73', None)
+
     self.debug.info_message("sendstring is " + self.pre_message)
 
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + send_to + ' ' + pre_message + cn.COMM_RR73 + from_callsign + ' '
 
-    """
-    set the Txid on for CQ messages
-    """
     self.group_arq.sendTheMessage(message, True)
     return
 
@@ -2701,15 +2532,13 @@ outbox dictionary items formatted as...
 
     self.form_gui.form_events.changeFlashButtonState('btn_mainpanel_73', False)
 
-    self.pre_message = self.buildPreMessageForCQCOPYRR73_TYPE2(from_callsign, group_name)
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, '73', None)
+
     self.debug.info_message("sendstring is " + self.pre_message)
 
     pre_message = self.getPreMessage()
     message = ' ' + from_callsign + ': ' + send_to + ' ' + pre_message + cn.COMM_73 + from_callsign + ' '
 
-    """
-    set the Txid on for CQ messages
-    """
     self.group_arq.sendTheMessage(message, True)
     return
 
@@ -2735,13 +2564,12 @@ outbox dictionary items formatted as...
         self.debug.info_message("selected main mode is: " + selected_mode)
 
       message = ''
-      self.pre_message = self.buildPreMessageForBeacon(from_callsign, group_name)
+
+      self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'beacon-general', None)
+
       self.debug.info_message("sendstring is " + self.pre_message)
       message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_BEACON + from_callsign + ' '
 
-      """
-      set the Txid on for CQ messages
-      """
       self.group_arq.sendTheMessage(message, True)
 
     except:
@@ -2757,33 +2585,11 @@ outbox dictionary items formatted as...
       self.fldigiclient.setMode(selected_mode)
       self.debug.info_message("selected main mode is: " + selected_mode)
 
-    sendstring = ''
-    delimeter = ''
-    """ BEAC for my peer stations"""
-    ID, grid, hop = self.form_dictionary.getRandomPeerstnDictItem()
-    if(ID != ''):  
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(ID, grid, hop))
+    message = ''
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'standby', None)
+    self.debug.info_message("sendstring is " + self.pre_message)
 
-    """ send PEND for pending messages"""
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessagePend())
-
-    """ send BEAC for my station """
-    myStnID = self.getEncodeUniqueId(self.getMyCall())
-    mygrid  = self.form_gui.window['input_myinfo_gridsquare'].get()
-    myhops  = '1'
-    sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecBeac(myStnID, mygrid, myhops))
-
-    """ send MEMO for my station """
-    checked = self.form_gui.window['cb_mainwindow_include_stationtext'].get()
-    if(checked):
-      memo  = self.form_gui.window['in_mainwindow_stationtext'].get()
-      myStnID = self.getEncodeUniqueId(self.getMyCall())
-      sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecMemo(myStnID, memo) )
-
-    self.pre_message = sendstring
-
-    pre_message = self.getPreMessage()
-    message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_STANDBY + from_callsign + ' '
+    message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_STANDBY + from_callsign + ' '
 
     self.group_arq.sendTheMessage(message, True)
     return
@@ -2796,30 +2602,13 @@ outbox dictionary items formatted as...
       self.debug.info_message("selected main mode is: " + selected_mode)
 
     message = ''
-    self.pre_message = ''
-    pre_message = self.getPreMessage()
-    message = ' ' + from_callsign + ': ' + group_name + cn.COMM_QRT + from_callsign + ' '
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'qrt', None)
+    self.debug.info_message("sendstring is " + self.pre_message)
+    message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_QRT + from_callsign + ' '
 
     self.group_arq.sendTheMessage(message, False)
     return
 
-  def sendSAAM(self, from_callsign, group_name):
-
-    message = '' 
-
-    checked = self.form_gui.window['cb_outbox_includepremsg'].get()
-    if(checked):
-      self.pre_message = self.createPreMessageBeac() + ',' + self.createPreMessagePend() + ',' + self.createPreMessageConf() + ',' + self.createPreMessageReqm()
-      pre_message = self.getPreMessage()
-      message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_SAAM_MSG + from_callsign + ' '
-    else:
-      pre_message = ''
-      message = ' ' + from_callsign + ': ' + group_name + cn.COMM_SAAM_MSG + from_callsign + ' '
-
-    self.setCommStatus(self.tx_rig, self.tx_channel, cn.COMM_QUEUED_TXMSG)
-    self.setExpectedReply(self.tx_rig, self.tx_channel, cn.COMM_LISTEN)
-    self.group_arq.sendItNowRig1(message)
-    return
 
   def sendAbort(self, from_callsign, group_name):
 
@@ -2851,7 +2640,10 @@ outbox dictionary items formatted as...
         self.fldigiclient.setMode(selected_mode)
         self.debug.info_message("selected main mode is: " + selected_mode)
 
-      message = ' ' + from_callsign + ': ' + to_callsign + cn.COMM_REQM_MSG + ' ' + msgid + ' ' + from_callsign + ' '
+      message = ''
+      self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'reqm', None)
+      self.debug.info_message("sendstring is " + self.pre_message)
+      message = ' ' + from_callsign + ': ' + to_callsign + ' ' + self.getPreMessage() + cn.COMM_REQM_MSG + ' ' + msgid + ' ' + from_callsign + ' '
 
       self.setTxidState(self.tx_rig, self.tx_channel, True)
 
@@ -2876,7 +2668,10 @@ outbox dictionary items formatted as...
         self.fldigiclient.setMode(selected_mode)
         self.debug.info_message("selected main mode is: " + selected_mode)
 
-      message = ' ' + from_callsign + ': ' + to_callsign + cn.COMM_REQMRLY_MSG + ' ' + msgid + ' ' + from_callsign + ' '
+      message = ''
+      self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'reqm-relay', None)
+      self.debug.info_message("sendstring is " + self.pre_message)
+      message = ' ' + from_callsign + ': ' + to_callsign + ' ' + self.getPreMessage() + cn.COMM_REQMRLY_MSG + ' ' + msgid + ' ' + from_callsign + ' '
 
       self.setTxidState(self.tx_rig, self.tx_channel, True)
 
@@ -2924,22 +2719,9 @@ outbox dictionary items formatted as...
       self.debug.info_message("selected main mode is: " + selected_mode)
 
     message = ''
-    self.pre_message = ''
-
-    pend=[]
-
-    pend.append(self.createPreMessagePend() )
-    pend.append(self.createPreMessagePend() )
-    pend.append(self.createPreMessagePend() )
-
-    for x in range(0,3):
-      if(pend[x] != '' and pend[x] not in self.pre_message):
-        self.pre_message = self.pre_message + ',' + pend[x]
-
-    self.debug.info_message("pre_message :" + self.pre_message )
-
-    pre_message = self.getPreMessage().strip(',')
-    message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_RTS_MSG + from_callsign + ' '
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'rts-peer', None)
+    self.debug.info_message("sendstring is " + self.pre_message)
+    message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_RTS_MSG + from_callsign + ' '
 
     self.group_arq.sendTheMessage(message, True)
     return
@@ -2953,24 +2735,10 @@ outbox dictionary items formatted as...
       self.fldigiclient.setMode(selected_mode)
       self.debug.info_message("selected main mode is: " + selected_mode)
 
-
     message = ''
-    self.pre_message = ''
-
-    pend=[]
-
-    pend.append(self.createPreMessageRelay() )
-    pend.append(self.createPreMessageRelay() )
-    pend.append(self.createPreMessageRelay() )
-
-    for x in range(0,3):
-      if(pend[x] != '' and pend[x] not in self.pre_message):
-        self.pre_message = self.pre_message + ',' + pend[x]
-
-    self.debug.info_message("pre_message :" + self.pre_message )
-
-    pre_message = self.getPreMessage().strip(',')
-    message = ' ' + from_callsign + ': ' + group_name + ' ' + pre_message + cn.COMM_RTSRLY_MSG + from_callsign + ' '
+    self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'rts-relay', None)
+    self.debug.info_message("sendstring is " + self.pre_message)
+    message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_RTSRLY_MSG + from_callsign + ' '
 
     self.group_arq.sendTheMessage(message, True)
     return
