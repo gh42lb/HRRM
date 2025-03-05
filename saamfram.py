@@ -20,11 +20,16 @@ import js8_form_gui
 import js8_form_events
 import js8_form_dictionary
 import saam_parser
+import time
+import uuid
 
 from saamfram_core_utils import SaamframCoreUtils
 from PIL import Image
 from datetime import datetime, timedelta
 from crc import Calculator, Configuration
+from getmac import get_mac_address
+from collections import OrderedDict
+
 
 """
 MIT License
@@ -2373,13 +2378,16 @@ outbox dictionary items formatted as...
 
       elif data_flec_item == 'DISC':
         """ selected discussion """
+        auto_beacon = self.form_gui.window['cb_p2pipchat_autobeacon'].get()
         table = self.form_gui.form_events.discussion_cache.getTable()
-        line_index = int(self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
-        self.debug.info_message("selected line index in discussion table is " + str(line_index))
-        discussion_name = table[line_index][0]
-        group_name      = table[line_index][1]
-        myStnID = self.getEncodeUniqueId(from_callsign)
-        sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecDiscussion(myStnID, discussion_name, group_name) )
+        line_pre = self.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()
+        if auto_beacon and line_pre != []:
+          line_index = int(line_pre[0])
+          self.debug.info_message("selected line index in discussion table is " + str(line_index))
+          discussion_name = table[line_index][0]
+          group_name      = table[line_index][1]
+          myStnID = self.getEncodeUniqueId(from_callsign)
+          sendstring, delimeter = self.appendFlec(sendstring, delimeter, self.createPreMessageDataFlecDiscussion(myStnID, discussion_name, group_name) )
 
       elif data_flec_item == 'INFO-SNR':
         """ INFO(SNR for station in QSO"""
@@ -2568,7 +2576,18 @@ outbox dictionary items formatted as...
       self.pre_message = self.buildPreMessageGeneral(from_callsign, group_name, 'beacon-general', None)
 
       self.debug.info_message("sendstring is " + self.pre_message)
-      message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_BEACON + from_callsign + ' '
+
+      beacon_type = self.form_gui.window['option_beacon_type'].get()
+
+      if beacon_type == 'General Beacon':
+        message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_BEACON + from_callsign + ' '
+      elif beacon_type == 'p2pip Node':
+        message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_BEACON_IPNODE + from_callsign + ' '
+      elif beacon_type == 'p2pip Gateway':
+        message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_BEACON_GATEWAY + from_callsign + ' '
+      elif beacon_type == 'Message Store':
+        message = ' ' + from_callsign + ': ' + group_name + ' ' + self.getPreMessage() + cn.COMM_BEACON_MSGSTOR + from_callsign + ' '
+
 
       self.group_arq.sendTheMessage(message, True)
 
@@ -2899,6 +2918,7 @@ outbox dictionary items formatted as...
     checked = self.form_gui.window['cb_outbox_includepremsg'].get()
     if(checked):
       self.setPreMessage('', '')
+      self.pre_message = self.buildPreMessageGeneral(from_callsign, self.getMyGroup(), 'pre-message', None)
       pre_message = self.getPreMessage()
     else:
       pre_message = ''
@@ -3012,9 +3032,186 @@ outbox dictionary items formatted as...
     return verified_missing_frames
 
 
+  """ ID section """
+
+  def extractTimestamp(self, ID):
+    if '_' in ID:
+      timestamp_string = ID.split('_',1)[1]
+    elif '#' in ID:
+      timestamp_string = ID.split('#',1)[1]
+    return timestamp_string
+
+  """ ID for ham radio stuff """
+  def getEncodeUniqueId(self, callsign):
+    if self.group_arq.listenonly == False:
+      return self.getEncodeUniqueIdCallsign(callsign)
+    else:
+      return self.getEncodeUniqueId_p2pip()
+
+  """ p2pip IDs...can be callsign based or GUID or LUID"""
+  """ default to LUID"""
+  def getEncodeUniqueId_p2pip(self):
+    id_type = self.group_arq.form_gui.window['option_idtype'].get()
+    if self.group_arq.listenonly == True:
+      if id_type == 'GUID':
+        guid = self.group_arq.form_gui.window['in_mystationname'].get()
+        return self.getEncodeUniqueIdGUID(guid)
+    else:
+      if id_type == 'Ham Radio Callsign':
+        callsign = self.saamfram.getMyCall()
+        return self.getEncodeUniqueIdCallsign(callsign)
+      elif id_type == 'GUID':
+        guid = self.group_arq.form_gui.window['in_mystationname'].get()
+        return self.getEncodeUniqueIdGUID(guid)
+
+    """ default is LUID """
+    luid = self.group_arq.form_gui.window['in_mystationnameluid'].get()
+    return self.getEncodeUniqueIdLUID(luid)
+
+
+  """ mac address + timestamp for GUID """
+  def getMacAddress(self):
+    return get_mac_address()
+
+  def macToUuid(self, mac_address):
+    self.debug.info_message("macToUuid")
+    try:
+      mac_address = mac_address.replace(':', '')
+      mac_address = mac_address.replace('-', '').upper()
+      mac_int = int(mac_address, 16)
+      self.debug.info_message("macInt: " + str(mac_int))
+      ret_value = uuid.UUID(int=mac_int)
+      self.debug.info_message("return value: " + str(ret_value))
+      return ret_value
+    except:
+      self.debug.error_message("Exception in macToUuid: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return None
+
+  def macToInt(self, mac_address):
+    self.debug.info_message("macToUuid")
+    try:
+      mac_address = mac_address.replace(':', '')
+      mac_address = mac_address.replace('-', '').upper()
+      mac_int = int(mac_address, 16)
+      self.debug.info_message("macInt: " + str(mac_int))
+      return mac_int
+    except:
+      self.debug.error_message("Exception in macToUuid: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return None
+
+
+  def uuidToMac(self, uuid):
+    return ':'.join(['{:02x}'.format((uuid >> elements) & 0xff) for elements in range(5,-1,-1)])
+
+
+  """ GUID stem is mac + timestamp """
+  def getEncodeUniqueStemGUID(self, mac_address):
+    self.debug.info_message("getEncodeUniqueStemGUID\n")
+
+    try:
+      """ new encode for timestamp """
+      base_36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      encoded = ''
+      temp_var = int(round(datetime.utcnow().timestamp()*100))
+
+      self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp((temp_var)/100.0)))
+      self.debug.info_message("temp var is " + str(temp_var))
+
+      while (temp_var != 0):
+        temp_var, i = divmod(temp_var, 36)
+        encoded = base_36[i] + encoded
+
+      self.debug.info_message("encoded = " + encoded)
+      self.debug.info_message("original number = " + str(int(encoded,36)))
+      self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp((int(encoded,36))/100.0)))
+
+      """ prepare mac encoding """
+      encoded_mac = ''
+      temp_var = mac_address
+      while (temp_var != 0):
+        temp_var, i = divmod(temp_var, 36)
+        encoded_mac = base_36[i] + encoded_mac
+
+      """ no need to be decodeable"""
+      ID = encoded_mac + encoded
+
+    except:
+      self.debug.error_message("Exception in getEncodeUniqueStemGUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return (ID)
+
+
+  def generate_random_base36(self, length):
+    digits = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    return ''.join(random.choice(digits) for _ in range(length))
+
+
+  """ nickname + 5 digit random characters for LUID. create ID for p2pip stations based on nickname and timestamp"""
+  def getEncodeUniqueIdLUID(self, luid):
+    self.debug.info_message("getEncodeUniqueIdLUID\n")
+
+    try:
+      """ new encode for timestamp """
+      base_36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      encoded = ''
+      temp_var = int(round(datetime.utcnow().timestamp()*100))
+
+      self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp((temp_var)/100.0)))
+      self.debug.info_message("temp var is " + str(temp_var))
+
+      while (temp_var != 0):
+        temp_var, i = divmod(temp_var, 36)
+        encoded = base_36[i] + encoded
+
+      ID = luid +'#' + encoded
+
+    except:
+      self.debug.error_message("Exception in getEncodeUniqueIdLUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return (ID)
+
+  def getEncodeUniqueStemLUID(self, nickname):
+    self.debug.info_message("getEncodeUniqueIdLUID\n")
+
+    try:
+      ID = nickname.upper() + '*' + self.generate_random_base36(5)
+    except:
+      self.debug.error_message("Exception in getEncodeUniqueIdLUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return (ID)
+
+
+
+  def getEncodeUniqueIdGUID(self, guid):
+    self.debug.info_message("getEncodeUniqueIdGUID\n")
+
+    try:
+      """ new encode for timestamp """
+      base_36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      encoded = ''
+      temp_var = int(round(datetime.utcnow().timestamp()*100))
+
+      self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp((temp_var)/100.0)))
+      self.debug.info_message("temp var is " + str(temp_var))
+
+      while (temp_var != 0):
+        temp_var, i = divmod(temp_var, 36)
+        encoded = base_36[i] + encoded
+
+      ID = guid + '#' + encoded
+
+    except:
+      self.debug.error_message("Exception in getEncodeUniqueIdGUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return (ID)
+
+
 
   """ This method creates a unique ID based on the callsign and the month, day, hour, minute, second"""
-  def getEncodeUniqueId(self, callsign):
+  """ create ID for ham radio stations based on callsign and timestamp """
+  def getEncodeUniqueIdCallsign(self, callsign):
     self.debug.info_message("getEncodeUniqueId\n")
 
     """ new encode for timestamp """
@@ -3050,7 +3247,8 @@ outbox dictionary items formatted as...
     chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
     charsLen = len(chars)
 
-    timestamp_string = ID.split('_',1)[1]
+    timestamp_string = self.extractTimestamp(ID)
+    #timestamp_string = ID.split('_',1)[1]
 
     inttime = ((int(timestamp_string,36))/100.0)
     timestamp = datetime.utcfromtimestamp(inttime).strftime('%Y/%m/%d %H:%M')

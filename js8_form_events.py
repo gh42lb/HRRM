@@ -284,8 +284,8 @@ class ReceiveControlsProc(object):
         if(station_guid == None or station_guid == ''):
           mac_address = self.group_arq.saamfram.getMacAddress()
           int_from_mac = self.saamfram.macToInt(mac_address)
-          encoded_id = self.saamfram.getEncodeUniqueMacId(int_from_mac)
-          self.form_gui.window['in_mystationname'].update('GUID: ' + str(encoded_id))
+          encoded_id = self.saamfram.getEncodeUniqueStemGUID(int_from_mac)
+          self.form_gui.window['in_mystationname'].update(str(encoded_id))
       except:
         self.debug.info_message("Exception in event_catchall unable to get mac address for GUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
@@ -1092,40 +1092,45 @@ class ReceiveControlsProc(object):
 
 
   def event_composemsg(self, values):
-    self.debug.info_message("BTN COMPOSE\n")
+    self.debug.info_message("event_composemsg\n")
 
-    line_index = int(values['tbl_compose_categories'][0])
-    category = (self.group_arq.getCategories()[line_index])[0]
-    line_index = int(values['tbl_compose_select_form'][0])
-    formname = (self.group_arq.getTemplates()[line_index])[0]
-    filename = (self.group_arq.getTemplates()[line_index])[3]
-    form_content = ['', '', '', '']
+    try:
+      line_index = int(values['tbl_compose_categories'][0])
+      category = (self.group_arq.getCategories()[line_index])[0]
+      line_index = int(values['tbl_compose_select_form'][0])
+      formname = (self.group_arq.getTemplates()[line_index])[0]
+      filename = (self.group_arq.getTemplates()[line_index])[3]
+      form_content = ['', '', '', '']
 
-    self.debug.info_message("SELECTED CATEGORY IS: "  + category )
-    self.debug.info_message("SELECTED FORMNAME IS: "  + formname )
+      self.debug.info_message("SELECTED CATEGORY IS: "  + category )
+      self.debug.info_message("SELECTED FORMNAME IS: "  + formname )
 
-    selected_stations = self.group_arq.getSelectedStations()
+      selected_stations = self.group_arq.getSelectedStations()
 
-    msgto = values['in_compose_selected_callsigns']
+      msgto = values['in_compose_selected_callsigns']
    
-    callsign = self.saamfram.getMyCall()
+      callsign = self.saamfram.getMyCall()
 
-    self.debug.info_message("saamfram: " + str(self.saamfram) +  "\n")
+      self.debug.info_message("saamfram: " + str(self.saamfram) +  "\n")
 
-    ID = self.saamfram.getEncodeUniqueId(callsign)
+      ID = self.saamfram.getEncodeUniqueId(callsign)
    
-    self.saamfram.getDecodeTimestampFromUniqueId(ID)
+      self.saamfram.getDecodeTimestampFromUniqueId(ID)
 
-    self.debug.info_message("reverse encoded callsign is: " + self.group_arq.saamfram.getDecodeCallsignFromUniqueId(ID) )
+      self.debug.info_message("reverse encoded callsign is: " + self.group_arq.saamfram.getDecodeCallsignFromUniqueId(ID) )
 
-    self.debug.info_message("UNIQUE ID USING UUID IS: " + str(ID) )
-    subject = ''
+      self.debug.info_message("UNIQUE ID USING UUID IS: " + str(ID) )
+      subject = ''
 
-    self.form_gui.render_disabled_controls = False
+      self.form_gui.render_disabled_controls = False
 
-    window = self.form_gui.createDynamicPopupWindow(formname, form_content, category, msgto, filename, ID, subject, True)
-    dispatcher = PopupControlsProc(self, window)
-    self.form_gui.runPopup(self, dispatcher, window, False, False)
+      window = self.form_gui.createDynamicPopupWindow(formname, form_content, category, msgto, filename, ID, subject, True)
+      dispatcher = PopupControlsProc(self, window)
+      self.form_gui.runPopup(self, dispatcher, window, False, False)
+
+    except:
+      self.debug.error_message("Exception in event_composemsg: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
 
     return()
 
@@ -1214,8 +1219,10 @@ class ReceiveControlsProc(object):
 
       """ loop thru the dictionary to populate outbox display """
 
-      from_call = self.saamfram.getMyCall()
-      ID = self.group_arq.saamfram.getEncodeUniqueId(from_call)
+      #from_call = self.saamfram.getMyCall()
+      #ID = self.group_arq.saamfram.getEncodeUniqueId(from_call)
+      ID = self.group_arq.saamfram.getEncodeUniqueId_p2pip()
+
       timestamp = self.group_arq.saamfram.getDecodeTimestampFromUniqueId(ID)
       msgfrom   = self.group_arq.saamfram.getDecodeCallsignFromUniqueId(ID)
 
@@ -1252,7 +1259,8 @@ class ReceiveControlsProc(object):
 
       self.form_dictionary.removeOutboxDictionaryItem(ID)
     
-      sender_callsign = self.group_arq.saamfram.getMyCall()
+      #sender_callsign = self.group_arq.saamfram.getMyCall()
+      sender_callsign = msgfrom
       fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
 
       """ put the relay stations on the front end of the list. """
@@ -1421,6 +1429,12 @@ class ReceiveControlsProc(object):
     line_index = int(values['table_outbox_messages'][0])
     msgid = (self.group_arq.getMessageOutbox()[line_index])[6]
     formname = (self.group_arq.getMessageOutbox()[line_index])[5]
+
+    if '#' in msgid:
+      self.form_gui.window['btn_outbox_sendselected'].update(disabled=True )
+    elif '_' in msgid:
+      self.form_gui.window['btn_outbox_sendselected'].update(disabled=False )
+
 
     self.debug.info_message("MESSAGE ID = " + str(msgid) )
 
@@ -1636,6 +1650,13 @@ class ReceiveControlsProc(object):
     self.debug.info_message("end event_listboxthemeselect\n")
 
 
+  def event_inputmyinfonickname(self, values):
+    self.debug.info_message("event_inputmyinfonickname")
+
+    text = values['input_myinfo_nickname']
+    if(len(text) > 12):
+      self.form_gui.window['input_myinfo_nickname'].update(text[:12])
+
   def event_mainwindow_stationtext(self, values):
     self.debug.info_message("event_mainwindow_stationtext")
 
@@ -1649,6 +1670,28 @@ class ReceiveControlsProc(object):
 
     saved_value = self.saamfram.main_params.get("params").get('p2pMyStationName')
     self.form_gui.window['in_mystationname'].update(str(saved_value))
+
+
+  def event_NOTUSED(self, values):
+    self.debug.info_message("event_mainwindow_stationname")
+
+    original_text = text = values['in_mystationname']
+    text=text.strip()
+    text=text.replace('@','')
+    text=text.replace(' ','')
+    text=text.replace('(','')
+    text=text.replace(')','')
+    text=text.replace('[','')
+    text=text.replace(']','')
+    text=text.replace('^','')
+    text=text.replace(',','')
+    text=text.replace(';','')
+    text=text.replace('\"','')
+    text=text.replace('\'','')
+    if(len(text) > 0 and text[0] != '#'):
+      self.form_gui.window['in_mystationname'].update('#' + text)
+    elif(original_text != text or len(text) > 40):
+      self.form_gui.window['in_mystationname'].update(text[:40])
         
 
   def event_mainpanelsendimagefile(self, values):
@@ -4421,6 +4464,16 @@ class ReceiveControlsProc(object):
     self.debug.info_message("event_debugdumplocalstorage"  )
     self.event_p2pCommandCommon(cn.P2P_IP_DUMP_LOCAL_STORAGE, {})
 
+  def event_debugdumppeerstndataflecs(self, values):
+    self.debug.info_message("event_debugdumppeerstndataflecs"  )
+    data_cache = self.form_dictionary.dataFlecCache['pending_peer']
+    self.debug.info_message("pending peer cache: " + str(data_cache)  )
+
+  def event_debugdumprelaystndataflecs(self, values):
+    self.debug.info_message("event_debugdumprelaystndataflecs"  )
+    data_cache = self.form_dictionary.dataFlecCache['pending_relay']
+    self.debug.info_message("pending relay cache: " + str(data_cache)  )
+
 
   def event_dataflecselecttype(self, values):
     self.debug.info_message("event_dataflecselecttype"  )
@@ -4533,15 +4586,59 @@ class ReceiveControlsProc(object):
         self.form_gui.window['in_p2pippublicudpserviceaddress'].update(text_color='green1')
 
 
+  def event_p2pipfortigateautoretrieve(self, values):
+    self.debug.info_message("event_p2pipfortigateautoretrieve"  )
+    checked = self.form_gui.window['cb_p2pipfortigateautoretrieve'].get()
+    if(checked):
+      self.form_gui.window['btn_p2pGetPublicIp'].update(disabled=False )
+    else:
+      self.form_gui.window['btn_p2pGetPublicIp'].update(disabled=True )
+
+  def event_p2psettingslockGUID(self, values):
+    self.debug.info_message("event_p2psettingslockGUID"  )
+
+    checked = self.form_gui.window['cb_p2psettings_lockGUID'].get()
+    if(checked):
+      self.form_gui.window['btn_p2pipsettingscreateguid'].update(disabled=True )
+    else:
+      self.form_gui.window['btn_p2pipsettingscreateguid'].update(disabled=False )
+
+
+  def event_p2psettingslockLUID(self, values):
+    self.debug.info_message("event_p2psettingslockLUID"  )
+
+    checked = self.form_gui.window['cb_p2psettings_lockLUID'].get()
+    if(checked):
+      self.form_gui.window['btn_p2pipsettingscreateluid'].update(disabled=True )
+    else:
+      self.form_gui.window['btn_p2pipsettingscreateluid'].update(disabled=False )
+
+
+  def event_p2pipsettingscreateluid(self, values):
+    self.debug.info_message("event_p2pipsettingscreateluid"  )
+    try:
+      nickname = self.group_arq.form_gui.window['input_myinfo_nickname'].get()
+
+      temp_ID = self.saamfram.getEncodeUniqueStemLUID(nickname )
+      self.form_gui.window['in_mystationnameluid'].update(str(temp_ID))
+      self.form_gui.window['btn_p2pipsettingscreateluid'].update(disabled=True )
+      self.form_gui.window['cb_p2psettings_lockLUID'].update(value=True)
+    except:
+      self.debug.error_message("Exception in event_p2pipsettingscreateluid: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
   def event_p2pipsettingscreateguid(self, values):
     self.debug.info_message("event_p2pipsettingscreateguid"  )
     mac_address = self.group_arq.saamfram.getMacAddress()
     self.debug.info_message("entered_mac_address: " + str(mac_address) )
     int_from_mac = self.saamfram.macToInt(mac_address)
     self.debug.info_message("int_from_mac: " + str(int_from_mac) )
-    encoded_id = self.saamfram.getEncodeUniqueMacId(int_from_mac)
+    encoded_id = self.saamfram.getEncodeUniqueStemGUID(int_from_mac)
     self.debug.info_message("encoded_id : " + str(encoded_id)  )
-    self.form_gui.window['in_mystationname'].update('GUID: ' + str(encoded_id))
+    self.form_gui.window['in_mystationname'].update(str(encoded_id))
+    self.form_gui.window['btn_p2pipsettingscreateguid'].update(disabled=True )
+    self.form_gui.window['cb_p2psettings_lockGUID'].update(value=True)
+
+
 
   def event_outboxsendmessagesipp2p(self, values):
     self.debug.info_message("event_outboxsendmessagesipp2p"  )
@@ -4825,8 +4922,8 @@ class ReceiveControlsProc(object):
       'btn_substation_disconnect_1'  : event_btnsubstationdisconnect1,
       'btn_mainpanel_sendgfile'   : event_mainpanelsendfile,
 
+      'input_myinfo_nickname'     : event_inputmyinfonickname,
       'in_mainwindow_stationtext' : event_mainwindow_stationtext,
-
       'in_mystationname'          : event_mainwindow_stationname,
 
       'btn_mainpanel_sendimagefile'   : event_mainpanelsendimagefile,
@@ -4896,6 +4993,8 @@ class ReceiveControlsProc(object):
       'btn_p2pipcreatediscussiongroup'   :   event_p2pipcreatediscussiongroup,
 
       'btn_debugdumplocalstorage'    :   event_debugdumplocalstorage,
+      'btn_debugdumppeerstndataflecs'    :   event_debugdumppeerstndataflecs,
+      'btn_debugdumprelaystndataflecs'    :   event_debugdumprelaystndataflecs,
 
       'option_dataflec_selecttype'   :   event_dataflecselecttype,
 
@@ -4907,6 +5006,12 @@ class ReceiveControlsProc(object):
       'btn_disconnectvpnp2pnode'     :   event_disconnectvpnp2pnode,
 
       'btn_p2pipsettingscreateguid'    :   event_p2pipsettingscreateguid,
+      'btn_p2pipsettingscreateluid'    :   event_p2pipsettingscreateluid,
+
+      'cb_p2psettings_lockGUID'        :   event_p2psettingslockGUID,
+      'cb_p2psettings_lockLUID'        :   event_p2psettingslockLUID,
+
+      'cb_p2pipfortigateautoretrieve'  :   event_p2pipfortigateautoretrieve,
 
       'combo_element1'            : event_comboelement1,
       'combo_element2'            : event_comboelement2,
@@ -4969,6 +5074,11 @@ class DataCache(object):
     self.cache_dict = {}
     return
 
+
+  def setTable(self, table, numcols):
+    self.cache_table = []
+    self.cache_dict = {}
+    self.appendTable(table, numcols)
 
   def appendTable(self, table, numcols):
 

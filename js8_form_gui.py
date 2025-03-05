@@ -2659,7 +2659,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v2.0.3 Alpha \n\
+                                                Ham Radio Relay Messenger de WH6GGO v2.0.4 Alpha \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2025 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2723,8 +2723,10 @@ SOFTWARE.\n'
 
     combo_data_flecs = '-None-,BEAC-PeerStn,BEAC-MyStn,BEAC-RelayStn,MEMO,IP-MyStn,NEIGHBORS,DISC,INFO-SNR,PEND'.split(',')
     combo_data_flec_types = '-None-,beacon-general,beacon-p2pip-node,beacon-p2pip-gateway,beacon-relay-msg-hub,discussion,standby,cqcqcq,copy,rr73,73,propagation,qrt,reqm,notify,text,pre-message'.split(',')
-    combo_beacon_type = 'General Beacon,p2pip Node,p2pip Gateway,Relay Message Hub'.split(',')
+    combo_beacon_type = 'General Beacon,p2pip Node,p2pip Gateway,Message Store'.split(',')
     combo_expire_messages = '1 Hour,2 Hours,6 Hours,12 Hours,1 Day,2 Days,3 Days,1 Week,2 Weeks,3 Weeks,1 Month,2 Months,3 Months'.split(',')
+
+    combo_ID_type = 'Ham Radio Callsign,GUID,LUID'.split(',')
 
     """
         self.data_flec_settings = {'discussion'             :    ['BEAC-PeerStn','BEAC-MyStn','MEMO','NEIGHBORS','IP-MyStn','DISC','-None-'], 
@@ -2767,8 +2769,23 @@ SOFTWARE.\n'
     frag_modes          = seq1.get('frag_modes').split(',')
 
     self.layout_substation = [
+
+                        [sg.Frame('peer to peer ip settings', [
+
                           [
-                           sg.InputText(default_text='GUID: ' + js.get("params").get('p2pMyStationName'), justification ='center', key='in_mystationname', font=("Helvetica", 15), size=(40, 1), enable_events = True, text_color='white', background_color='black', expand_x=True)],
+                           sg.Text('GUID: ', size=(12, 1) ),
+                           #sg.InputText(default_text='GUID: ' + js.get("params").get('p2pMyStationName'), justification ='center', key='in_mystationname', font=("Helvetica", 15), size=(40, 1), enable_events = True, text_color='white', background_color='black', expand_x=True)],
+                           sg.InputText(default_text=js.get("params").get('p2pMyStationName'), justification ='left', key='in_mystationname', font=("Helvetica", 15), size=(30, 1), enable_events = True, text_color='white', background_color='black'),
+                           sg.Button('Re-Create GUID', size=(15, 1), key='btn_p2pipsettingscreateguid', disabled=True ) ,
+                           sg.CBox('Lock', key='cb_p2psettings_lockGUID', default = True, enable_events = True)],
+
+                          [sg.Text('LUID: ', size=(12, 1) ),
+                           sg.InputText(default_text=js.get("params").get('p2pMyStationNameLUID'), justification ='left', key='in_mystationnameluid', font=("Helvetica", 15), size=(30, 1), enable_events = True, text_color='white', background_color='black'),
+                           sg.Button('Re-Create LUID', size=(15, 1), key='btn_p2pipsettingscreateluid', disabled=True ) ,
+                           sg.CBox('Lock', key='cb_p2psettings_lockLUID', default = True, enable_events = True)],
+
+                          [sg.Text('ID: ', size=(12, 1) ),
+                           sg.Combo(combo_ID_type, default_value=js.get("params").get('p2pIdType') if (self.group_arq.listenonly == False and js.get("params").get('p2pIdType')!='Ham Radio Callsign' ) else 'LUID', size=(23, 1), key='option_idtype')],
 
 
                         [sg.Frame('p2p ip - p2pNode VPN', [
@@ -2795,7 +2812,7 @@ SOFTWARE.\n'
 
 
                         [sg.Frame('Fortigate Firewall Settings', [
-                          [sg.CBox('Fortigate Auto Retrieve', key='cb_p2pipfortigateautoretrieve', default = js.get("params").get('FortigateAutoRetrieve')),
+                          [sg.CBox('Fortigate Auto Retrieve', key='cb_p2pipfortigateautoretrieve', default = js.get("params").get('FortigateAutoRetrieve'), enable_events = True),
                            sg.Text('Fortigate Lan Interface IP: ', size=(22, 1) ) ,
                            sg.InputText(default_text=js.get("params").get('FortigateLanIp'), key='in_p2pipfortigatelanip', size=(15, 1)),
                            sg.Text('Fortigate Login User: ', size=(18, 1) ) ,
@@ -2804,6 +2821,7 @@ SOFTWARE.\n'
                            sg.InputText(default_text=js.get("params").get('FortigateWanInterfaceName'), key='in_p2pipfortigatewaninterfacename', size=(15, 1))],
                          ],expand_x = True )],
 
+                         ],expand_x = True )],
 
 
                           [sg.Button('Save',   key='btn_myinfo_save_sat', size=(6, 1) )], 
@@ -3030,7 +3048,7 @@ SOFTWARE.\n'
 
                         [sg.Frame('Outbox and Relay Box Message Expiration', [
                           [
-                           sg.CBox('Expire Messages After:', key='cb_expire_messages_after' ),
+                           sg.CBox('Archive Messages After:', key='cb_expire_messages_after' ),
                            sg.Combo(combo_expire_messages, default_value=combo_expire_messages[0], key='option_expire_messages_timeframe', size=(15, 1))],
                         ],expand_x = True, visible = True )],
 
@@ -3247,7 +3265,7 @@ SOFTWARE.\n'
                          sg.Text('Grid Square: ', size=(20, 1), visible = not self.group_arq.listenonly ), 
                          sg.InputText(default_text=js.get("params").get('GridSquare'), key='input_myinfo_gridsquare', size=(20, 1), visible = not self.group_arq.listenonly),
                          sg.Text('Nickname - Handle: ', size=(20, 1) ), 
-                         sg.InputText(default_text=js.get("params").get('Nickname'), key='input_myinfo_nickname', size=(20, 1))],
+                         sg.InputText(default_text=js.get("params").get('Nickname'), key='input_myinfo_nickname', size=(20, 1), enable_events = True)],
 
                                 ], expand_x=True)
                             ],
@@ -3374,7 +3392,7 @@ SOFTWARE.\n'
                                 [sg.CBox('Re-write From as My Station Callsign', size=(33, 1), default = js.get("params").get('RewriteFrom'), key='cb_general_rewrite_from', enable_events=True),
                                  sg.CBox('Include HRRM Export Tag', size=(25, 1), default = js.get("params").get('IncludeHRRMExport'), key='cb_general_include_HRRM_export', enable_events=True)],
 
-                                ], expand_x=True)
+                                ], expand_x=True, visible = self.group_arq.display_winlink)
                             ],
 
                             [sg.Frame('Distributed p2p Network', [
@@ -3573,7 +3591,9 @@ SOFTWARE.\n'
 
     self.layout_debug = [
 
-                       [sg.Button('Dump Local Storage',   key='btn_debugdumplocalstorage' )], 
+                       [sg.Button('Dump Local Storage',   key='btn_debugdumplocalstorage' ), 
+                        sg.Button('Dump Peer Data Flecs',   key='btn_debugdumppeerstndataflecs' ), 
+                        sg.Button('Dump Relay Data Flecs',   key='btn_debugdumprelaystndataflecs' )], 
 
                        [sg.MLine("", size=(64, 20), font=("Courier New", 9),expand_x = True, expand_y = True, key='debug_window')], 
 
@@ -3855,7 +3875,7 @@ SOFTWARE.\n'
                         sg.Frame('p2p ip - Kademlia Network Service', [
                            [
                              sg.Text('Public IP: ', size=(8, 1) ) ,
-                             sg.Button('Get', size=(3, 1), key='btn_p2pGetPublicIp'),
+                             sg.Button('Get', size=(3, 1), key='btn_p2pGetPublicIp', disabled = (not js.get("params").get('FortigateAutoRetrieve'))),
                              sg.InputText(default_text=js.get("params").get('PublicIp'), key='in_p2pippublicudpserviceaddress', size=(20, 1)),
                              sg.Button('Start', size=(4, 1), key='btn_p2pCommandStart'),
                              sg.Button('Stop', size=(4, 1), key='btn_p2pCommandStop', visible=True),
@@ -4022,7 +4042,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main', expand_x=True  )] ]  
 
-    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.3 Alpha - ' + js.get("params").get('CallSign') + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
+    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.4 Alpha - ' + (js.get("params").get('CallSign') if not self.group_arq.listenonly else js.get("params").get('p2pMyStationNameLUID')) + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
 
     return (self.window)
 
