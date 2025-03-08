@@ -509,7 +509,7 @@ class FormGui(object):
     self.layout_myinfo = None
     self.layout_settings = None
     self.layout_relay = None
-    self.debug = debug
+    self.debug = db.Debug(cn.DEBUG_FORM_GUI)
     self.tabgrp = None
     self.window = None
     self.table_lookup = None
@@ -1097,14 +1097,14 @@ class FormGui(object):
       if(key[0].isalpha()):
         value_string = self.field_names.get(key)
         string_len = len(value_string)
-        self.debug.info_message("string length is: " + str(string_len) )
+        self.debug.verbose_message("string length is: " + str(string_len) )
         new_len = (math.ceil((string_len / 5.0)))*5
-        self.debug.info_message("new string length is: " + str(new_len) )
+        self.debug.verbose_message("new string length is: " + str(new_len) )
         data = [value_string, new_len, 1, createTextElement, createSimTextElement, False, createPreviewTextElement]
         self.field_lookup[key] = data
       elif(key[0].isdigit()):
         if(key[0] == '0'):
-          self.debug.info_message("Handle zero codes\n")
+          self.debug.verbose_message("Handle zero codes\n")
           """ format:     '0F'    : 'LineAlign 1,-1',  these numbers are *relative* to the current line index"""
           if('LineAlign' in self.field_names.get(key)):
             split_string = self.field_names.get(key).split(' ',1)
@@ -1229,7 +1229,7 @@ class FormGui(object):
             self.field_lookup[key] = data
 
       elif(key[0] == '@'):
-        self.debug.info_message("@ control code\n")
+        self.debug.verbose_message("@ control code\n")
         if('Spacer' in self.field_names.get(key)):
           split_string = self.field_names.get(key).split(' ',1)
           int_width  = int(split_string[1])
@@ -1263,7 +1263,7 @@ class FormGui(object):
           data = [split_string[1], int_width, int_height, createInputElement, createSimInputElement, True, createPreviewInputElement]		
           self.field_lookup[key] = data
       elif(key[0] == '#'):
-        self.debug.info_message("# control code\n")
+        self.debug.verbose_message("# control code\n")
         if('EditTable' in self.field_names.get(key)):
           split_string = self.field_names.get(key).split(' ',1)
           int_width  = 0
@@ -2121,7 +2121,7 @@ class FormGui(object):
     self.debug.info_message("COLUMNS LIST IS: " + str(columns_list) + " \n")
 
     self.debug.info_message("render_text_only_text: " + str(render_text_only_text))
-    #self.debug.info_message("table_date: " + str(table_data))
+    #self.debug.verbose_message("table_date: " + str(table_data))
 	  
     return render_text_only_text, table_data, layout
 
@@ -2467,19 +2467,19 @@ inbox dictionary items formatted as...
         mylist = self.field_lookup[field]
         keyname = 'field_' + str(field_count)
         if(content_count < len(form_content)):
-          self.debug.info_message("keyname is: " + str(keyname) )
-          self.debug.info_message("content count is: " + str(content_count) )
-          self.debug.info_message("field data is: " + str(form_content[content_count]) )
+          self.debug.verbose_message("keyname is: " + str(keyname) )
+          self.debug.verbose_message("content count is: " + str(content_count) )
+          self.debug.verbose_message("field data is: " + str(form_content[content_count]) )
           window_line = window_line + ' ' + (mylist[4](self, keyname, form_content[content_count], mylist[0], mylist[1], mylist[2], 0, None))
         else:
           window_line = window_line + ' ' + (mylist[4](self, keyname, '', mylist[0], mylist[1], mylist[2], 0, None))
 
-        self.debug.info_message("mylist 5 is: " + str(mylist[5]) )
+        self.debug.verbose_message("mylist 5 is: " + str(mylist[5]) )
 
         if(mylist[5] == True):
           content_count = content_count + 1  
         field_count = field_count + 1
-        self.debugForms.info_message("line : " + str(mylist) )
+        self.debugForms.verbose_message("line : " + str(mylist) )
 
       split_string = window_line.split('\n')
       for z in range(len(split_string)):
@@ -2659,7 +2659,7 @@ Cont-4/500,Cont-16/1K,OLIVIA-4/1K'.split(',')
 
 
     about_text = '\n\
-                                                Ham Radio Relay Messenger de WH6GGO v2.0.4 Alpha \n\
+                                                Ham Radio Relay Messenger de WH6GGO v2.0.5 Alpha \n\
 \n\
 Ham Radio Relay Messenger and SAAMFRAM Protocol Copyright (c) 2022-2025 Lawrence Byng. MIT License details included\n\
 below for reference (scroll down). For latest information and updates re: Ham Radio Relay Messenger and SAAMFRAM Protocol, \n\
@@ -2898,17 +2898,9 @@ SOFTWARE.\n'
                             ],
                             
                             
+                          [sg.Text('From Handle       Message' + ' '*81 + 'MSGID', expand_x=True, font=("Courier New", 10))] ,
+                          [sg.MLine('', size=(64, 5), font=("Courier New", 9), key='table_chat_received_messages_p2pip', text_color='black', background_color='white', expand_x = True, expand_y=True)], 
 
-                          [sg.Table(values=[], headings=['From Handle', 'Message', 'MSGID'],
-                            max_col_width=116,
-                            col_widths=[10,91,15],
-                            auto_size_columns=False,
-                            text_color='black',
-                            background_color='white',
-                            justification='left',
-                            enable_events=True,
-                            select_mode=sg.TABLE_SELECT_MODE_EXTENDED,
-                            num_rows=24, key='table_chat_received_messages_p2pip', font=("Courier New", 10), expand_x=True )],
 
                                 ] 
 
@@ -2954,7 +2946,6 @@ SOFTWARE.\n'
 
           [ sg.Button('View', size=(10, 1), key='btn_inbox_viewmsg'),
            sg.Button('Export', size=(10, 1), key='btn_inbox_copyclipboard'),
-           #sg.Button('Paste', size=(10, 1), key='btn_inbox_pasteclipboard', disabled = True),
            sg.Button('Delete', size=(10, 1), key='btn_inbox_deleteselected'),
            sg.Button('Delete All', size=(10, 1), key='btn_inbox_deleteall'),
            sg.Button('Query Msg', size=(10, 1), key='btn_inbox_querydoyouhaveacopy', visible=False),
@@ -3001,7 +2992,6 @@ SOFTWARE.\n'
 
           [
            sg.Button('Export', size=(6, 1), key='btn_relay_copytoclipboard'),
-           #sg.Button('Paste', size=(6, 1), key='btn_relay_pastefromclipboard', disabled = True),
            sg.Button('Delete', size=(6, 1), key='btn_relaybox_deleteselected'),
            sg.Button('Delete All', size=(7, 1), key='btn_relaybox_deleteall'),
            sg.Button('Post', size=(6, 1), key='btn_relay_copytooutbox'),
@@ -3173,7 +3163,6 @@ SOFTWARE.\n'
           [
           sg.Button('View',   key='btn_outbox_viewform', size=(7, 1) ), 
           sg.Button('Export',   key='btn_outbox_copytoclipboard', size=(7, 1) ), 
-          #sg.Button('Paste',   key='btn_outbox_importfromclipboard', size=(12, 1) ), 
           sg.Button('Edit',   key='btn_outbox_editform', size=(7, 1) ), 
           sg.Button('Delete',   key='btn_outbox_deletemsg', size=(7, 1) ), 
           sg.Button('Delete All',   key='btn_outbox_deleteallmsg', size=(7, 1) ), 
@@ -3837,7 +3826,6 @@ SOFTWARE.\n'
     self.layout_satellite_and_internet_tab = [
 
                             [sg.TabGroup([[
-                               #sg.Tab('Settings', self.layout_substation, title_color='Blue',border_width =10 ),
                                sg.Tab('VPN Connections & Data Flecs', self.layout_peer_p2pip_connections, title_color='Green', key='tab_compose', visible=True)]],
 
                              tab_location='centertop',
@@ -4012,7 +4000,6 @@ SOFTWARE.\n'
                         sg.Combo(combo_direct_relay, key='combo_settings_direct_relay', default_value=combo_direct_relay[1], enable_events=True, visible = False ),
 
                         sg.CBox('Auto Receive', key='cb_mainwindow_autoacceptps', default = js.get("params").get('AutoReceive'), visible = True if (self.group_arq.operating_mode == cn.JS8CALL) else False)],
-                        #sg.Button('Clipboard Import',   key='btn_outbox_importfromclipboard', size=(12, 1), visible = False )], 
 
 
                        ], expand_x=True)],
@@ -4042,7 +4029,7 @@ SOFTWARE.\n'
                        tab_location='centertop',
                        size=(940, 450), selected_title_color='Black', selected_background_color='White', key='tabgrp_main', expand_x=True  )] ]  
 
-    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.4 Alpha - ' + (js.get("params").get('CallSign') if not self.group_arq.listenonly else js.get("params").get('p2pMyStationNameLUID')) + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
+    self.window = sg.Window('Ham Radio Relay Messenger de WH6GGO. v2.0.5 Alpha - ' + (js.get("params").get('CallSign') if not self.group_arq.listenonly else js.get("params").get('p2pMyStationNameLUID')) + (' - JS8CALL' if (self.group_arq.operating_mode == cn.JS8CALL) else ' - FLDIGI'), self.tabgrp, default_element_size=(40, 1), grab_anywhere=True)                       
 
     return (self.window)
 
