@@ -202,9 +202,13 @@ class SAAMFRAM_fldigi(SAAMFRAM):
 
     self.setMessageID(self.tx_rig, self.tx_channel, msgid)
 
+    mycall = self.getMyCall()
+    mygroup = self.getMyGroup()
+
     checked = self.form_gui.window['cb_outbox_includepremsg'].get()
     if(checked):
-      self.setPreMessage('', '')
+      #self.setPreMessage('', '')
+      self.pre_message = self.buildPreMessageGeneral(mycall, mygroup, 'pre-message', None)
       pre_message = self.getPreMessage()
     else:
       pre_message = ''
@@ -212,8 +216,6 @@ class SAAMFRAM_fldigi(SAAMFRAM):
     message = pre_message + message
 
     """ send the full message to the group first """
-    mycall = self.getMyCall()
-    mygroup = self.getMyGroup()
     connect_to_list = self.group_arq.getRelayListFromSendList(tolist)
     msg_addressed_to = ' ' + mycall + ': ' + connect_to_list + mygroup + ' '
 

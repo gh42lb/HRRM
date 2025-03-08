@@ -108,7 +108,10 @@ class SaamframCoreUtils(object):
     chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
     charsLen = len(chars)
 
-    timestamp_string = ID.split('_',1)[1]
+    if '_' in ID:
+      timestamp_string = ID.split('_',1)[1]
+    elif '#' in ID:
+      timestamp_string = ID.split('#',1)[1]
 
     inttime = ((int(timestamp_string,36))/100.0)
     self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp(inttime) ) )
@@ -124,19 +127,22 @@ class SaamframCoreUtils(object):
 
     chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
     charsLen = len(chars)
-    hexnum = '0x' + ID.split('_',1)[0]
 
-    timestamp_string = ID.split('_',1)[1]
+    if '_' in ID:
+      hexnum = '0x' + ID.split('_',1)[0]
+      timestamp_string = ID.split('_',1)[1]
 
-    inttime = ((int(timestamp_string,36))/100.0)
-    self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp(inttime) ) )
+      inttime = ((int(timestamp_string,36))/100.0)
+      self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp(inttime) ) )
 
-    intnum = int(hexnum,16)
-    callsign = ""
-    while intnum:
-      callsign = chars[intnum % charsLen] + callsign
-      intnum //= charsLen
-    return callsign
+      intnum = int(hexnum,16)
+      callsign = ""
+      while intnum:
+        callsign = chars[intnum % charsLen] + callsign
+        intnum //= charsLen
+      return callsign
+    elif '#' in ID:
+      return ID.split('#',1)[0]
 
 
   def getEOMChecksum(self, mystr):
@@ -270,77 +276,6 @@ class SaamframCoreUtils(object):
     return True, reconstruct
 
 
-  def getMacAddress(self):
-    return get_mac_address()
-
-  def macToUuid(self, mac_address):
-    self.debug.info_message("macToUuid")
-    try:
-      mac_address = mac_address.replace(':', '')
-      mac_address = mac_address.replace('-', '').upper()
-      mac_int = int(mac_address, 16)
-      self.debug.info_message("macInt: " + str(mac_int))
-      ret_value = uuid.UUID(int=mac_int)
-      self.debug.info_message("return value: " + str(ret_value))
-      return ret_value
-    except:
-      self.debug.error_message("Exception in macToUuid: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
-
-    return None
-
-  def macToInt(self, mac_address):
-    self.debug.info_message("macToUuid")
-    try:
-      mac_address = mac_address.replace(':', '')
-      mac_address = mac_address.replace('-', '').upper()
-      mac_int = int(mac_address, 16)
-      self.debug.info_message("macInt: " + str(mac_int))
-      return mac_int
-    except:
-      self.debug.error_message("Exception in macToUuid: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
-
-    return None
-
-
-  def uuidToMac(self, uuid):
-    return ':'.join(['{:02x}'.format((uuid >> elements) & 0xff) for elements in range(5,-1,-1)])
-
-
-  def getEncodeUniqueMacId(self, mac_address):
-    self.debug.info_message("getEncodeUniqueMacId\n")
-
-    try:
-      """ new encode for timestamp """
-      base_36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      encoded = ''
-      temp_var = int(round(datetime.utcnow().timestamp()*100))
-
-      self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp((temp_var)/100.0)))
-      self.debug.info_message("temp var is " + str(temp_var))
-
-      while (temp_var != 0):
-        temp_var, i = divmod(temp_var, 36)
-        encoded = base_36[i] + encoded
-
-      self.debug.info_message("encoded = " + encoded)
-      self.debug.info_message("original number = " + str(int(encoded,36)))
-      self.debug.info_message("datetime = " + str(datetime.utcfromtimestamp((int(encoded,36))/100.0)))
-
-      """ prepare mac encoding """
-      encoded_mac = ''
-      temp_var = mac_address
-      while (temp_var != 0):
-        temp_var, i = divmod(temp_var, 36)
-        encoded_mac = base_36[i] + encoded_mac
-
-      """ no need to be decodeable"""
-      ID = encoded_mac + encoded
-
-    except:
-      self.debug.error_message("Exception in getEncodeUniqueMacId: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
-
-
-    return (ID)
 
   def isIpRoutable(self, ip):
     ip_obj = ipaddress.ip_address(ip)

@@ -203,11 +203,13 @@ class NetGarq(object):
       prev_ID         = lineitem[8]
       if(callsign == station):
         """ test timestamp in here"""
-        prev_timestamp_string = prev_ID.split('_',1)[1]
+        prev_timestamp_string = self.saamfram.extractTimestamp(prev_ID)
+        #prev_timestamp_string = prev_ID.split('_',1)[1]
         prev_inttime = ((int(prev_timestamp_string,36))/100.0)
         self.debug.error_message("addSelectedStation previous timestamp: " + prev_timestamp_string)
 
-        timestamp_string = ID.split('_',1)[1]
+        timestamp_string = self.saamfram.extractTimestamp(ID)
+        #timestamp_string = ID.split('_',1)[1]
         inttime = ((int(timestamp_string,36))/100.0)
         self.debug.error_message("addSelectedStation this timestamp: " + timestamp_string)
 
@@ -1306,11 +1308,12 @@ class JSONPipeVPNhrrmCallback(object):
           if len(the_list) > 0 :
             self.form_gui.group_arq.p2p_online = True
             self.form_gui.window['btn_p2pipsatellite_getneighbors'].update(button_color=('black', 'green1'))
+            self.form_gui.form_events.neighbors_cache.setTable(the_list, 2)
           else:
             self.form_gui.group_arq.p2p_online = False
             self.form_gui.window['btn_p2pipsatellite_getneighbors'].update(button_color=('black', 'red'))
+            #self.form_gui.form_events.neighbors_cache.appendTable(the_list, 2)
 
-          self.form_gui.form_events.neighbors_cache.appendTable(the_list, 2)
           neighbors_table = self.form_gui.form_events.neighbors_cache.getTable()
 
           self.form_gui.window['tbl_selectedconnectionsp2pip'].update(values=neighbors_table)

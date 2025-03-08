@@ -442,9 +442,13 @@ class SAAMFRAM_js8(SAAMFRAM):
       recipient_stations = tolist.split(';')
       self.setRecipientStations(self.tx_rig, self.tx_channel, recipient_stations)
 
+    mycall = self.getMyCall()
+    mygroup = self.getMyGroup()
+
     checked = self.form_gui.window['cb_outbox_includepremsg'].get()
     if(checked):
       self.setPreMessage('', '')
+      self.pre_message = self.buildPreMessageGeneral(mycall, mygroup, 'pre-message', None)
       pre_message = self.getPreMessage()
     else:
       pre_message = ''
@@ -452,8 +456,6 @@ class SAAMFRAM_js8(SAAMFRAM):
     message = pre_message + message
 
     """ send the full message to the group first """
-    mycall = self.getMyCall()
-    mygroup = self.getMyGroup()
     msg_addressed_to = ' ' + mycall + ': ' + mygroup + ' '
 
     self.setMessage(self.tx_rig, self.tx_channel, msg_addressed_to + ' BOS ' + message)
