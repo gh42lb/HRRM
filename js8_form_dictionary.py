@@ -14,6 +14,7 @@ import random
 import hrrm
 import js8_form_gui
 import js8_form_events
+import debug as db
 
 from datetime import datetime, timedelta
 from datetime import time
@@ -63,12 +64,10 @@ class FormDictionary(object):
 
     self.form_events = None
     self.group_arq = None
-    self.debug = debug
-
+    self.debug = db.Debug(cn.DEBUG_DICTIONARY)
 
     self.dataFlecCache = {}
     self.dataFlecCache_clearAll()
-
 
     return
 
@@ -437,7 +436,7 @@ class FormDictionary(object):
   def setDataInDictionary(self, formname, category, filename, data):
 
     js = self.template_file_dictionary_data[filename]
-    self.debug.info_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
+    self.debug.verbose_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
 
     description = ''
     version = 0
@@ -463,7 +462,7 @@ class FormDictionary(object):
 
     js = self.template_file_dictionary_data[filename]
 
-    self.debug.info_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
+    self.debug.verbose_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
 
     description = ''
     version = 0
@@ -501,29 +500,29 @@ class FormDictionary(object):
     for file_key in self.template_file_dictionary_data:
       js = self.template_file_dictionary_data.get(file_key)
      
-      self.debug.info_message("dictionary data is: " + str(js) )
+      self.debug.verbose_message("dictionary data is: " + str(js) )
 
       description = ''
       version = 0
 
-      self.debug.info_message("getTemplatesFromCategory js: " + str(js))
+      self.debug.verbose_message("getTemplatesFromCategory js: " + str(js))
       self.debug.info_message("getTemplatesFromCategory category: " + str(category))
 
       data_dictionary = js.get(category)		  
 
-      self.debug.info_message("getTemplatesFromCategory data_dictionary: " + str(data_dictionary))
+      self.debug.verbose_message("getTemplatesFromCategory data_dictionary: " + str(data_dictionary))
 
       if(data_dictionary != None):
         for key in data_dictionary:
-          self.debug.info_message("form name: " + key )
+          self.debug.verbose_message("form name: " + key )
           data = data_dictionary.get(key)		  
 
-          self.debug.info_message("data: " + str(data) )
+          self.debug.verbose_message("data: " + str(data) )
 
           version = data[0]		  
-          self.debug.info_message("version: " + str(version) )
+          self.debug.verbose_message("version: " + str(version) )
           description = data[1]
-          self.debug.info_message("description: " + description )
+          self.debug.verbose_message("description: " + description )
 
           self.group_arq.addTemplate(key, description, str(version), file_key)
 
@@ -547,7 +546,7 @@ class FormDictionary(object):
     self.debug.info_message("createNewTemplateInDictionary 1 \n")
 
     dictionary = self.template_file_dictionary_data[filename]
-    self.debug.info_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
+    self.debug.verbose_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
 
     data_dictionary = {}
 
@@ -692,7 +691,7 @@ class FormDictionary(object):
     """ now add the edited data object """	  
     self.template_file_dictionary_data[filename] = js
 
-    self.debug.info_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
+    self.debug.verbose_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
 
     description = ''
     version = 0
@@ -761,7 +760,7 @@ class FormDictionary(object):
     else:
       return
 
-    self.debug.info_message("readTemplateDictFromMemory got the data: " + str(data))
+    self.debug.verbose_message("readTemplateDictFromMemory got the data: " + str(data))
 
     """  
     reconstructing the data as a dictionary
@@ -774,7 +773,7 @@ class FormDictionary(object):
       """ now add the edited data object """	  
       self.template_file_dictionary_data[filename] = js
 
-      self.debug.info_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
+      self.debug.verbose_message("dictionary data is: " + str(self.template_file_dictionary_data[filename]) )
 
       description = ''
       version = 0
@@ -1149,7 +1148,6 @@ class FormDictionary(object):
         ID         = message.get('lastheard')
 
         timestamp_string = self.group_arq.saamfram.extractTimestamp(ID)
-        #timestamp_string = ID.split('_',1)[1]
         inttime = int(timestamp_string,36)
         difference = timenow - inttime
 
@@ -1293,7 +1291,6 @@ class FormDictionary(object):
       ID         = message.get('lastheard')
 
       timestamp_string = self.group_arq.saamfram.extractTimestamp(ID)
-      #timestamp_string = ID.split('_',1)[1]
       inttime = int(timestamp_string,36)
       difference = timenow - inttime
 
@@ -2239,7 +2236,6 @@ class FormDictionary(object):
                            'WinlinkDefaultMode'   : values['option_general_patmode'],
                            'WinlinkDefaultStation'   : values['input_general_patstation'],
 
-                           #'p2pMyStationName'        : values['in_mystationname'].split('GUID: ')[1],
                            'p2pMyStationName'        : values['in_mystationname'],
                            'p2pMyStationNameLUID'        : values['in_mystationnameluid'],
                            'p2pMyStationNeighbors'   : self.group_arq.form_gui.form_events.neighbors_cache.getTable(),

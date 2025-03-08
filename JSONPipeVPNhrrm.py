@@ -54,7 +54,7 @@ class JSONPipeVPNhrrm(JSONPipeVPN):
     if(self.connected):
 
       if self.form_gui.group_arq.listenonly == True:
-        ID_string = self.form_gui.window['in_mystationname'].get().split('GUID: ')[1]
+        ID_string = self.form_gui.window['in_mystationname'].get().strip()
         ID = digest(ID_string)
       else:
         ID_string = self.form_gui.window['input_myinfo_callsign'].get()

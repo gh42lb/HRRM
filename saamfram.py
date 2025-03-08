@@ -79,7 +79,7 @@ class SAAMFRAM(SaamframCoreUtils):
     self.form_dictionary = form_dictionary
     self.js8client = js8client_rig1
     self.fldigiclient = fldigiclient_rig1
-    self.debug = debug
+    self.debug = db.Debug(cn.DEBUG_SAAMFRAM)
     self.form_gui = form_gui
     self.announce = ''
     self.pre_message = ''
@@ -707,7 +707,7 @@ class SAAMFRAM(SaamframCoreUtils):
 
     rigdictionaryitem.get('channels')[channel_name] = dictionary_channel
 
-    self.debug.info_message("rig channel dictionary : " + str(self.rig_channel_dictionary) )
+    self.debug.verbose_message("rig channel dictionary : " + str(self.rig_channel_dictionary) )
 
     """ channel name, station callsign, mode type, mode, offset, comm status, in session, last_heard, SAAM capable, """
     comm_status = cn.COMM_NONE
@@ -717,7 +717,7 @@ class SAAMFRAM(SaamframCoreUtils):
     self.group_arq.addGarqStation(rigname, channel_name, station_callsign, modetype, modename, offset, comm_status, in_session, last_heard, saam_capable)
 
     try:
-      self.debug.info_message("garq stations: " + str(self.group_arq.getGarqStations()) )
+      self.debug.verbose_message("garq stations: " + str(self.group_arq.getGarqStations()) )
       table = self.group_arq.getGarqStations()
 
       if(self.form_gui.window != None):
@@ -1614,6 +1614,8 @@ outbox dictionary items formatted as...
         #existing_tags = 
         #content = mergeTags(existing_tags, new_tags)
 
+        f_refresh_p2pip_chat_table = False
+
         for x in range(7,len(data)):
           content.append(data[x])			
           self.debug.info_message("CONTENT is: " + data[x] )
@@ -1630,29 +1632,42 @@ outbox dictionary items formatted as...
         if(data[5] == 'QUICKMSG'):
 
           received_data = data[12]
-          if(len(received_data)>100):
-            self.group_arq.addChatData(msgfrom, received_data[:90].strip(), data[0])
-            self.group_arq.addChatData('', received_data[90:180].strip(), data[0])
-            self.group_arq.addChatData('', received_data[180:].strip(), data[0])
-          elif(len(received_data)>50):
-            self.group_arq.addChatData(msgfrom, received_data[:90].strip(), data[0])
-            self.group_arq.addChatData('', received_data[90:].strip(), data[0])
-          else:
-            self.group_arq.addChatData(msgfrom, received_data[:90].strip(), data[0])
-
-          if(self.testAnywhereOnReceiveList(msgto, self.getMyCall()) == True):
-            self.group_arq.appendChatDataColorTargeted()
-          else:
-            self.group_arq.appendChatDataColorPassive()
-
           if radio_p2pip == cn.RADIO:
+            if(len(received_data)>180):
+              self.group_arq.addChatData(msgfrom, received_data[:90].strip(), data[0])
+              self.group_arq.addChatData('', received_data[90:180].strip(), data[0])
+              self.group_arq.addChatData('', received_data[180:].strip(), data[0])
+            elif(len(received_data)>90):
+              self.group_arq.addChatData(msgfrom, received_data[:90].strip(), data[0])
+              self.group_arq.addChatData('', received_data[90:].strip(), data[0])
+            else:
+              self.group_arq.addChatData(msgfrom, received_data[:90].strip(), data[0])
+
+            if(self.testAnywhereOnReceiveList(msgto, self.getMyCall()) == True):
+              self.group_arq.appendChatDataColorTargeted()
+            else:
+              self.group_arq.appendChatDataColorPassive()
+
             self.form_gui.window['table_chat_received_messages'].update(values=self.group_arq.getChatData())
             self.form_gui.window['table_chat_received_messages'].set_vscroll_position(1.0)
             self.form_gui.window['table_chat_received_messages'].update(row_colors=self.group_arq.getChatDataColors())
           elif radio_p2pip == cn.P2PIP:
-            self.form_gui.window['table_chat_received_messages_p2pip'].update(values=self.group_arq.getChatData())
-            self.form_gui.window['table_chat_received_messages_p2pip'].set_vscroll_position(1.0)
-            self.form_gui.window['table_chat_received_messages_p2pip'].update(row_colors=self.group_arq.getChatDataColors())
+            discussion_name = msgto
+            if self.testAnywhereOnReceiveList(msgto, self.getMyCall()):
+              msgtype = cn.P2P_IP_CHAT_RCVD_FOR_ME
+            else:
+              msgtype = cn.P2P_IP_CHAT_RCVD_FOR_OTHER
+            if(len(received_data)>180):
+              self.group_arq.p2pip_chat_data.append(discussion_name, msgfrom, received_data[:90].strip(), data[0], 'line1', msgtype)
+              self.group_arq.p2pip_chat_data.append(discussion_name, '', received_data[90:180].strip(), data[0], 'line2', msgtype)
+              self.group_arq.p2pip_chat_data.append(discussion_name, '', received_data[180:].strip(), data[0], 'line3', msgtype)
+            elif(len(received_data)>90):
+              self.group_arq.p2pip_chat_data.append(discussion_name, msgfrom, received_data[:90].strip(), data[0], 'line1', msgtype)
+              self.group_arq.p2pip_chat_data.append(discussion_name, '', received_data[90:].strip(), data[0], 'line2', msgtype)
+            else:
+              self.group_arq.p2pip_chat_data.append(discussion_name, msgfrom, received_data[:90].strip(), data[0], 'line1', msgtype)
+
+            self.group_arq.p2pip_chat_data.refreshChatDisplay(False)
 
         else: #if(data[5] == 'EMAIL'):
 
@@ -3248,7 +3263,6 @@ outbox dictionary items formatted as...
     charsLen = len(chars)
 
     timestamp_string = self.extractTimestamp(ID)
-    #timestamp_string = ID.split('_',1)[1]
 
     inttime = ((int(timestamp_string,36))/100.0)
     timestamp = datetime.utcfromtimestamp(inttime).strftime('%Y/%m/%d %H:%M')

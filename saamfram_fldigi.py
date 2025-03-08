@@ -207,7 +207,6 @@ class SAAMFRAM_fldigi(SAAMFRAM):
 
     checked = self.form_gui.window['cb_outbox_includepremsg'].get()
     if(checked):
-      #self.setPreMessage('', '')
       self.pre_message = self.buildPreMessageGeneral(mycall, mygroup, 'pre-message', None)
       pre_message = self.getPreMessage()
     else:

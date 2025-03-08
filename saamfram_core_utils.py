@@ -18,7 +18,8 @@ import uuid
 
 class SaamframCoreUtils(object):
 
-  debug = db.Debug(cn.DEBUG_INFO)
+  debug = db.Debug(cn.DEBUG_SAAMFRAM_COREUTILS)
+
   base32_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
   delimiter_char = cn.DELIMETER_CHAR
 

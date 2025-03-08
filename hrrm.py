@@ -29,6 +29,7 @@ from uuid import uuid4
 from JSONPipeVPNhrrm import JSONPipeVPNhrrm
 from saamfram_js8 import SAAMFRAM_js8
 from saamfram_fldigi import SAAMFRAM_fldigi
+from collections import OrderedDict
 
 """
 MIT License
@@ -80,8 +81,11 @@ class NetGarq(object):
     self.selected_relay_stations = []
     self.chat_data = []
     self.chat_data_colors = []
+
+    self.p2pip_chat_data = ChatDataCache(self)
+
     self.selected_template = 'General Message'
-    self.debug = debug
+    self.debug = db.Debug(cn.DEBUG_HRRM)
 
     self.form_gui = None
     self.form_events = None
@@ -204,12 +208,10 @@ class NetGarq(object):
       if(callsign == station):
         """ test timestamp in here"""
         prev_timestamp_string = self.saamfram.extractTimestamp(prev_ID)
-        #prev_timestamp_string = prev_ID.split('_',1)[1]
         prev_inttime = ((int(prev_timestamp_string,36))/100.0)
         self.debug.error_message("addSelectedStation previous timestamp: " + prev_timestamp_string)
 
         timestamp_string = self.saamfram.extractTimestamp(ID)
-        #timestamp_string = ID.split('_',1)[1]
         inttime = ((int(timestamp_string,36))/100.0)
         self.debug.error_message("addSelectedStation this timestamp: " + timestamp_string)
 
@@ -1291,8 +1293,8 @@ class JSONPipeVPNhrrmCallback(object):
   """
   def json_client_callback(self, json_string, txrcv, rigname, js8riginstance):
 
-    sys.stdout.write("hrrm.py: json_client_callback\n")
-    sys.stdout.write("hrrm.py: Data Received at Client: " + str(json_string) + "\n")
+    sys.stdout.write("hrrm.py: JSONPipeVPNhrrmCallback json_client_callback\n")
+    sys.stdout.write("hrrm.py: JSONPipeVPNhrrmCallback Data Received at Client: " + str(json_string) + "\n")
 
     try:
       dict_obj = json.loads(json_string)
@@ -1430,10 +1432,136 @@ class JSONPipeVPNhrrmCallback(object):
               self.form_gui.group_arq.saamfram.processIncomingMessageCommonExtended(text, cn.UNKNOWN_BOX, cn.P2PIP)
 
     except:
-      sys.stdout.write("Exception in runReceive: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) + "\n")
+      sys.stdout.write("Exception in hrrm.py json_client_callback: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) + "\n")
 
     self.form_gui.window['debug_window'].update(str(json_string) + "\n", append=True)
     return
+
+
+
+
+class ChatDataCache(object):
+
+  refresh_required = {}
+  displayed_rows = {}
+  chat_store = {}
+  debug = db.Debug(cn.DEBUG_INFO)
+
+  def __init__(self, group_arq):  
+    sys.stdout.write("ChatDataCache: init\n")
+    self.group_arq = group_arq
+
+  def append(self, discussion_name, msgfrom, received_text, msgid, text_line_number, msgtype):
+    sys.stdout.write("ChatDataCache: append\n")
+    if discussion_name not in self.chat_store:
+      self.chat_store[discussion_name] = OrderedDict()
+      self.refresh_required[discussion_name] = True
+
+    if (msgid + ':' + text_line_number) not in self.chat_store[discussion_name]:
+      self.chat_store[discussion_name][msgid + ':' + text_line_number] = [msgfrom, received_text, msgid, msgtype]
+      self.refresh_required[discussion_name] = True
+
+
+
+  def getTableDelta(self, discussion_name, start_row, end_row):
+    sys.stdout.write("ChatDataCache: getTableDelta\n")
+    return self.getTable(discussion_name)[start_row:end_row]
+
+  def getTable(self, discussion_name):
+    sys.stdout.write("ChatDataCache: getTable\n")
+
+    output_table = []
+    try:
+      if discussion_name in self.chat_store:
+        dict_data = self.chat_store[discussion_name]
+        for key in dict_data:
+          msgfrom      = self.chat_store[discussion_name][key][0]
+          rcvdtext     = self.chat_store[discussion_name][key][1]
+          msgid        = self.chat_store[discussion_name][key][2]
+          color_basis  = self.chat_store[discussion_name][key][3]
+          output_table.append([msgfrom, rcvdtext, msgid, color_basis])
+
+      sys.stdout.write("ChatDataCache: getTable output table: " + str(output_table) + "\n")
+    except:
+      self.debug.error_message("Exception in getTable: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+    return output_table
+
+  def getTableColors(self, discussion_name):
+    sys.stdout.write("ChatDataCache: getTableColors\n")
+
+    output_table = []
+
+    if discussion_name in self.chat_store:
+      dict_data = self.chat_store[discussion_name]
+
+      row_num = 0
+      for key in dict_data:
+        msgtype  = self.chat_store[discussion_name][key][3]
+
+        if msgtype == cn.P2P_IP_CHAT_RCVD_FOR_ME:
+          output_table.append([row_num, 'green1'])
+        elif msgtype == cn.P2P_IP_CHAT_RCVD_FOR_OTHER:
+          output_table.append([row_num, 'gray'])
+        elif msgtype == cn.P2P_IP_CHAT_SENT:
+          output_table.append([row_num, 'white'])
+
+        row_num = row_num + 1
+
+    sys.stdout.write("ChatDataCache: getTableColors output table: " + str(output_table) + "\n")
+
+    return output_table
+
+  def getSelectedDiscussion(self):
+    table = self.group_arq.form_events.discussion_cache.getTable()
+    line_data = self.group_arq.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()
+    self.debug.info_message("line_data is: " + str(line_data))
+    if line_data != [] :
+      line_index = int(self.group_arq.form_gui.window['table_chat_satellitediscussionname_plus_group'].get()[0])
+      self.debug.info_message("line_index is: " + str(line_index))
+      discname      = (table[line_index])[0]
+      group_name    = (table[line_index])[1]
+      discussion_name = str(discname + group_name.replace('@', '#') )
+
+      self.debug.info_message("getSelectedDiscussion selected discussion: " + str(discussion_name) + "\n")
+      return discussion_name
+
+    self.debug.info_message("getSelectedDiscussion selected discussion: \n")
+    return ''
+
+  def refreshChatDisplay(self, force):
+
+    if force == True:
+      self.group_arq.form_gui.window['table_chat_received_messages_p2pip'].update('')
+
+    discussion_name = self.getSelectedDiscussion()
+
+    if discussion_name not in self.displayed_rows or force == True:
+      delta_table = self.getTableDelta(discussion_name, 0, len(self.chat_store[discussion_name]))
+    else:
+      delta_table = self.getTableDelta(discussion_name, self.displayed_rows[discussion_name], len(self.chat_store[discussion_name]))
+    self.displayed_rows[discussion_name] = len(self.chat_store[discussion_name])
+
+    if discussion_name != '':
+      if discussion_name not in self.refresh_required:
+        self.refresh_required[discussion_name] = True
+
+      if self.refresh_required[discussion_name] == True or force == True:
+        self.debug.info_message("refreshChatDisplay refreshing data")
+
+        for row in delta_table:
+          string_row = f"{str(row[0]):<{20}}" + f"{str(row[1]):<{101}}" + f"{str(row[2]):<{30}}"
+          color_basis = row[3]
+          if color_basis == cn.P2P_IP_CHAT_SENT:
+            self.group_arq.form_gui.window['table_chat_received_messages_p2pip'].print(string_row, text_color='black', background_color = 'white')
+          elif color_basis == cn.P2P_IP_CHAT_RCVD_FOR_ME:
+            self.group_arq.form_gui.window['table_chat_received_messages_p2pip'].print(string_row, text_color='black', background_color = 'green1')
+          elif color_basis == cn.P2P_IP_CHAT_RCVD_FOR_OTHER:
+            self.group_arq.form_gui.window['table_chat_received_messages_p2pip'].print(string_row, text_color='black', background_color = 'gray')
+
+        self.refresh_required[discussion_name] = False
+      else:
+        self.debug.info_message("refreshChatDisplay not refreshing data")
 
  
 def usage():
@@ -1659,9 +1787,9 @@ def main():
 
 
     table = group_arq.form_gui.createTableFromNames()
-    debug.info_message("TABLE: " + str(table) )
+    debug.verbose_message("TABLE: " + str(table) )
     reverse_lookup = group_arq.form_gui.createReverseLookup()
-    debug.info_message("REVERSE LOOKUP: " + str(reverse_lookup) )
+    debug.verbose_message("REVERSE LOOKUP: " + str(reverse_lookup) )
     group_arq.form_gui.createFieldLookup()
     group_arq.form_gui.table_lookup.append('-')
 
