@@ -192,7 +192,7 @@ class FLDIGI_Client(object):
 
       mode_count = mode_count + 1
 
-    self.debug.info_message("new_selection_list " + new_selection_list)
+    self.debug.verbose_message("new_selection_list " + new_selection_list)
 
     return new_selection_list, new_selection_list_mode_only
 
@@ -355,7 +355,7 @@ class FLDIGI_Client(object):
     modes = ''
     for key in self.timing_lookup:
       data = self.timing_lookup[key]
-      self.debug.info_message("DATA IS :" + str(data) )
+      self.debug.verbose_message("DATA IS :" + str(data) )
       modes = modes + data.split(',')[7] +','
     return modes
 

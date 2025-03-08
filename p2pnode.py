@@ -8,7 +8,9 @@ import json
 import random
 import ctypes
 import constant as cn
+import debug as db
 import getopt
+import concurrent.futures
 
 from p2pMain import SuperServer
 from JSONPipeVPNp2pnode import JSONPipeVPNp2pnode
@@ -54,28 +56,29 @@ class pNode(object):
   mainloop = None
   server = None
   fNodeStarted = False
+  debug = db.Debug(cn.DEBUG_P2PNODE)
 
   def setPipe(self, pipe, pipe_key):
     self.pipe[pipe_key] = pipe
-    sys.stdout.write("Setting pipe for key: " + str(pipe_key) + "\n")
+    self.debug.info_message("Setting pipe for key: " + str(pipe_key) )
     if(self.server != None):
       self.server.setPipe(pipe)
 
   def getPipe(self,  pipe_key):
-    sys.stdout.write("Getting pipe for key: " + str(pipe_key) + "\n")
+    self.debug.info_message("Getting pipe for key: " + str(pipe_key) )
     return self.pipe[pipe_key]
 
   def createServerObjectFromBytes(self, mydigest):
-    sys.stdout.write("method: createServerObjectFromBytes\n")
+    self.debug.info_message("method: createServerObjectFromBytes")
     self.server = SuperServer(20, 3, mydigest, MultiValueStorage())
 
   def createServerObject(self, mydigest):
-    sys.stdout.write("method: createServerObject\n")
+    self.debug.info_message("method: createServerObject")
     bytes_value = mydigest.to_bytes(20,byteorder='big')
     self.server = SuperServer(20, 3, bytes_value, MultiValueStorage())
 
   def restart(self):
-    sys.stdout.write("RESTART CALLED\n")
+    self.debug.info_message("RESTART CALLED")
     self.mainloop.stop()
     self.start_bootstrap_thread(self)
 
@@ -85,7 +88,7 @@ class pNode(object):
 
     pipe = self.getPipe(vpnpipe_address)
 
-    sys.stdout.write("STOP CALLED\n")
+    self.debug.info_message("STOP CALLED")
     self.mainloop.stop()
     message = json.dumps({'type': cn.P2P_IP_CONNECT_UDP, 'subtype': cn.P2P_IP_STOPPED, 'params': {}})
     self.fNodeStarted = False
@@ -100,7 +103,7 @@ class pNode(object):
 
   def bootstrap_the_server(self, node, address, vpnpipe_address):
 
-    sys.stdout.write("in bootstrap_the_server. address: " + str(address) + "\n")
+    self.debug.info_message("in bootstrap_the_server. address: " + str(address) )
 
     ip   = address[0]
     port = int(address[1])
@@ -123,7 +126,8 @@ class pNode(object):
     except KeyboardInterrupt:
       pass
     finally:
-      sys.stdout.write("server.stop\n")
+      self.debug.info_message("bootstrap_the_server: finally")
+      self.debug.info_message("server.stop")
       self.server.stop()
       loop.close()
 
@@ -191,6 +195,7 @@ class pNode(object):
     except KeyboardInterrupt:
         pass
     finally:
+        self.debug.info_message("connect_to_bootstrap_node: finally")
         self.server.stop()
         loop.close()
 
@@ -201,8 +206,8 @@ class pNode(object):
 
   async def async_get_the_neighbors(self, pipe_key):
     result = self.server.bootstrappable_neighbors()
-    print("Got result of bootstrappable neighbors:", result)
-    sys.stdout.write("SENDING DATA TO CLIENT FROM SERVER\n")
+    self.debug.info_message("Got result of bootstrappable neighbors: " + str(result)) 
+    self.debug.info_message("SENDING DATA TO CLIENT FROM SERVER")
     if(result != None):
       message = json.dumps({'type': cn.P2P_IP_QUERY_NEIGHBORS_RESULT, 'subtype': cn.P2P_IP_FOUND, 'params': {"result":result}})
     else:
@@ -215,8 +220,8 @@ class pNode(object):
 
   async def async_go_get_ping(self, pipe_key, ping_address):
     result = await self.server.bootstrap_node((ping_address[0], ping_address[1]))
-    print("Got result of ping:", result)
-    sys.stdout.write("SENDING DATA TO CLIENT FROM SERVER\n")
+    self.debug.info_message("Got result of ping: " + str(result))
+    self.debug.info_message("SENDING DATA TO CLIENT FROM SERVER")
     if(result != None):
       message = json.dumps({'type': cn.P2P_IP_QUERY_PING_RESULT, 'subtype': cn.P2P_IP_FOUND, 'params': {"result":'success', 'ping_address':ping_address}})
     else:
@@ -235,8 +240,8 @@ class pNode(object):
   async def getter(self, key, pipe_key):
     result = await self.server.getIgnoreLocal(key)
 
-    sys.stdout.write("Got Result: " + str(result)+ "\n")
-    sys.stdout.write("Sending data to client from server\n")
+    self.debug.info_message("Got Result: " + str(result))
+    self.debug.info_message("Sending data to client from server")
 
     dict_obj = None
     if(result != None):
@@ -259,7 +264,7 @@ class pNode(object):
     return dict_obj
 
   def create_bootstrap_node(self, args):
-    sys.stdout.write("create_bootstrap_node\n")
+    self.debug.info_message("create_bootstrap_node")
 
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
@@ -271,13 +276,15 @@ class pNode(object):
     except KeyboardInterrupt:
         pass
     finally:
-        sys.stdout.write("server.stop\n")
+        self.debug.info_message("create_bootstrap_node: finally")
+        self.debug.info_message("server.stop")
         self.server.stop()
         loop.close()
     
 
 class JSONPipeVPNp2pnodeCallback(object):
 
+  debug = db.Debug(cn.DEBUG_P2PNODE)
   pipeServer = None
   pnode = None
   p2pthread = None
@@ -298,8 +305,8 @@ class JSONPipeVPNp2pnodeCallback(object):
   """
   def json_server_callback(self, json_string, txrcv, rigname, js8riginstance):
 
-    sys.stdout.write("IN SERVER CALLBACK\n")
-    sys.stdout.write("DATA RECEIVED AT SERVER " + str(json_string) + "\n")
+    self.debug.info_message("JSONPipeVPNp2pnodeCallback: json_server_callback")
+    self.debug.info_message("Data received at server: " + str(json_string) )
 
     try:
       dict_obj = json.loads(json_string)
@@ -307,11 +314,11 @@ class JSONPipeVPNp2pnodeCallback(object):
       varsubtype  = dict_obj.get("subtype")
       vpnpipe_address = dict_obj.get('params').get('vpnpipe_address')
       if(vartype == cn.P2P_IP_SET_DIGEST):
-        sys.stdout.write("SET DIGEST COMMAND RECEIVED\n")
+        self.debug.info_message("Command: P2P_IP_SET_DIGEST")
         dkey = dict_obj.get('params').get('DIAL')
-        sys.stdout.write("DKEY = " + str(dkey) + "\n")
+        self.debug.info_message("DKEY = " + str(dkey) )
         value = dict_obj.get('params').get('OFFSET')
-        sys.stdout.write("VALUE = " + str(value) + "\n")
+        self.debug.info_message("VALUE = " + str(value) )
 
         loop=asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -320,52 +327,52 @@ class JSONPipeVPNp2pnodeCallback(object):
         loop.run_until_complete(pnode.server.set_digest( digest, value))
         loop.close()
       elif(vartype == cn.P2P_IP_COMMAND):
-        sys.stdout.write("COMMAND received\n")
+        self.debug.info_message("P2P_IP_COMMAND: ")
         if(varsubtype == cn.P2P_IP_START):
-          sys.stdout.write("COMMAND start received\n")
+          self.debug.info_message("P2P_IP_START: Start node")
           address = dict_obj.get('params').get('address')
           self.pnode.start(address, vpnpipe_address)
         elif(varsubtype == cn.P2P_IP_STOP):
-          sys.stdout.write("COMMAND stop received\n")
+          self.debug.info_message("P2P_IP_STOP: Stop node")
           self.pnode.stop(vpnpipe_address)
         elif(varsubtype == cn.P2P_IP_RESTART):
-          sys.stdout.write("COMMAND restart received\n")
+          self.debug.info_message("P2P_IP_RESTART: Restart node")
           self.pnode.restart()
         elif(varsubtype == cn.P2P_IP_QUERY_NEIGHBORS):
           if self.pnode.fNodeStarted == True:
-            sys.stdout.write("Getting Neighbors in pnode\n")
+            self.debug.info_message("P2P_IP_QUERY_NEIGHBORS: Querying neighbors")
             self.pnode.getNeighbors(vpnpipe_address)
           else:
-            sys.stdout.write("Node Service not started...ignoring command\n")
+            self.debug.info_message("Node Service not started...ignoring command")
 
         elif(varsubtype == cn.P2P_IP_QUERY_PING):
-          sys.stdout.write("Pinging in pnode\n")
+          self.debug.info_message("P2P_IP_QUERY_PING: Pinging address")
           address = dict_obj.get('params').get('ping_address')
           ping_address = (address[0],address[1])
           self.pnode.getPing(vpnpipe_address, ping_address)
         elif(varsubtype == cn.P2P_IP_CONNECT_UDP):
-          sys.stdout.write("Connecting to udp node\n")
+          self.debug.info_message("P2P_IP_CONNECT_UDP: Connecting to udp node")
           address = dict_obj.get('params').get('address')
           bootstrap_node = (address[0],address[1])
           self.pnode.bootstrap_connect(bootstrap_node)
         elif(varsubtype == cn.P2P_IP_CONNECT_UDP_MULTI):
-          sys.stdout.write("Connecting to multiple udp nodes\n")
+          self.debug.info_message("P2P_IP_CONNECT_UDP_MULTI: Connecting to multiple udp nodes")
           addresses = dict_obj.get('params').get('addresses')
           bootstrap_nodes = []
           for item in addresses:
             bootstrap_nodes.append((item[0], item[1]))
-          sys.stdout.write("bootstrap nodes list: " + str(bootstrap_nodes) + "\n")
+          self.debug.info_message("bootstrap nodes list: " + str(bootstrap_nodes) )
           self.pnode.bootstrap_connect_multi(bootstrap_nodes)
         elif(varsubtype == cn.P2P_IP_DUMP_LOCAL_STORAGE):
-          sys.stdout.write("Dumping Local Storage\n")
+          self.debug.info_message("P2P_IP_DUMP_LOCAL_STORAGE: Dumping Local Storage")
           self.pnode.dumpLocalStorage(vpnpipe_address)
 
         elif(varsubtype == cn.P2P_IP_GET_MSG):
-          sys.stdout.write("GET COMMAND RECEIVED AT SERVER\n")
+          self.debug.info_message("P2P_IP_GET_MSG: Getting value")
           key = dict_obj.get('params').get('key')
           self.pnode.getdata(key, vpnpipe_address)
         elif(varsubtype == cn.P2P_IP_SEND_MSG):
-          sys.stdout.write("SET COMMAND RECEIVED AT SERVER\n")
+          self.debug.info_message("P2P_IP_SEND_MSG: Set value")
           msgid     = dict_obj.get('params').get('msgid')
           msg       = dict_obj.get('params').get('message')
           destid    = dict_obj.get('params').get('destid')
@@ -386,12 +393,12 @@ class JSONPipeVPNp2pnodeCallback(object):
             """ send msgid to destination p2p node id """
             self.pnode.setValue(destid, value)
           else:
-            sys.stdout.write("destid is None\n")
+            self.debug.info_message("destid is None")
 
           if(destlist != None):
             new_dictionary_message = {'type': 'mailbox', 'version':'v1.0', 'msgid':msgid , 'timestamp':timestamp}
             value = (json.dumps(new_dictionary_message) + '\n').encode()
-            sys.stdout.write("destlist: " + str(destlist) + "\n")
+            self.debug.info_message("destlist: " + str(destlist) )
             if(';' in destlist):
               newlist = destlist.split(';')
               for item in newlist:
@@ -401,10 +408,10 @@ class JSONPipeVPNp2pnodeCallback(object):
               """ send msgid to callsign list"""  
               self.pnode.setValue(destlist, value)
           else:
-            sys.stdout.write("destlist is None\n")
+            self.debug.info_message("destlist is None")
 
         elif(varsubtype == cn.P2P_IP_SEND_TEXT):
-          sys.stdout.write("Command: P2P_IP_SEND_TEXT\n")
+          self.debug.info_message("Command: P2P_IP_SEND_TEXT")
           msgid      = dict_obj.get('params').get('msgid')
           msg        = dict_obj.get('params').get('text')
           disc_group = dict_obj.get('params').get('tolist')
@@ -417,20 +424,21 @@ class JSONPipeVPNp2pnodeCallback(object):
           self.pnode.setValue(disc_group, message)
 
         elif(varsubtype == cn.P2P_IP_GET_TEXT):
-          sys.stdout.write("Command: P2P_IP_GET_TEXT\n")
+          self.debug.info_message("Command: P2P_IP_GET_TEXT")
           key = dict_obj.get('params').get('disc_group')
           self.pnode.getdata(key, vpnpipe_address)
 
 
       elif(vartype == cn.P2P_IP_INFO):
+        self.debug.info_message("P2P_IP_INFO")
         ID = dict_obj.get('params').get('ID')
         self.ID = str(ID)
-        sys.stdout.write("received ID " + str(ID) + "\n")
+        self.debug.info_message("received ID " + str(ID) )
         self.pnode.createServerObject(ID)
 
 
     except:
-      sys.stdout.write("Exception in runReceive: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) + "\n")
+      self.debug.error_message("Exception in p2pnode json_server_callback: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
   
 
     return

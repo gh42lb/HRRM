@@ -41,6 +41,10 @@ class Debug(object):
   def get_debug_level(self):
     return self.debug_level
 
+  def verbose_message(self, msg):
+    if(self.get_debug_level() <= cn.DEBUG_VERBOSE):
+      sys.stdout.write("Verbose: " + msg + "\n")
+
   def info_message(self, msg):
     if(self.get_debug_level() <= cn.DEBUG_INFO):
       sys.stdout.write("Info: " + msg + "\n")
