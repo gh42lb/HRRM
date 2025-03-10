@@ -76,7 +76,7 @@ class ReceiveControlsProc(object):
     self.current_edit_category = ''
     self.background_snr = ''
     self.saamfram = None
-    self.debug = debug
+    self.debug = db.Debug(cn.DEBUG_FORM_EVENTS)
 
     self.refresh_timer = 0
 
@@ -287,7 +287,7 @@ class ReceiveControlsProc(object):
           encoded_id = self.saamfram.getEncodeUniqueStemGUID(int_from_mac)
           self.form_gui.window['in_mystationname'].update(str(encoded_id))
       except:
-        self.debug.info_message("Exception in event_catchall unable to get mac address for GUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+        self.debug.error_message("Exception in event_catchall unable to get mac address for GUID: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
       """ initialize the ten minute timer"""
       self.event_btnmainpanelupdaterecent(values)
@@ -1214,63 +1214,54 @@ class ReceiveControlsProc(object):
     self.debug.info_message("event_p2pipchatpostandsend\n")
 
     try:
-
       self.group_arq.saamfram.setTransmitType(cn.FORMAT_CONTENT)
 
-      """ loop thru the dictionary to populate outbox display """
-
-      #from_call = self.saamfram.getMyCall()
-      #ID = self.group_arq.saamfram.getEncodeUniqueId(from_call)
       ID = self.group_arq.saamfram.getEncodeUniqueId_p2pip()
-
       timestamp = self.group_arq.saamfram.getDecodeTimestampFromUniqueId(ID)
       msgfrom   = self.group_arq.saamfram.getDecodeCallsignFromUniqueId(ID)
 
-      """ clean up the data pulled from the form. remove whitespace and uppercase it"""
-
       msgto = values['in_inbox_listentostation'].strip().upper()
 
-      subject = '' 
       """ priority None indicates the message is not to be saved anywhere """
       priority = 'None' 
       formname = 'QUICKMSG' 
+      subject  = '' 
 
+      the_message = values['ml_chat_sendtext_p2pip']	  
       content = []
       content.append('')
       content.append('')
       content.append('')
       content.append('')
       content.append('')
-
-      the_message = values['ml_chat_sendtext_p2pip']	  
       content.append(the_message)
 
       dictionary = self.form_dictionary.createOutboxDictionaryItem(ID, msgto, msgfrom, subject, priority, timestamp, formname, content)
 
       msgid = ID 
 
-      tolist = str(values['in_chat_p2pip_discussiongroup']) + str(self.saamfram.getMyGroup().replace('@', '#'))
-      frag_size = 20
+      tolist = self.group_arq.p2pip_chat_data.getSelectedDiscussion()
+      if tolist != '' :
+        frag_size = 20
       
-      sender_callsign = self.group_arq.saamfram.getMyCall()
-      tagfile = 'ICS'
-      version  = '1.3'
-      complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
+        sender_callsign = self.group_arq.saamfram.getMyCall()
+        tagfile = 'ICS'
+        version  = '1.3'
+        complete_send_string = self.group_arq.saamfram.getContentSendString(msgid, formname, priority, tolist, subject, frag_size, tagfile, version, sender_callsign, cn.OUTBOX)
 
-      self.form_dictionary.removeOutboxDictionaryItem(ID)
+        self.form_dictionary.removeOutboxDictionaryItem(ID)
     
-      #sender_callsign = self.group_arq.saamfram.getMyCall()
-      sender_callsign = msgfrom
-      fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
-
-      """ put the relay stations on the front end of the list. """
+        sender_callsign = msgfrom
+        fragtagmsg = self.group_arq.saamfram.buildFragTagMsg(complete_send_string, frag_size, self.group_arq.getSendModeRig1(), sender_callsign)
  
-      timenow = int(round(datetime.utcnow().timestamp()*100))
-      self.event_p2pCommandCommon(cn.P2P_IP_SEND_TEXT, {'msgid':msgid , 'tolist':tolist, 'timestamp':timenow, 'text':fragtagmsg.strip()})
+        timenow = int(round(datetime.utcnow().timestamp()*100))
+        self.event_p2pCommandCommon(cn.P2P_IP_SEND_TEXT, {'msgid':msgid , 'tolist':tolist, 'timestamp':timenow, 'text':fragtagmsg.strip()})
 
-      self.group_arq.addChatData(sender_callsign, the_message, ID)
-      self.form_gui.window['table_chat_received_messages_p2pip'].update(values=self.group_arq.getChatData())
-      self.form_gui.window['table_chat_received_messages_p2pip'].update(row_colors=self.group_arq.getChatDataColors())
+        self.group_arq.p2pip_chat_data.append(tolist, msgfrom, the_message, ID, 'sent', cn.P2P_IP_CHAT_SENT)
+        self.group_arq.p2pip_chat_data.refreshChatDisplay(True)
+
+        """ invoke get """
+        self.event_checkfordiscussiongroupmessages(values)
 
     except:
       self.debug.error_message("Exception in event_prevchatpostandsend: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
@@ -1447,6 +1438,7 @@ class ReceiveControlsProc(object):
     self.form_gui.window['table_outbox_preview'].update(values=table_data )
     return
 
+
   def event_tableinboxmessages(self, values):
     self.debug.info_message("TABLE INBOX MESSAGES\n")
 
@@ -1467,8 +1459,6 @@ class ReceiveControlsProc(object):
     return
 
 
-
-
   def event_outboxeditform(self, values):
     self.debug.info_message("OUTBOX EDIT FORM\n")
 
@@ -1481,13 +1471,9 @@ class ReceiveControlsProc(object):
     msgto     = (self.group_arq.getMessageOutbox()[line_index])[1]
     msgfrom   = (self.group_arq.getMessageOutbox()[line_index])[0]
     
-
     form_content = ['gfhjgfhj', 'asdf', 'gfhjgfhj', 'sadf']
-
     category, filename = self.form_dictionary.getCategoryAndFilenameFromFormname(formname)
-
     form_content = self.form_dictionary.getContentFromOutboxDictionary(ID)
-
 
     """ create a new ID as this message is being edited."""
     ID = self.saamfram.getEncodeUniqueId(self.saamfram.getMyCall())
@@ -1526,11 +1512,8 @@ class ReceiveControlsProc(object):
     category = (self.group_arq.getCategories()[line_index])[0]
 
     self.debug.info_message("category: " + category )
-
     self.form_dictionary.getTemplatesFromCategory(category)
-
     self.current_edit_category = category
-
     self.form_gui.window['tbl_compose_select_form'].update(self.group_arq.getTemplates())
 
     return
@@ -1539,30 +1522,22 @@ class ReceiveControlsProc(object):
   def event_mainpanelsaveasfile(self, values):
 
     save_file_name = self.form_gui.window['in_mainpanel_saveasfilename'].get()
-
     shutil.copyfile('./sent_data.dat', save_file_name)
-
     self.debug.info_message("event_mainpanelsaveasfile\n")
-
     self.form_gui.form_events.changeFlashButtonState('in_mainpanel_saveasfilename', False)
 
   def event_mainpanelsaveasimagefile(self, values):
 
     save_file_name = self.form_gui.window['in_mainpanel_saveasimagefilename'].get()
-
     shutil.copyfile('./received_image.jpg', save_file_name)
-
     self.debug.info_message("event_mainpanelsaveasimagefile\n")
-
     self.form_gui.form_events.changeFlashButtonState('in_mainpanel_saveasimagefilename', False)
 
 
   def event_optionrealsequence(self, values):
 
     self.debug.info_message("event_optionrealsequence")
-
     selected_sequence = values['option_real_sequence']
-
     self.debug.info_message("selected_sequence: " + selected_sequence)
 
     params = self.group_arq.saamfram.main_params.get('params')
@@ -3185,7 +3160,7 @@ class ReceiveControlsProc(object):
     try:
       self.form_gui.window['tab_relaybox'].select()
     except:
-      self.debug.info_message("method: event_btnmainpanelrelay exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+      self.debug.error_message("method: event_btnmainpanelrelay exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
 
   def event_btnmainareareset(self, values):
     self.debug.info_message("event_btnmainareareset\n")
@@ -3283,7 +3258,7 @@ class ReceiveControlsProc(object):
     try:
       self.form_gui.window['tab_outbox'].select()
     except:
-      self.debug.info_message("method: event_btnrelaycopytooutbox exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+      self.debug.error_message("method: event_btnrelaycopytooutbox exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
 
     line_index = int(values['table_relay_messages'][0])
     ID = (self.group_arq.getMessageRelaybox()[line_index])[6]
@@ -3394,7 +3369,7 @@ class ReceiveControlsProc(object):
         self.form_gui.window['filexfer_image'].update(filename)
 
     except:
-      self.debug.info_message("method: event_btnmainpanelpreviewimagefile exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
+      self.debug.error_message("method: event_btnmainpanelpreviewimagefile exception: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ) )
 
 
     return
@@ -4310,7 +4285,7 @@ class ReceiveControlsProc(object):
       sys.stdout.write("sending message from HRRM Client to external module server\n")
 
     except:
-      self.debug.info_message("Exception in event_btnsubstationconnect1: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+      self.debug.error_message("Exception in event_btnsubstationconnect1: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
 
 
 
@@ -4503,7 +4478,6 @@ class ReceiveControlsProc(object):
     try:
       selected_type = values['option_dataflec_selecttype']
       self.debug.info_message("selected type: " + str(selected_type) )
-      #list_items = self.form_dictionary.getDataFlecsForMessageType(selected_type)
       list_items = []
       for count in range(7) :
         item_str = values[('option_dataflec_selectedflec_' + str(count))]
@@ -4513,6 +4487,11 @@ class ReceiveControlsProc(object):
       self.form_dictionary.setDataFlecsForMessageType(selected_type, list_items)
     except:
       self.debug.error_message("Exception in event_dataflecselectionsupdate: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
+
+
+  def event_chatsatellitediscussionnameplusgroup(self, values):
+    self.debug.info_message("event_chatsatellitediscussionnameplusgroup"  )
+    self.group_arq.p2pip_chat_data.refreshChatDisplay(True)
 
   def event_p2pipcreatediscussiongroup(self, values):
     self.debug.info_message("event_p2pipcreatediscussiongroup"  )
@@ -4814,11 +4793,8 @@ class ReceiveControlsProc(object):
       'btn_cmpse_compose'         : event_composemsg,
       'btn_prev_post_to_outbox'   : event_prevposttooutbox,
       'btn_prev_chat_post_and_send'  : event_prevchatpostandsend,
-
       'btn_p2pipchatpostandsend'     : event_p2pipchatpostandsend,
-
       'btn_p2pipchatcheckformessages'  :  event_checkfordiscussiongroupmessages,
-
       'table_outbox_messages'     : event_tableoutboxmessages,
       'table_inbox_messages'      : event_tableinboxmessages,
       'table_relay_messages'   : event_tablerelayboxmessages,
@@ -4877,39 +4853,27 @@ class ReceiveControlsProc(object):
       'combo_settings_channels'   : event_combosettingschannels,
       'option_outbox_js8callmode' : event_optionoutboxjs8callmode,
       'combo_main_signalwidth'    : event_combomainsignalwidth,
-
       'btn_mainpanel_previewimagefile' : event_btnmainpanelpreviewimagefile,
       'filexfer_slider_size'          :     event_btnmainpanelpreviewimagefile,
       'filexfer_slider_quality'       :     event_btnmainpanelpreviewimagefile,
       'cb_filexfer_grayscale'         :     event_btnmainpanelpreviewimagefile,
       'cb_filexfer_blackandwhite'     :     event_btnmainpanelpreviewimagefile,
       'in_mainpanel_sendimagefilename' :    event_btnmainpanelpreviewimagefile,
-
       'btn_mainpanel_relay'       : event_btnmainpanelrelay,
-
       'btn_mainarea_reset'        : event_btnmainareareset,
-
       'btn_mainpanel_updaterecent' : event_btnmainpanelupdaterecent,
       'option_showactive'          : event_btnmainpanelupdaterecent,
-
        'btn_relay_copytooutbox'   : event_btnrelaycopytooutbox,
-
       'btn_mainpanel_clearstations' : event_btnmainpanelclearstations,
-
       'btn_myinfo_save'         : event_btnmyinfosave,
       'btn_sequence_save'         : event_btnsequencesave,
-
       'btn_winlink_list_emails'  : event_winlinklist,
       'winlink_inbox_table'      : event_winlinkinboxtable,
       'winlink_outbox_table'      : event_winlinkoutboxtable,
-
       'winlink_rmsmsg_table'      : event_winlinkrmsmsgtable,
-
       'btn_mainpanel_testprop'      : event_btnmainpaneltestprop,
-
       'btn_winlink_edit_selected'        : event_btnwinlinkeditselected,
       'btn_winlink_send_selected'        : event_btnwinlinksendselected,
-
       'btn_compose_goingqrtsaam'          : event_btncomposegoingqrtsaam,
       'btn_compose_confirmedhavecopy'     : event_btncomposeconfirmedhavecopy,
       'btn_compose_areyoureadytoreceive'  : event_btncomposeareyoureadytoreceive,
@@ -4921,98 +4885,61 @@ class ReceiveControlsProc(object):
       'btn_substation_connect_1'  : event_btnsubstationconnect1,
       'btn_substation_disconnect_1'  : event_btnsubstationdisconnect1,
       'btn_mainpanel_sendgfile'   : event_mainpanelsendfile,
-
       'input_myinfo_nickname'     : event_inputmyinfonickname,
       'in_mainwindow_stationtext' : event_mainwindow_stationtext,
       'in_mystationname'          : event_mainwindow_stationname,
-
       'btn_mainpanel_sendimagefile'   : event_mainpanelsendimagefile,
-
       'in_mainpanel_saveasfilename'  : event_mainpanelsaveasfile,
       'in_mainpanel_saveasimagefilename'  : event_mainpanelsaveasimagefile,
-
       'listbox_theme_select'      : event_listboxthemeselect,
-
       'option_sequence_number'    : event_optionsequencenumber,
       'option_real_sequence'      : event_optionrealsequence,
-
       'cb_filexfer_useseq'        : event_cbfilexferuseseq,
       'cb_outbox_useseq'          : event_cboutboxuseseq,
       'cb_winlink_useseq'         : event_cbwinlinkuseseq,
       'btn_winlink_connect'       : event_btnwinlinkconnect,
       'btn_winlink_composeform'   : event_btnwinlinkcomposeform,
-
       'btn_outbox_posttowinlink'   : event_btnoutboxposttowinlink,
       'btn_relaybox_posttowinlink' : event_btnrelayboxposttowinlink,
       'btn_compose_haverelaymsgs'  : event_btncomposehaverelaymsgs,
-
       'btn_remoteinternet_sendemail' : event_btnremoteinternetsendemail,
-
       'btn_preview_auto_populate_ics309' : event_btnpreviewautopopulateics309,
-
-
       'btn_relay_copytoclipboard' : event_relayboxcopyclipboard,
-
-
       'tabgrp_winlink7'           : event_tabgrpwinlink,
-
       'button_launch_net'           : event_btnlaunchnet,
-
-
       'btn_compose_ics205'        : event_btncomposeics205,
       'btn_compose_ics213'        : event_btncomposeics213,
       'btn_compose_ics309'        : event_btncomposeics309,
       'btn_compose_bulletin'      : event_btncomposebulletin,
       'btn_relay_RTS'             : event_btnrelayRTS,
-
       'btn_connectvpnp2pnode'     : event_connectVpn_p2pNode, 
-
       'btn_p2pCommandStart'       : event_p2pCommandStart,
       'btn_p2pCommandStop'        : event_p2pCommandStop,
       'btn_p2pCommandRestart'     : event_p2pCommandRestart,
-
       'btn_inbox_getmessages_ipp2p'   :  event_inboxgetmessagesipp2p,
       'btn_outbox_sendmessages_ipp2p' :  event_outboxsendmessagesipp2p,
-
       'btn_p2pipsatellite_getneighbors' :  event_p2pipsatellitegetneighbors,
-
        'btn_p2pipsettings_pingstation'  :  event_p2pipsettingspingstation,
-
       'btn_p2pipsettings_connectstation' :  event_p2pipsettingsconnectstation,
-
       'btn_p2pipsettings_connectstationmulti'   : event_p2pipsettings_connectstationmulti,
-
       'btn_announcediscussiongroup'     :    event_send_discussiongroup,
-
       'btn_p2pGetPublicIp'             :    event_p2pGetPublicIp,
-
       'combo_settings_beacon_timer_interval'  :  event_settingsbeacontimerinterval,
-
       'btn_send_beacon_message'     :   event_sendbeaconmessage,
-
       'btn_p2pipcreatediscussiongroup'   :   event_p2pipcreatediscussiongroup,
-
       'btn_debugdumplocalstorage'    :   event_debugdumplocalstorage,
       'btn_debugdumppeerstndataflecs'    :   event_debugdumppeerstndataflecs,
       'btn_debugdumprelaystndataflecs'    :   event_debugdumprelaystndataflecs,
-
       'option_dataflec_selecttype'   :   event_dataflecselecttype,
-
       'btn_data_flec_selections_update'   :   event_dataflecselectionsupdate,
-
       'btn_data_flec_reset_selections'   :   event_dataflecresetselections,
-
-
       'btn_disconnectvpnp2pnode'     :   event_disconnectvpnp2pnode,
-
       'btn_p2pipsettingscreateguid'    :   event_p2pipsettingscreateguid,
       'btn_p2pipsettingscreateluid'    :   event_p2pipsettingscreateluid,
-
       'cb_p2psettings_lockGUID'        :   event_p2psettingslockGUID,
       'cb_p2psettings_lockLUID'        :   event_p2psettingslockLUID,
-
       'cb_p2pipfortigateautoretrieve'  :   event_p2pipfortigateautoretrieve,
-
+      'table_chat_satellitediscussionname_plus_group'  :  event_chatsatellitediscussionnameplusgroup,
       'combo_element1'            : event_comboelement1,
       'combo_element2'            : event_comboelement2,
       'combo_element3'            : event_comboelement3,
@@ -5092,10 +5019,10 @@ class DataCache(object):
         for col in range(1, numcols):
           key = key + ':' + str(row[col]) 
           new_row.append(str(row[col]))
-        self.debug.error_message("key is: " + str(key) )
+        self.debug.verbose_message("key is: " + str(key) )
         self.append(key, new_row)
 
-        self.debug.info_message("table is : " + str(self.cache_table) )
+        self.debug.verbose_message("table is : " + str(self.cache_table) )
 
     except:
       self.debug.error_message("Exception in DataCache.appendTable: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))
@@ -5111,15 +5038,15 @@ class DataCache(object):
       self.cache_table = []
       for iter_key in self.cache_dict.keys():
         table_row = []
-        self.debug.error_message("table row is: " + str(table_row) )
+        self.debug.verbose_message("table row is: " + str(table_row) )
         item_values = self.cache_dict[iter_key].get('values')
         for item in item_values:
-          self.debug.info_message("appending to row")
+          self.debug.verbose_message("appending to row")
           table_row.append(item)
-        self.debug.info_message("appending row to table")
+        self.debug.verbose_message("appending row to table")
         self.cache_table.append(table_row)
 
-        self.debug.info_message("table is : " + str(self.cache_table) )
+        self.debug.verbose_message("table is : " + str(self.cache_table) )
 
     except:
       self.debug.error_message("Exception in DataCache.append: " + str(sys.exc_info()[0]) + str(sys.exc_info()[1] ))

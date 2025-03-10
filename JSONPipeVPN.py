@@ -158,8 +158,6 @@ class JSONPipeVPN(object):
           sys.stdout.write("Server socket wrapped\n")
           self.conn = conn
 
-          #self.conn.settimeout(5)
-
           while (True):
             sys.stdout.write("Server waiting for data\n")
             data = conn.recv(1024)
@@ -261,7 +259,7 @@ class JSONPipeVPN(object):
       sys.stdout.write("getMsg set blocking\n")
       if(True):
         sys.stdout.write("getMsg try to receive data\n")
-        content = self.sock.recv(1024)
+        content = self.sock.recv(65535)
         if not content:
           sys.stdout.write("getMsg: connection closed by server\n")
           self.close()
