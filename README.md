@@ -33,10 +33,10 @@ Download the following:
 
 * JS8Call
 * Fldigi
-* HRRM v2.0.5 binary or HRRM_setup windows installer: github.com/gh42lb/HRRM
-* p2pnode binary from github.com/gh42lb/HRRM
+* HRRM v2.0.5
+* p2pnode 
 
-run the windows installer or create a folder on the desktop called HRRM and add the binary file
+
 
 ### Configuration
 
