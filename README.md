@@ -72,7 +72,7 @@ start the modem application first...this can be either js8call or fldigi
 
 start the p2pnode application
 
-Now start hrrm by running the exe\binary from the command line or double clicking on the icon on the desktop
+Now start hrrm 
 
 if everything is installed correctly, hrrm will connect to fldigi and display the main window.
 
