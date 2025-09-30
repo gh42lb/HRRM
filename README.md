@@ -1,6 +1,6 @@
 ## Overview
 
-Ham Radio Relay Messenger v2.0.5 alpha release de WH6GGO. The software is currently in active development and early release testing phase.
+Ham Radio Relay Messenger v2.0.5 alpha release de WH6GGO. 
 
 
 #### Features
